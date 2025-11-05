@@ -27,11 +27,26 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Función para limpiar error de un campo específico
+  const clearFieldError = (fieldName: string) => {
+    if (errors[fieldName]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
     const newErrors: Record<string, string> = {};
+
+    // Normalizar datos (trim)
+    const normalizedPassword = formData.password.trim();
+    const normalizedConfirmPassword = formData.confirmPassword.trim();
 
     if (!formData.nombres.trim()) {
       newErrors.nombres = 'Los nombres son obligatorios';
@@ -47,10 +62,10 @@ export default function Register() {
     } else if (!formData.email.endsWith('@ufm.edu')) {
       newErrors.email = 'El email debe ser del dominio @ufm.edu';
     }
-    if (formData.password.length < 8) {
+    if (normalizedPassword.length < 8) {
       newErrors.password = 'La contraseña debe tener al menos 8 caracteres';
     }
-    if (formData.password !== formData.confirmPassword) {
+    if (normalizedPassword !== normalizedConfirmPassword) {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
 
@@ -116,7 +131,10 @@ export default function Register() {
                 required
                 className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
                 value={formData.nombres}
-                onChange={(e) => setFormData({ ...formData, nombres: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, nombres: e.target.value });
+                  clearFieldError('nombres');
+                }}
               />
               {errors.nombres && (
                 <p className="mt-1 text-sm text-red-400">{errors.nombres}</p>
@@ -134,7 +152,10 @@ export default function Register() {
                 required
                 className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
                 value={formData.apellidos}
-                onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, apellidos: e.target.value });
+                  clearFieldError('apellidos');
+                }}
               />
               {errors.apellidos && (
                 <p className="mt-1 text-sm text-red-400">{errors.apellidos}</p>
@@ -152,7 +173,10 @@ export default function Register() {
                 required
                 className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
                 value={formData.carnet_universitario}
-                onChange={(e) => setFormData({ ...formData, carnet_universitario: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, carnet_universitario: e.target.value });
+                  clearFieldError('carnet_universitario');
+                }}
               />
               {errors.carnet_universitario && (
                 <p className="mt-1 text-sm text-red-400">{errors.carnet_universitario}</p>
@@ -171,7 +195,10 @@ export default function Register() {
                 className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
                 placeholder="usuario@ufm.edu"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  clearFieldError('email');
+                }}
               />
               {errors.email && (
                 <p className="mt-1 text-sm text-red-400">{errors.email}</p>
@@ -190,7 +217,11 @@ export default function Register() {
                   required
                   className="w-full px-4 py-3 pr-12 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    clearFieldError('password');
+                    clearFieldError('confirmPassword');
+                  }}
                 />
                 <button
                   type="button"
@@ -222,7 +253,10 @@ export default function Register() {
                   required
                   className="w-full px-4 py-3 pr-12 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, confirmPassword: e.target.value });
+                    clearFieldError('confirmPassword');
+                  }}
                 />
                 <button
                   type="button"
