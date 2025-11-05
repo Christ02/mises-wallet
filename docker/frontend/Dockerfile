@@ -10,13 +10,13 @@ ARG NODE_ENV=development
 COPY frontend/package*.json ./
 
 # Instalar todas las dependencias
-RUN npm ci && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Copiar código fuente
 COPY frontend/ .
 
-# Exponer puerto (5173 para dev, 80 para prod con nginx)
-EXPOSE 5173
+# Exponer puerto (5174 para dev, 80 para prod con nginx)
+EXPOSE 5174
 
 # Variable de entorno
 ENV NODE_ENV=${NODE_ENV}

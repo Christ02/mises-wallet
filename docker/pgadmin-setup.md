@@ -6,7 +6,7 @@ pgAdmin es una herramienta web para administrar y visualizar bases de datos Post
 
 1. Una vez que los contenedores estén corriendo, accede a pgAdmin en:
    ```
-   http://localhost:5050
+   http://localhost:5051
    ```
 
 2. Credenciales por defecto:
