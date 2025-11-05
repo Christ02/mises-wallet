@@ -30,12 +30,13 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-mises_wallet}
-      PORT: 3001
+      PORT: 3000
       # Agrega aquí otras variables de entorno necesarias
     ports:
       - "3001:3000"
     volumes:
       - ./backend:/app
+      - ./database:/app/database
       - /app/node_modules
     depends_on:
       postgres:

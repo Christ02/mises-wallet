@@ -7,7 +7,9 @@ import { config } from './config/config.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// En Docker, el puerto interno es 3000 (mapeado a 3001 externo)
+// Usar el puerto de la variable de entorno si existe, sino 3000
+const PORT = parseInt(process.env.PORT) || 3000;
 
 // Middlewares
 app.use(cors());
@@ -30,15 +32,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Importar rutas (se crearán después)
-// import authRoutes from './auth/routes.js';
-// import userRoutes from './users/routes.js';
-// import walletRoutes from './wallets/routes.js';
-// etc.
+// Importar rutas
+import authRoutes from './auth/routes.js';
 
-// app.use('/api/auth', authRoutes);
-// app.use('/api/users', userRoutes);
-// app.use('/api/wallets', walletRoutes);
+app.use('/api/auth', authRoutes);
 
 // Manejo de errores
 app.use((err, req, res, next) => {
