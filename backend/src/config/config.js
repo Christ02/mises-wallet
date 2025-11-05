@@ -28,5 +28,15 @@ export const config = {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5174',
     credentials: true,
   },
+  
+  // Encriptación
+  encryption: {
+    key: process.env.ENCRYPTION_KEY || 'change-this-to-a-strong-random-key-in-production-32-chars',
+  },
+  
+  // Sepolia Testnet
+  sepolia: {
+    rpcUrl: process.env.SEPOLIA_RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY',
+  },
 };
 

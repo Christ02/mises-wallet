@@ -31,7 +31,10 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-mises_wallet}
       PORT: 3000
-      # Agrega aquí otras variables de entorno necesarias
+      # Encriptación para wallets
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-this-to-a-strong-random-key-in-production-32-chars}
+      # Sepolia Testnet RPC
+      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://sepolia.infura.io/v3/YOUR_INFURA_KEY}
     ports:
       - "3001:3000"
     volumes:

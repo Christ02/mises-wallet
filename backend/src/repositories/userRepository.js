@@ -86,5 +86,17 @@ export class UserRepository {
     const result = await pool.query(query, [token]);
     return result.rows[0];
   }
+
+  static async updateWalletId(userId, walletId) {
+    const query = `
+      UPDATE users 
+      SET wallet_id = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id, wallet_id
+    `;
+    
+    const result = await pool.query(query, [walletId, userId]);
+    return result.rows[0];
+  }
 }
 

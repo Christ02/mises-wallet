@@ -34,8 +34,10 @@ app.get('/health', (req, res) => {
 
 // Importar rutas
 import authRoutes from './auth/routes.js';
+import walletRoutes from './routes/walletRoutes.js';
 
 app.use('/api/auth', authRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // Manejo de errores
 app.use((err, req, res, next) => {

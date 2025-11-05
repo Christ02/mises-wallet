@@ -34,6 +34,24 @@ export class AuthService {
       role_id: 3 // Usuario por defecto
     });
 
+    // 🆕 CREAR WALLET AUTOMÁTICAMENTE (SILENCIOSO - El usuario no lo sabe)
+    try {
+      const { WalletService } = await import('./walletService.js');
+      const walletData = WalletService.createWallet();
+      const wallet = await WalletService.saveWallet(walletData, user.id);
+      
+      // Actualizar el usuario con wallet_id
+      await UserRepository.updateWalletId(user.id, wallet.id);
+      
+      // Solo logueamos en el backend, el usuario NO lo ve
+      console.log(`✅ Wallet creada automáticamente para usuario ${user.id} (Carnet: ${carnet_universitario})`);
+    } catch (error) {
+      // Si falla la creación de wallet, logueamos pero no falla el registro
+      // El usuario puede seguir usando la app normalmente
+      console.error(`⚠️ Error al crear wallet para usuario ${user.id}:`, error.message);
+      // Podrías implementar un sistema de retry aquí si lo deseas
+    }
+
     // Generar token JWT
     const token = this.generateToken(user.id, user.role_name || 'usuario');
 
