@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
+import logo from '../assets/images/mises-wallet.svg';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -63,7 +64,14 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Mises Wallet</h1>
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <img 
+              src={logo} 
+              alt="Mises Wallet" 
+              className="h-12 sm:h-16 w-auto"
+            />
+            <h1 className="text-3xl sm:text-4xl font-bold text-white">Mises Wallet</h1>
+          </div>
           <p className="text-sm sm:text-base text-gray-400">Restablecer contraseña</p>
         </div>
         <div className="bg-dark-card rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-dark-border">

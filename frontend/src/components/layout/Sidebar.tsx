@@ -7,6 +7,7 @@ import {
   HiUser,
   HiCog
 } from 'react-icons/hi';
+import logo from '../../assets/images/mises-wallet.svg';
 
 interface MenuItem {
   name: string;
@@ -47,7 +48,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo y botón cerrar (móvil) */}
         <div className="p-6 border-b border-dark-border flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-white tracking-tight">Mises Wallet</h1>
+          <div className="flex items-center space-x-3">
+            <img 
+              src={logo} 
+              alt="Mises Wallet" 
+              className="h-8 w-auto"
+            />
+            <h1 className="text-xl font-semibold text-white tracking-tight">Mises Wallet</h1>
+          </div>
           <button
             onClick={onClose}
             className="lg:hidden text-gray-400 hover:text-white transition-colors"

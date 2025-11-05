@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import api from '../../services/api';
+import logo from '../../assets/images/mises-wallet.svg';
 
 interface LoginForm {
   email: string;
@@ -43,7 +44,14 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo/Título */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Mises Wallet</h1>
+          <div className="flex items-center justify-center space-x-3 mb-4">
+            <img 
+              src={logo} 
+              alt="Mises Wallet" 
+              className="h-12 sm:h-16 w-auto"
+            />
+            <h1 className="text-3xl sm:text-4xl font-bold text-white">Mises Wallet</h1>
+          </div>
           <p className="text-sm sm:text-base text-gray-400">Inicia sesión en tu cuenta</p>
         </div>
 
