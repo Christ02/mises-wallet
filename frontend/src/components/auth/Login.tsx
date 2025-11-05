@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import api from '../../services/api';
-import logo from '../../assets/images/mises-wallet.svg';
 
 interface LoginForm {
   email: string;
@@ -42,22 +41,22 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
-        {/* Logo/Título */}
+        {/* Branding Diamonds */}
+        <div className="flex items-center justify-center space-x-2 mb-8">
+          <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
+          <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
+          <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
+        </div>
+
+        {/* Título */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <img 
-              src={logo} 
-              alt="Mises Wallet" 
-              className="h-12 sm:h-16 w-auto"
-            />
-            <h1 className="text-3xl sm:text-4xl font-bold text-white">Mises Wallet</h1>
-          </div>
-          <p className="text-sm sm:text-base text-gray-400">Inicia sesión en tu cuenta</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Iniciar Sesión</h1>
+          <p className="text-sm sm:text-base text-gray-300">Ingresa a tu cuenta UFM.</p>
         </div>
 
         {/* Formulario */}
-        <div className="bg-dark-card rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-dark-border">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
                 {error}
@@ -65,26 +64,20 @@ export default function Login() {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
-                placeholder="usuario@ufm.edu"
+                className="w-full px-4 py-3 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+                placeholder="Email @ufm.edu"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                Contraseña
-              </label>
               <div className="relative">
                 <input
                   id="password"
@@ -92,8 +85,8 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
-                  className="w-full px-4 py-3 pr-12 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
-                  placeholder="••••••••"
+                  className="w-full px-4 py-3 pr-12 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+                  placeholder="Contraseña"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
@@ -112,33 +105,33 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-end">
               <Link
                 to="/forgot-password"
-                className="text-sm text-primary-blue hover:text-primary-blue/80 transition-colors"
+                className="text-sm text-primary-red hover:text-primary-red/80 transition-colors"
               >
-                ¿Olvidaste tu contraseña?
+                Olvidé mi contraseña
               </Link>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 focus:ring-offset-dark-bg"
+              className="w-full bg-primary-red hover:bg-primary-red/90 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-red focus:ring-offset-2 focus:ring-offset-dark-bg"
             >
               {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
-
-            <div className="text-center text-sm text-gray-400">
-              ¿No tienes cuenta?{' '}
-              <Link
-                to="/register"
-                className="text-primary-blue hover:text-primary-blue/80 font-medium transition-colors"
-              >
-                Regístrate
-              </Link>
-            </div>
           </form>
+
+          <div className="text-center text-sm text-gray-300">
+            ¿No tienes una cuenta?{' '}
+            <Link
+              to="/register"
+              className="text-primary-red hover:text-primary-red/80 transition-colors"
+            >
+              Regístrate
+            </Link>
+          </div>
         </div>
       </div>
     </div>

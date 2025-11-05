@@ -77,7 +77,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
             <input
               type="text"
               placeholder="Buscar..."
-              className="w-full pl-10 pr-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue/50 focus:border-primary-blue/50 transition-all text-sm"
+              className="w-full pl-10 pr-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm"
             />
           </div>
         </div>
@@ -87,16 +87,16 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
           {/* Notifications */}
           <button className="relative p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all">
             <HiBell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary-blue rounded-full"></span>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-primary-red rounded-full"></span>
           </button>
 
           {/* User Menu */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 rounded-lg hover:bg-dark-bg transition-all focus:outline-none focus:ring-2 focus:ring-primary-blue/50 focus:ring-offset-2 focus:ring-offset-dark-card"
+              className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 rounded-lg hover:bg-dark-bg transition-all focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:ring-offset-2 focus:ring-offset-dark-card"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-primary-blue to-primary-blue/80 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg">
                 {initials}
               </div>
               <div className="text-left hidden lg:block">
@@ -111,7 +111,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
                 {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-dark-border">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-blue to-primary-blue/80 rounded-full flex items-center justify-center text-white font-semibold shadow-lg">
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white font-semibold shadow-lg">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">

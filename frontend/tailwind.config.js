@@ -8,12 +8,18 @@ export default {
     extend: {
       colors: {
         dark: {
-          bg: '#040415',
-          card: '#0a0a1a',
-          border: '#1a1a2e',
+          bg: '#1A1D24',
+          card: '#2C313A',
+          border: '#3A3F4A',
         },
         primary: {
-          blue: '#4668ff',
+          red: '#E53935',
+          redAlt: '#E52B34',
+        },
+        accent: {
+          red: '#E53935',
+          yellow: '#FFC107',
+          blue: '#2196F3',
         },
         positive: '#10b981',
         negative: '#ef4444',

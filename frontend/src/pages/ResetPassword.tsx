@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import logo from '../assets/images/mises-wallet.svg';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -63,19 +62,19 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <img 
-              src={logo} 
-              alt="Mises Wallet" 
-              className="h-12 sm:h-16 w-auto"
-            />
-            <h1 className="text-3xl sm:text-4xl font-bold text-white">Mises Wallet</h1>
-          </div>
-          <p className="text-sm sm:text-base text-gray-400">Restablecer contraseña</p>
+        {/* Branding Diamonds */}
+        <div className="flex items-center justify-center space-x-2 mb-8">
+          <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
+          <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
+          <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
         </div>
-        <div className="bg-dark-card rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-dark-border">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+
+        <div className="text-center mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Restablecer Contraseña</h1>
+          <p className="text-sm sm:text-base text-gray-300">Ingresa tu nueva contraseña</p>
+        </div>
+        <div className="space-y-5">
+          <form className="space-y-5" onSubmit={handleSubmit}>
             {message && (
               <div className="bg-positive/10 border border-positive/50 text-positive px-4 py-3 rounded-lg text-sm">
                 {message}
@@ -88,30 +87,26 @@ export default function ResetPassword() {
             )}
             <div className="space-y-4">
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Nueva Contraseña (mínimo 8 caracteres)
-                </label>
                 <input
                   id="password"
                   name="password"
                   type="password"
                   required
-                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+                  placeholder="Nueva Contraseña (mínimo 8 caracteres)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirmar Contraseña
-                </label>
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
                   required
-                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+                  placeholder="Confirmar Contraseña"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
@@ -121,20 +116,20 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 focus:ring-offset-dark-bg"
+              className="w-full bg-primary-red hover:bg-primary-red/90 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-red focus:ring-offset-2 focus:ring-offset-dark-bg"
             >
               {loading ? 'Restableciendo...' : 'Restablecer Contraseña'}
             </button>
-
-            <div className="text-center">
-              <Link
-                to="/login"
-                className="text-sm text-primary-blue hover:text-primary-blue/80 transition-colors"
-              >
-                Volver al inicio de sesión
-              </Link>
-            </div>
           </form>
+
+          <div className="text-center">
+            <Link
+              to="/login"
+              className="text-sm text-primary-red hover:text-primary-red/80 transition-colors"
+            >
+              Volver al inicio de sesión
+            </Link>
+          </div>
         </div>
       </div>
     </div>

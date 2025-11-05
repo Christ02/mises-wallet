@@ -7,7 +7,6 @@ import {
   HiUser,
   HiCog
 } from 'react-icons/hi';
-import logo from '../../assets/images/mises-wallet.svg';
 
 interface MenuItem {
   name: string;
@@ -48,13 +47,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo y botón cerrar (móvil) */}
         <div className="p-6 border-b border-dark-border flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <img 
-              src={logo} 
-              alt="Mises Wallet" 
-              className="h-8 w-auto"
-            />
-            <h1 className="text-xl font-semibold text-white tracking-tight">Mises Wallet</h1>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
+            <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
+            <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
+            <h1 className="text-xl font-semibold text-white tracking-tight ml-3">Mises Wallet</h1>
           </div>
           <button
             onClick={onClose}
@@ -75,14 +72,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 key={item.path}
                 to={item.path}
                 onClick={onClose}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-primary-blue/10 text-primary-blue border border-primary-blue/20'
-                    : 'text-gray-400 hover:text-white hover:bg-dark-bg border border-transparent'
-                }`}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                isActive
+                  ? 'bg-primary-red/10 text-primary-red border border-primary-red/20'
+                  : 'text-gray-400 hover:text-white hover:bg-dark-bg border border-transparent'
+              }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-primary-blue' : 'text-gray-400 group-hover:text-white'}`} />
-                <span className={`font-medium text-sm ${isActive ? 'text-primary-blue' : 'text-gray-400 group-hover:text-white'}`}>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-primary-red' : 'text-gray-400 group-hover:text-white'}`} />
+                <span className={`font-medium text-sm ${isActive ? 'text-primary-red' : 'text-gray-400 group-hover:text-white'}`}>
                   {item.name}
                 </span>
               </Link>

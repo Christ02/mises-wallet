@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
-import logo from '../../assets/images/mises-wallet.svg';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -32,20 +31,20 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <img 
-              src={logo} 
-              alt="Mises Wallet" 
-              className="h-12 sm:h-16 w-auto"
-            />
-            <h1 className="text-3xl sm:text-4xl font-bold text-white">Mises Wallet</h1>
-          </div>
-          <p className="text-sm sm:text-base text-gray-400">Recuperar contraseña</p>
+        {/* Branding Diamonds */}
+        <div className="flex items-center justify-center space-x-2 mb-8">
+          <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
+          <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
+          <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
         </div>
 
-        <div className="bg-dark-card rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-dark-border">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Recuperar Contraseña</h1>
+          <p className="text-sm sm:text-base text-gray-300">Ingresa tu email para recuperar tu cuenta</p>
+        </div>
+
+        <div className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {message && (
               <div className="bg-positive/10 border border-positive/50 text-positive px-4 py-3 rounded-lg text-sm">
                 {message}
@@ -58,17 +57,14 @@ export default function ForgotPassword() {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email
-              </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
                 required
-                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-all"
-                placeholder="usuario@ufm.edu"
+                className="w-full px-4 py-3 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+                placeholder="Email @ufm.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -77,20 +73,20 @@ export default function ForgotPassword() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-blue hover:bg-primary-blue/90 text-white font-semibold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-blue focus:ring-offset-2 focus:ring-offset-dark-bg"
+              className="w-full bg-primary-red hover:bg-primary-red/90 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-red focus:ring-offset-2 focus:ring-offset-dark-bg"
             >
               {loading ? 'Enviando...' : 'Enviar Instrucciones'}
             </button>
-
-            <div className="text-center">
-              <Link
-                to="/login"
-                className="text-sm text-primary-blue hover:text-primary-blue/80 transition-colors"
-              >
-                Volver al inicio de sesión
-              </Link>
-            </div>
           </form>
+
+          <div className="text-center">
+            <Link
+              to="/login"
+              className="text-sm text-primary-red hover:text-primary-red/80 transition-colors"
+            >
+              Volver al inicio de sesión
+            </Link>
+          </div>
         </div>
       </div>
     </div>
