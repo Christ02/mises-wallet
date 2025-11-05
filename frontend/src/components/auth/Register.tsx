@@ -82,7 +82,8 @@ export default function Register() {
         apellidos: formData.apellidos.trim(),
         carnet_universitario: formData.carnet_universitario.trim(),
         email: formData.email.trim(),
-        password: formData.password,
+        password: formData.password.trim(),
+        confirmPassword: formData.confirmPassword.trim(),
       });
 
       const { token, user } = response.data;
