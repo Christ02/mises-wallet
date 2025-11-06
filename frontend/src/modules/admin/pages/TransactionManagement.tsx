@@ -91,7 +91,8 @@ export default function TransactionManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Transacciones Globales</h1>
@@ -255,7 +256,7 @@ export default function TransactionManagement() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -183,7 +183,8 @@ export default function Dashboard() {
   };
 
   return (
-    <div>
+    <>
+      <div>
         {/* Header Section */}
         <div className="flex items-center justify-between mt-5">
           <div className="flex items-center space-x-4 sm:space-x-5 flex-1 min-w-0">
@@ -446,6 +447,6 @@ export default function Dashboard() {
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }

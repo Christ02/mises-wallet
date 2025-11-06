@@ -155,7 +155,8 @@ export default function EventManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
         {viewMode === 'events' ? (
           <>
             {/* Header */}
@@ -629,6 +630,6 @@ export default function EventManagement() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
