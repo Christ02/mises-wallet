@@ -35,8 +35,8 @@ interface User {
 // Menú para usuarios normales
 const userMenuItems: MenuItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: HiHome },
-  { name: 'Wallet', path: '/wallet', icon: HiCreditCard },
   { name: 'Transacciones', path: '/transactions', icon: HiRefresh },
+  { name: 'Eventos', path: '/events', icon: HiCalendar },
   { name: 'Perfil', path: '/profile', icon: HiUser },
 ];
 

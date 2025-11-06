@@ -8,6 +8,16 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserManagement from './pages/UserManagement';
 import EventManagement from './pages/EventManagement';
 import TransactionManagement from './pages/TransactionManagement';
+import Transactions from './pages/Transactions';
+import Events from './pages/Events';
+import Notifications from './pages/Notifications';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import Recharge from './pages/Recharge';
+import Withdraw from './pages/Withdraw';
+import Send from './pages/Send';
+import Receive from './pages/Receive';
+import Pay from './pages/Pay';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function Home() {
@@ -87,7 +97,7 @@ function App() {
           path="/wallet"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Navigate to="/transactions" replace />
             </ProtectedRoute>
           }
         />
@@ -95,7 +105,23 @@ function App() {
           path="/transactions"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Transactions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events"
+          element={
+            <ProtectedRoute>
+              <Events />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
             </ProtectedRoute>
           }
         />
@@ -103,7 +129,7 @@ function App() {
           path="/profile"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Profile />
             </ProtectedRoute>
           }
         />
@@ -111,7 +137,47 @@ function App() {
           path="/settings"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet/recharge"
+          element={
+            <ProtectedRoute>
+              <Recharge />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet/withdraw"
+          element={
+            <ProtectedRoute>
+              <Withdraw />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet/send"
+          element={
+            <ProtectedRoute>
+              <Send />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet/receive"
+          element={
+            <ProtectedRoute>
+              <Receive />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet/pay"
+          element={
+            <ProtectedRoute>
+              <Pay />
             </ProtectedRoute>
           }
         />

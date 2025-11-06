@@ -60,18 +60,28 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const roleDisplay = user.role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
   return (
-    <nav className="bg-dark-card border-b border-dark-border fixed top-0 right-0 left-0 lg:left-64 z-30 backdrop-blur-sm bg-dark-card/95">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
-        {/* Mobile Menu Button */}
+    <nav className="bg-dark-card border-b border-dark-border fixed top-0 right-0 left-0 lg:left-64 z-30 backdrop-blur-sm bg-dark-card/95 h-16 sm:h-20">
+      <div className="px-8 sm:px-10 md:px-12 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 h-full">
+        {/* Left Side - Branding */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-2">
+            <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
+            <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
+            <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
+          </div>
+          <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Mises Wallet</h1>
+        </div>
+
+        {/* Mobile Menu Button - Oculto en móvil porque ahora usamos bottom nav */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden text-gray-400 hover:text-white transition-colors p-2"
+          className="hidden lg:block text-gray-400 hover:text-white transition-colors p-2 absolute left-64"
         >
           <HiMenu className="w-6 h-6" />
         </button>
 
         {/* Search Bar - Hidden on mobile, visible on tablet+ */}
-        <div className="hidden md:flex flex-1 max-w-md">
+        <div className="hidden md:flex flex-1 max-w-md mx-auto">
           <div className="relative w-full">
             <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -85,10 +95,13 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         {/* Right Side Actions */}
         <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Notifications */}
-          <button className="relative p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all">
+          <Link
+            to="/notifications"
+            className="relative p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+          >
             <HiBell className="w-5 h-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-primary-red rounded-full"></span>
-          </button>
+          </Link>
 
           {/* User Menu */}
           <div className="relative" ref={dropdownRef}>
@@ -96,12 +109,12 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 rounded-lg hover:bg-dark-bg transition-all focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:ring-offset-2 focus:ring-offset-dark-card"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white font-semibold text-[10px] sm:text-xs lg:text-sm shadow-lg">
                 {initials}
               </div>
-              <div className="text-left hidden lg:block">
-                <p className="text-sm font-medium text-white">{fullName}</p>
-                <p className="text-xs text-gray-400">{roleDisplay}</p>
+              <div className="text-left hidden sm:block">
+                <p className="text-xs sm:text-sm font-medium text-white truncate max-w-[120px] sm:max-w-none">{fullName}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 truncate max-w-[120px] sm:max-w-none">{roleDisplay}</p>
               </div>
               <HiChevronDown className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? 'transform rotate-180' : ''}`} />
             </button>
