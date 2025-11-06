@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowUp, HiExclamationCircle } from 'react-icons/hi';
-import api from '../services/api';
+import api from '../../../services/api';
 
 export default function Withdraw() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowDown, HiDuplicate, HiCheckCircle, HiQrcode } from 'react-icons/hi';
-import api from '../services/api';
+import api from '../../../services/api';
 
 export default function Receive() {
   const navigate = useNavigate();

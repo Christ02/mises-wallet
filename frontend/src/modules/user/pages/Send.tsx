@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowUp, HiExclamationCircle, HiQrcode } from 'react-icons/hi';
-import api from '../services/api';
+import api from '../../../services/api';
 
 export default function Send() {
   const navigate = useNavigate();

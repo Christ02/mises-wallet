@@ -8,7 +8,7 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-import api from '../services/api';
+import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
