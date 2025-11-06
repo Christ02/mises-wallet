@@ -5,6 +5,9 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import UserManagement from './pages/UserManagement';
+import EventManagement from './pages/EventManagement';
+import TransactionManagement from './pages/TransactionManagement';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function Home() {
@@ -60,7 +63,7 @@ function App() {
           path="/admin/users"
           element={
             <ProtectedRoute>
-              <AdminDashboard />
+              <UserManagement />
             </ProtectedRoute>
           }
         />
@@ -68,7 +71,7 @@ function App() {
           path="/admin/events"
           element={
             <ProtectedRoute>
-              <AdminDashboard />
+              <EventManagement />
             </ProtectedRoute>
           }
         />
@@ -76,7 +79,7 @@ function App() {
           path="/admin/transactions"
           element={
             <ProtectedRoute>
-              <AdminDashboard />
+              <TransactionManagement />
             </ProtectedRoute>
           }
         />
