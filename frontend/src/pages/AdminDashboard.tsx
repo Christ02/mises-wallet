@@ -10,10 +10,7 @@ import {
   HiPencil,
   HiTrash,
   HiEye,
-  HiEyeOff,
-  HiInformationCircle,
-  HiExclamation,
-  HiCheckCircle
+  HiEyeOff
 } from 'react-icons/hi';
 
 interface StatCard {
@@ -28,14 +25,6 @@ interface Event {
   name: string;
   date: string;
   status: 'Publicado' | 'Borrador' | 'Finalizado';
-}
-
-interface Notification {
-  id: number;
-  type: 'info' | 'warning' | 'success';
-  title: string;
-  message: string;
-  icon: React.ComponentType<{ className?: string }>;
 }
 
 export default function AdminDashboard() {
@@ -73,30 +62,6 @@ export default function AdminDashboard() {
     }
   ];
 
-  const notifications: Notification[] = [
-    {
-      id: 1,
-      type: 'info',
-      title: 'Mantenimiento programado',
-      message: 'El sistema estará en mantenimiento el 30 de Octubre de 2:00 a 4:00 AM.',
-      icon: HiInformationCircle
-    },
-    {
-      id: 2,
-      type: 'warning',
-      title: 'Alta demanda de registros',
-      message: 'Se ha detectado una alta demanda para el evento "Semana de la Libertad".',
-      icon: HiExclamation
-    },
-    {
-      id: 3,
-      type: 'success',
-      title: 'Actualización completada',
-      message: 'La versión 2.1 del panel ha sido implementada con éxito.',
-      icon: HiCheckCircle
-    }
-  ];
-
   const filteredEvents = events.filter(event =>
     event.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -111,19 +76,6 @@ export default function AdminDashboard() {
         return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
       default:
         return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
-    }
-  };
-
-  const getNotificationColor = (type: Notification['type']) => {
-    switch (type) {
-      case 'info':
-        return 'bg-accent-blue/10 text-accent-blue';
-      case 'warning':
-        return 'bg-accent-yellow/10 text-accent-yellow';
-      case 'success':
-        return 'bg-positive/10 text-positive';
-      default:
-        return 'bg-gray-500/10 text-gray-400';
     }
   };
 
@@ -155,9 +107,9 @@ export default function AdminDashboard() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Events Management - Left Side (2 columns) */}
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-6">
+          {/* Events Management - Full Width */}
+          <div>
             <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
               {/* Header */}
               <div className="p-6 border-b border-dark-border">
@@ -239,37 +191,6 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Notifications - Right Side (1 column) */}
-          <div className="lg:col-span-1">
-            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
-              <h2 className="text-xl font-bold text-white mb-6">Notificaciones del Sistema</h2>
-              
-              <div className="space-y-4">
-                {notifications.map((notification) => {
-                  const Icon = notification.icon;
-                  return (
-                    <div
-                      key={notification.id}
-                      className="flex gap-4 p-4 bg-dark-bg rounded-lg border border-dark-border hover:border-primary-red/20 transition-all"
-                    >
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-full ${getNotificationColor(notification.type)} flex items-center justify-center`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-sm mb-1">
-                          {notification.title}
-                        </h3>
-                        <p className="text-gray-400 text-xs leading-relaxed">
-                          {notification.message}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
