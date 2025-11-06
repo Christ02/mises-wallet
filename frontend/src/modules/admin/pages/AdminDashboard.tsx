@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import Layout from '../components/layout/Layout';
 import { 
   HiUsers, 
   HiRefresh, 
@@ -80,8 +79,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Panel de Inicio</h1>
@@ -196,7 +194,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    </Layout>
   );
 }
 

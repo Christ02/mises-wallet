@@ -9,7 +9,6 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 
 interface Event {
   id: number;
@@ -103,7 +102,7 @@ export default function Events() {
   const featuredEvent = getNextEvent();
 
   return (
-    <Layout>
+    
       <div>
         {/* Header Section */}
         <div className="flex items-center justify-between mt-5">
@@ -331,6 +330,6 @@ export default function Events() {
           </>
         )}
       </div>
-    </Layout>
+    
   );
 }

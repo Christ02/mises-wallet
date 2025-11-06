@@ -13,7 +13,6 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 import api from '../services/api';
 
 interface User {
@@ -78,28 +77,28 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <Layout>
+      
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-red"></div>
         </div>
-      </Layout>
+      
     );
   }
 
   if (!user) {
     return (
-      <Layout>
+      
         <div className="text-center py-12">
           <p className="text-gray-400">Error al cargar información del usuario</p>
         </div>
-      </Layout>
+      
     );
   }
 
   const initials = `${user.nombres.charAt(0)}${user.apellidos.charAt(0)}`.toUpperCase();
 
   return (
-    <Layout>
+    
       <div>
         {/* Header Section */}
         <div className="flex items-center justify-between mt-5">
@@ -268,6 +267,6 @@ export default function Profile() {
           </>
         )}
       </div>
-    </Layout>
+    
   );
 }

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Layout from '../components/layout/Layout';
 import { 
   HiSearch,
   HiPlus,
@@ -156,8 +155,7 @@ export default function EventManagement() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {viewMode === 'events' ? (
           <>
             {/* Header */}
@@ -631,6 +629,6 @@ export default function EventManagement() {
           </div>
         </div>
       )}
-    </Layout>
+    </div>
   );
 }

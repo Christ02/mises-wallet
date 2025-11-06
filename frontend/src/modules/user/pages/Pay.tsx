@@ -8,7 +8,6 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 import api from '../services/api';
 
 interface WalletBalance {
@@ -71,7 +70,7 @@ export default function Pay() {
   };
 
   return (
-    <Layout>
+    
       <div>
         {/* Header Section */}
         <div className="flex items-center justify-between mt-5">
@@ -259,6 +258,6 @@ export default function Pay() {
           </>
         )}
       </div>
-    </Layout>
+    
   );
 }

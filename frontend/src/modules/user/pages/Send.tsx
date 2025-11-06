@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowUp, HiExclamationCircle, HiQrcode } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 import api from '../services/api';
 
 export default function Send() {
@@ -30,7 +29,7 @@ export default function Send() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
@@ -140,7 +139,7 @@ export default function Send() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 

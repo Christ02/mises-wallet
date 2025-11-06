@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowUp, HiExclamationCircle } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 import api from '../services/api';
 
 export default function Withdraw() {
@@ -30,7 +29,7 @@ export default function Withdraw() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
@@ -131,7 +130,7 @@ export default function Withdraw() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Layout from '../components/layout/Layout';
 import { 
   HiSearch,
   HiFilter,
@@ -52,8 +51,7 @@ export default function UserManagement() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Gestión de Usuarios</h1>
@@ -258,7 +256,7 @@ export default function UserManagement() {
           </div>
         </div>
       )}
-    </Layout>
+    </div>
   );
 }
 
