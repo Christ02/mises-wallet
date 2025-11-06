@@ -509,18 +509,16 @@ export default function EventManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Responsable Principal *
+                  Carnet del Responsable Principal *
                 </label>
-                <select
-                  className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
-                >
-                  <option value="">Seleccionar usuario...</option>
-                  {availableUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.nombre} ({user.email})
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  placeholder="Ej: 20210619"
+                  className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  Ingresa el carnet universitario del usuario que será responsable de este negocio
+                </p>
               </div>
             </div>
 
