@@ -60,12 +60,12 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   const roleDisplay = user.role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
   return (
-    <nav className="bg-dark-card border-b border-dark-border fixed top-0 right-0 left-0 lg:left-64 z-30 backdrop-blur-sm bg-dark-card/95">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
-        {/* Mobile Menu Button */}
+    <nav className="hidden md:block bg-dark-card border-b border-dark-border fixed top-0 right-0 left-0 lg:left-64 z-30 backdrop-blur-sm bg-dark-card/95 h-14 sm:h-16">
+      <div className="px-2 sm:px-4 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 h-full">
+        {/* Mobile Menu Button - Oculto en móvil porque ahora usamos bottom nav */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden text-gray-400 hover:text-white transition-colors p-2"
+          className="hidden lg:block text-gray-400 hover:text-white transition-colors p-2"
         >
           <HiMenu className="w-6 h-6" />
         </button>
@@ -96,7 +96,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 rounded-lg hover:bg-dark-bg transition-all focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:ring-offset-2 focus:ring-offset-dark-card"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white font-semibold text-[10px] sm:text-xs lg:text-sm shadow-lg">
                 {initials}
               </div>
               <div className="text-left hidden lg:block">
