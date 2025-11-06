@@ -5,13 +5,18 @@ import {
   HiCreditCard, 
   HiRefresh,
   HiUser,
-  HiCog
+  HiCog,
+  HiUsers,
+  HiCalendar,
+  HiChartBar
 } from 'react-icons/hi';
+import { useState, useEffect } from 'react';
 
 interface MenuItem {
   name: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
+  roles?: string[]; // roles permitidos para este ítem
 }
 
 interface SidebarProps {
@@ -19,15 +24,53 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const menuItems: MenuItem[] = [
+interface User {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  email: string;
+  role: string;
+}
+
+// Menú para usuarios normales
+const userMenuItems: MenuItem[] = [
   { name: 'Dashboard', path: '/dashboard', icon: HiHome },
   { name: 'Wallet', path: '/wallet', icon: HiCreditCard },
   { name: 'Transacciones', path: '/transactions', icon: HiRefresh },
   { name: 'Perfil', path: '/profile', icon: HiUser },
 ];
 
+// Menú para super admin
+const adminMenuItems: MenuItem[] = [
+  { name: 'Inicio', path: '/admin/dashboard', icon: HiHome },
+  { name: 'Gestión de Usuarios', path: '/admin/users', icon: HiUsers },
+  { name: 'Gestión de Eventos', path: '/admin/events', icon: HiCalendar },
+  { name: 'Transacciones Globales', path: '/admin/transactions', icon: HiChartBar },
+];
+
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
+  const [user, setUser] = useState<User | null>(null);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(userMenuItems);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+        
+        // Establecer menú según rol
+        if (userData.role === 'super_admin' || userData.role === 'admin') {
+          setMenuItems(adminMenuItems);
+        } else {
+          setMenuItems(userMenuItems);
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+  }, []);
 
   return (
     <>
@@ -47,11 +90,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo y botón cerrar (móvil) */}
         <div className="p-6 border-b border-dark-border flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
-            <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
-            <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
-            <h1 className="text-xl font-semibold text-white tracking-tight ml-3">Mises Wallet</h1>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-lg">
+              <span className="text-white font-bold text-lg">ufm</span>
+            </div>
+            <h1 className="text-xl font-bold text-white tracking-tight">UFM Wallet</h1>
           </div>
           <button
             onClick={onClose}

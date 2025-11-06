@@ -4,13 +4,24 @@ import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function Home() {
   const token = localStorage.getItem('token');
+  const userStr = localStorage.getItem('user');
   
-  if (token) {
-    return <Navigate to="/dashboard" replace />;
+  if (token && userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      // Redirigir según rol
+      if (user.role === 'super_admin' || user.role === 'admin') {
+        return <Navigate to="/admin/dashboard" replace />;
+      }
+      return <Navigate to="/dashboard" replace />;
+    } catch (error) {
+      return <Navigate to="/login" replace />;
+    }
   }
   
   return <Navigate to="/login" replace />;
@@ -25,11 +36,47 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        
+        {/* Rutas de usuario normal */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Rutas de admin */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/transactions"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />
