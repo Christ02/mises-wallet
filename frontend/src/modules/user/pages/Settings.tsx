@@ -9,7 +9,6 @@ import {
   HiGlobe,
   HiLogout
 } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -23,7 +22,7 @@ export default function Settings() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
@@ -126,7 +125,7 @@ export default function Settings() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 

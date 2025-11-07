@@ -10,8 +10,7 @@ import {
   HiShoppingCart,
   HiQrcode
 } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
-import api from '../services/api';
+import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
@@ -59,7 +58,7 @@ export default function Wallet() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
@@ -159,7 +158,7 @@ export default function Wallet() {
         )}
 
       </div>
-    </Layout>
+    
   );
 }
 

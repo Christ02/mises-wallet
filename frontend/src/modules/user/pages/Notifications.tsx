@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { HiBell, HiCheckCircle, HiXCircle, HiInformationCircle } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 
 interface Notification {
   id: number;
@@ -79,7 +78,7 @@ export default function Notifications() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Notificaciones</h1>
@@ -130,7 +129,7 @@ export default function Notifications() {
           </div>
         )}
       </div>
-    </Layout>
+    
   );
 }
 
