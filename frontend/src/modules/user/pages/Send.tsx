@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiArrowUp, HiExclamationCircle } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
-import api from '../services/api';
+import { HiArrowLeft, HiArrowUp, HiExclamationCircle, HiQrcode } from 'react-icons/hi';
+import api from '../../../services/api';
 
-export default function Withdraw() {
+export default function Send() {
   const navigate = useNavigate();
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -23,14 +22,14 @@ export default function Withdraw() {
       });
       navigate('/transactions');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Error al retirar fondos');
+      setError(err.response?.data?.error || 'Error al enviar fondos');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
@@ -41,12 +40,12 @@ export default function Withdraw() {
             <HiArrowLeft className="w-6 h-6 text-gray-400" />
           </button>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Retirar Fondos</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Enviar ETH</h1>
             <p className="text-sm sm:text-base text-gray-400">Envía ETH a otra dirección</p>
           </div>
         </div>
 
-        {/* Withdraw Form */}
+        {/* Send Form */}
         <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
@@ -58,9 +57,18 @@ export default function Withdraw() {
 
             {/* Address Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Dirección de Destino
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-300">
+                  Dirección de Destino
+                </label>
+                <button
+                  type="button"
+                  className="text-xs text-primary-red hover:text-primary-red/80 transition-colors flex items-center space-x-1"
+                >
+                  <HiQrcode className="w-4 h-4" />
+                  <span>Escanear QR</span>
+                </button>
+              </div>
               <input
                 type="text"
                 value={toAddress}
@@ -106,12 +114,12 @@ export default function Withdraw() {
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Procesando...</span>
+                  <span>Enviando...</span>
                 </>
               ) : (
                 <>
                   <HiArrowUp className="w-5 h-5" />
-                  <span>Retirar</span>
+                  <span>Enviar</span>
                 </>
               )}
             </button>
@@ -131,7 +139,7 @@ export default function Withdraw() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 

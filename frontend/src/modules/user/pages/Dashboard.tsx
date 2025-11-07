@@ -10,8 +10,7 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
-import api from '../services/api';
+import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
@@ -184,7 +183,7 @@ export default function Dashboard() {
   };
 
   return (
-    <Layout>
+    <>
       <div>
         {/* Header Section */}
         <div className="flex items-center justify-between mt-5">
@@ -448,6 +447,6 @@ export default function Dashboard() {
           </>
         )}
       </div>
-    </Layout>
+    </>
   );
 }

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowDown, HiDuplicate, HiCheckCircle, HiQrcode } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
-import api from '../services/api';
+import api from '../../../services/api';
 
 export default function Receive() {
   const navigate = useNavigate();
@@ -35,7 +34,7 @@ export default function Receive() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
@@ -115,7 +114,7 @@ export default function Receive() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowDown, HiCreditCard } from 'react-icons/hi';
-import Layout from '../components/layout/Layout';
 
 export default function Recharge() {
   const navigate = useNavigate();
@@ -22,7 +21,7 @@ export default function Recharge() {
   };
 
   return (
-    <Layout>
+    
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
@@ -131,7 +130,7 @@ export default function Recharge() {
           </p>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 
