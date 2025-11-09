@@ -79,25 +79,25 @@ export default function Notifications() {
   };
 
   return (
-    <div>
-      {/* Header Section */}
-      <div className="flex items-center justify-between mt-5">
-        <div className="flex items-center space-x-4 sm:space-x-5 flex-1 min-w-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
-            <HiBell className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
+      <div>
+        {/* Header Section */}
+        <div className="flex items-center justify-between mt-5">
+          <div className="flex items-center space-x-4 sm:space-x-5 flex-1 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
+              <HiBell className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Notificaciones</h2>
+              <p className="text-sm sm:text-base text-gray-400">Gestiona tus notificaciones</p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Notificaciones</h2>
-            <p className="text-sm sm:text-base text-gray-400">Gestiona tus notificaciones</p>
-          </div>
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="w-10 h-10 sm:w-12 sm:h-12 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-white hover:bg-dark-bg transition-all flex-shrink-0"
+          >
+            <HiQuestionMarkCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
         </div>
-        <button
-          onClick={() => setShowHelp(!showHelp)}
-          className="w-10 h-10 sm:w-12 sm:h-12 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-white hover:bg-dark-bg transition-all flex-shrink-0"
-        >
-          <HiQuestionMarkCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
-      </div>
 
         {/* NOTIFICACIONES Section */}
         <div className="mt-8 sm:mt-10 lg:mt-12">
@@ -146,40 +146,40 @@ export default function Notifications() {
           )}
         </div>
 
-      {/* Help Modal */}
-      {showHelp && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
-            onClick={() => setShowHelp(false)}
-          />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Help Modal */}
+        {showHelp && (
+          <>
             <div
-              className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl sm:text-2xl font-bold text-white">Ayuda</h3>
-                <button
-                  onClick={() => setShowHelp(false)}
-                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
-                >
-                  <HiX className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
-              </div>
-              <div className="space-y-4 text-sm sm:text-base text-gray-300">
-                <p>
-                  En esta sección puedes ver todas tus notificaciones y gestionarlas.
-                </p>
-                <p>
-                  Las notificaciones no leídas aparecen destacadas. Haz clic en una notificación para marcarla como leída.
-                </p>
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+              onClick={() => setShowHelp(false)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl sm:text-2xl font-bold text-white">Ayuda</h3>
+                  <button
+                    onClick={() => setShowHelp(false)}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+                  >
+                    <HiX className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                </div>
+                <div className="space-y-4 text-sm sm:text-base text-gray-300">
+                  <p>
+                    En esta sección puedes ver todas tus notificaciones y gestionarlas.
+                  </p>
+                  <p>
+                    Las notificaciones no leídas aparecen destacadas. Haz clic en una notificación para marcarla como leída.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </div>
   );
 }
 

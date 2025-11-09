@@ -42,7 +42,7 @@ function App() {
         <Route
           path="/admin/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']} redirectTo="/dashboard">
               <AdminRoutes />
             </ProtectedRoute>
           }
@@ -52,7 +52,7 @@ function App() {
         <Route
           path="/*"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute deniedRoles={['admin', 'super_admin']} redirectTo="/admin/dashboard">
               <UserRoutes />
             </ProtectedRoute>
           }

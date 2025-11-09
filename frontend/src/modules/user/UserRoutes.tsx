@@ -3,7 +3,10 @@ import UserLayout from './components/layout/UserLayout';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Events from './pages/Events';
+import EventOrganizer from './pages/EventOrganizer';
 import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
+import ChangePassword from './pages/ChangePassword';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Recharge from './pages/Recharge';
@@ -20,7 +23,10 @@ export default function UserRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/events" element={<Events />} />
+        <Route path="/events/organizer/:eventId" element={<EventOrganizer />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/edit" element={<EditProfile />} />
+        <Route path="/profile/change-password" element={<ChangePassword />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/settings" element={<Settings />} />
         

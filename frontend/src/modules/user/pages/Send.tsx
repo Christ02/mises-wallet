@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiArrowUp, HiExclamationCircle, HiQrcode } from 'react-icons/hi';
+import { HiArrowLeft, HiArrowUp, HiExclamationCircle, HiQrcode, HiQuestionMarkCircle, HiX } from 'react-icons/hi';
 import api from '../../../services/api';
 
 export default function Send() {
   const navigate = useNavigate();
-  const [toAddress, setToAddress] = useState('');
+  const [carnet, setCarnet] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,7 +18,7 @@ export default function Send() {
 
     try {
       await api.post('/api/wallet/send', {
-        to: toAddress,
+        carnet,
         amount: parseFloat(amount)
       });
       navigate('/transactions');
@@ -28,21 +29,37 @@ export default function Send() {
     }
   };
 
+  const carnetPlaceholder = 'SUPER001';
+
   return (
-    
-      <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-4">
+    <div className="space-y-8 sm:space-y-10">
+      <div className="mt-5">
           <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-dark-card rounded-lg transition-colors"
+          onClick={() => navigate('/wallet')}
+          className="inline-flex items-center space-x-2 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors bg-dark-card border border-dark-border px-3 py-2 rounded-lg"
           >
-            <HiArrowLeft className="w-6 h-6 text-gray-400" />
+          <HiArrowLeft className="w-4 h-4" />
+          <span>Volver a la wallet</span>
           </button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Enviar ETH</h1>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4 sm:space-x-5 flex-1 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
+            <HiArrowUp className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Enviar ETH</h2>
             <p className="text-sm sm:text-base text-gray-400">Envía ETH a otra dirección</p>
           </div>
+        </div>
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          className="w-10 h-10 sm:w-12 sm:h-12 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-white hover:bg-dark-bg transition-all flex-shrink-0"
+        >
+          <HiQuestionMarkCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
         </div>
 
         {/* Send Form */}
@@ -57,29 +74,19 @@ export default function Send() {
 
             {/* Address Input */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-300">
-                  Dirección de Destino
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Carnet universitario del destinatario
                 </label>
-                <button
-                  type="button"
-                  className="text-xs text-primary-red hover:text-primary-red/80 transition-colors flex items-center space-x-1"
-                >
-                  <HiQrcode className="w-4 h-4" />
-                  <span>Escanear QR</span>
-                </button>
-              </div>
               <input
                 type="text"
-                value={toAddress}
-                onChange={(e) => setToAddress(e.target.value)}
-                placeholder="0x..."
+            value={carnet}
+            onChange={(e) => setCarnet(e.target.value)}
+            placeholder="Ingresa el carnet (ej. SUPER001)"
                 required
-                pattern="^0x[a-fA-F0-9]{40}$"
-                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all font-mono text-sm"
+            className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-sm"
               />
               <p className="text-xs text-gray-500 mt-2">
-                Ingresa una dirección Ethereum válida (0x...)
+            El sistema localizará automáticamente la wallet asociada a este carnet.
               </p>
             </div>
 
@@ -108,7 +115,7 @@ export default function Send() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !amount || !toAddress}
+              disabled={loading || !amount || !carnet}
               className="w-full bg-primary-red hover:bg-primary-red/90 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {loading ? (
@@ -138,8 +145,36 @@ export default function Send() {
             </div>
           </div>
         </div>
+
+      {showHelp && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            onClick={() => setShowHelp(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl sm:text-2xl font-bold text-white">Ayuda</h3>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+                >
+                  <HiX className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+              <div className="space-y-4 text-sm sm:text-base text-gray-300">
+                <p>Introduce la dirección destino o escanea un QR compatible.</p>
+                <p>Revisa la cantidad y confirma; las transacciones en blockchain no se pueden revertir.</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       </div>
-    
   );
 }
 

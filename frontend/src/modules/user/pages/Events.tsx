@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   HiCalendar, 
   HiArrowRight, 
@@ -82,6 +83,7 @@ const organizerEvents: Event[] = [
 ];
 
 export default function Events() {
+  const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -279,14 +281,16 @@ export default function Events() {
                   >
                     Cerrar
                   </button>
-                  {organizerEvents.some(e => e.id === selectedEvent.id) ? (
-                    <button className="flex-1 px-4 sm:px-6 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base font-medium flex items-center justify-center space-x-2">
+                  {organizerEvents.some(e => e.id === selectedEvent.id) && (
+                    <button
+                      onClick={() => {
+                        setSelectedEvent(null);
+                        navigate(`/events/organizer/${selectedEvent.id}`);
+                      }}
+                      className="flex-1 px-4 sm:px-6 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base font-medium flex items-center justify-center space-x-2"
+                    >
                       <HiCog className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span>Gestionar</span>
-                    </button>
-                  ) : (
-                    <button className="flex-1 px-4 sm:px-6 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base font-medium">
-                      Inscribirse
                     </button>
                   )}
                 </div>

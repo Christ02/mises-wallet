@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiShoppingCart, 
@@ -6,7 +6,8 @@ import {
   HiExclamationCircle, 
   HiArrowRight,
   HiQuestionMarkCircle,
-  HiX
+  HiX,
+  HiOfficeBuilding
 } from 'react-icons/hi';
 import api from '../../../services/api';
 
@@ -16,14 +17,48 @@ interface WalletBalance {
   network: string;
 }
 
+interface MerchantTeam {
+  id: number;
+  name: string;
+  event: string;
+  carnet: string;
+  description: string;
+}
+
+const merchantTeams: MerchantTeam[] = [
+  {
+    id: 101,
+    name: 'Comercio Hackathon UFM',
+    event: 'Hackathon UFM',
+    carnet: 'TEAM-HACK-101',
+    description: 'Equipo organizador del Hackathon UFM 2024.'
+  },
+  {
+    id: 102,
+    name: 'Café Blockchain',
+    event: 'Conferencia Blockchain 2024',
+    carnet: 'TEAM-BCONF-102',
+    description: 'Cafetería oficial del evento con bebidas temáticas.'
+  },
+  {
+    id: 103,
+    name: 'Tienda Innovación UFM',
+    event: 'Feria de Innovación',
+    carnet: 'TEAM-INNO-103',
+    description: 'Merchandising y material educativo del evento.'
+  }
+];
+
 export default function Pay() {
   const navigate = useNavigate();
-  const [qrCode, setQrCode] = useState('');
+  const [merchantQuery, setMerchantQuery] = useState('');
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loadBalance = async () => {
@@ -44,15 +79,57 @@ export default function Pay() {
     alert('Funcionalidad de escaneo de QR próximamente');
   };
 
+  const matchedMerchants = useMemo(() => {
+    if (!merchantQuery.trim()) return [];
+    const query = merchantQuery.trim().toLowerCase();
+    return merchantTeams.filter(team =>
+      team.name.toLowerCase().includes(query) ||
+      team.event.toLowerCase().includes(query) ||
+      team.carnet.toLowerCase().includes(query)
+    ).slice(0, 5);
+  }, [merchantQuery]);
+
+  const selectedMerchant = useMemo(() => {
+    if (!merchantQuery.trim()) return null;
+    const query = merchantQuery.trim().toLowerCase();
+    return merchantTeams.find(team =>
+      team.name.toLowerCase() === query ||
+      team.carnet.toLowerCase() === query
+    ) || null;
+  }, [merchantQuery]);
+
+  const handleSelectMerchant = (team: MerchantTeam) => {
+    setMerchantQuery(team.name);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSuccessMessage('');
+    setErrorMessage('');
+
+    if (!selectedMerchant) {
+      setErrorMessage('Selecciona un comercio válido para continuar.');
+      return;
+    }
+
     setLoading(true);
     
-    // TODO: Implementar lógica de pago
-    setTimeout(() => {
+    try {
+      await api.post('/api/payments/merchant', {
+        merchantId: selectedMerchant.id,
+        merchantCarnet: selectedMerchant.carnet,
+        amount: parseFloat(amount)
+      });
+      setSuccessMessage(`Pago enviado a ${selectedMerchant.name}.`);
+      setMerchantQuery('');
+      setAmount('');
+      setTimeout(() => navigate('/transactions'), 1500);
+    } catch (err: any) {
+      console.error('Error processing payment:', err);
+      setErrorMessage('No se pudo procesar el pago. Intenta nuevamente.');
+    } finally {
       setLoading(false);
-      navigate('/transactions');
-    }, 2000);
+    }
   };
 
   const formatBalance = (balance: string) => {
@@ -153,15 +230,33 @@ export default function Pay() {
               {/* Merchant/Address Input */}
               <div>
                 <label className="block text-sm sm:text-base font-medium text-gray-300 mb-2 sm:mb-3">
-                  Número de carnet o Nombre de Comercio
+                    Nombre del comercio o grupo-id del equipo organizador
                 </label>
                 <input
                   type="text"
-                  value={qrCode}
-                  onChange={(e) => setQrCode(e.target.value)}
-                  placeholder="Ingresa el número de carnet o nombre del comercio"
-                  className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm sm:text-base"
+                  value={merchantQuery}
+                  onChange={(e) => setMerchantQuery(e.target.value)}
+                  placeholder="Busca el comercio (ej. Hackathon UFM)"
+                    className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm sm:text-base"
                 />
+                {matchedMerchants.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {matchedMerchants.map(team => (
+                      <button
+                        key={team.id}
+                        type="button"
+                        onClick={() => handleSelectMerchant(team)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-dark-bg border border-dark-border rounded-lg hover:border-primary-red/40 transition-all text-left"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-white">{team.name}</p>
+                          <p className="text-xs text-gray-400">{team.event}</p>
+                        </div>
+                        <HiOfficeBuilding className="w-5 h-5 text-primary-red" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Amount Input */}
@@ -178,7 +273,7 @@ export default function Pay() {
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
                     required
-                    className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 pr-16 sm:pr-20 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-lg sm:text-xl lg:text-2xl font-semibold"
+                    className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 pr-16 sm:pr-20 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm sm:text-base lg:text-lg font-semibold"
                   />
                   <span className="absolute right-4 sm:right-6 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm sm:text-base lg:text-lg font-medium">
                     UFM
@@ -186,10 +281,36 @@ export default function Pay() {
                 </div>
               </div>
 
+              {selectedMerchant && (
+                <div className="bg-dark-bg border border-dark-border rounded-lg p-4 sm:p-5 text-sm text-gray-300 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white">Comercio seleccionado</span>
+                    <span className="text-xs text-gray-500">{selectedMerchant.carnet}</span>
+                  </div>
+                  <p className="text-base font-semibold text-white">{selectedMerchant.name}</p>
+                  <p className="text-xs text-gray-400">{selectedMerchant.event}</p>
+                  <p className="text-xs text-gray-500">{selectedMerchant.description}</p>
+                </div>
+              )}
+
+              {errorMessage && (
+                <div className="bg-negative/10 border border-negative/40 text-negative px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+                  <HiExclamationCircle className="w-5 h-5" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="bg-positive/10 border border-positive/40 text-positive px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+                  <HiCheckCircle className="w-5 h-5" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || !amount || !qrCode}
+                disabled={loading || !amount || !selectedMerchant}
                 className="w-full bg-primary-red hover:bg-primary-red/90 text-white font-bold py-4 sm:py-5 lg:py-6 px-4 sm:px-6 rounded-xl sm:rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 sm:space-x-3 text-base sm:text-lg lg:text-xl shadow-lg"
               >
                 {loading ? (

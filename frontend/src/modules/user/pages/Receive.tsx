@@ -1,106 +1,118 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiArrowDown, HiDuplicate, HiCheckCircle, HiQrcode } from 'react-icons/hi';
+import {
+  HiArrowLeft,
+  HiArrowDown,
+  HiDuplicate,
+  HiCheckCircle,
+  HiQrcode,
+  HiQuestionMarkCircle,
+  HiX
+} from 'react-icons/hi';
 import api from '../../../services/api';
 
 export default function Receive() {
   const navigate = useNavigate();
-  const [address, setAddress] = useState<string>('');
-  const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+  const carnet = 'SUPER001';
 
-  useEffect(() => {
-    const loadAddress = async () => {
+  const handleShare = async () => {
       try {
-        // TODO: Obtener dirección de wallet cuando el backend lo permita
-        // const response = await api.get('/api/wallet/address');
-        // setAddress(response.data.address);
-        setAddress('0x0000000000000000000000000000000000000000'); // Placeholder
-      } catch (err: any) {
-        console.error('Error loading address:', err);
+      setLoading(true);
+      setSuccess('');
+      setError('');
+      await navigator.clipboard.writeText(carnet);
+      setSuccess('Carnet copiado al portapapeles.');
+    } catch (err) {
+      console.error('Error copying carnet:', err);
+      setError('No se pudo copiar el carnet. Intenta nuevamente.');
       } finally {
         setLoading(false);
-      }
-    };
-    loadAddress();
-  }, []);
-
-  const handleCopy = () => {
-    if (address) {
-      navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    
-      <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center space-x-4">
+    <div className="space-y-8 sm:space-y-10">
+      <div className="mt-5">
           <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-dark-card rounded-lg transition-colors"
+          onClick={() => navigate('/wallet')}
+          className="inline-flex items-center space-x-2 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors bg-dark-card border border-dark-border px-3 py-2 rounded-lg"
           >
-            <HiArrowLeft className="w-6 h-6 text-gray-400" />
+          <HiArrowLeft className="w-4 h-4" />
+          <span>Volver a la wallet</span>
           </button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Recibir ETH</h1>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4 sm:space-x-5 flex-1 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0">
+            <HiQrcode className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Recibir ETH</h2>
             <p className="text-sm sm:text-base text-gray-400">Comparte tu dirección para recibir fondos</p>
           </div>
         </div>
-
-        {/* QR Code Section */}
-        <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-6 sm:p-8">
-          <div className="flex flex-col items-center">
-            <div className="w-48 h-48 sm:w-64 sm:h-64 bg-white rounded-xl p-4 mb-6 flex items-center justify-center">
-              {loading ? (
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-red"></div>
-              ) : (
-                <HiQrcode className="w-full h-full text-gray-800" />
-                // TODO: Implementar generación de QR real cuando tengamos la dirección
-              )}
-            </div>
-            <p className="text-sm text-gray-400 mb-4 text-center">
-              Escanea este código QR para recibir ETH
-            </p>
-          </div>
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          className="w-10 h-10 sm:w-12 sm:h-12 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-white hover:bg-dark-bg transition-all flex-shrink-0"
+        >
+          <HiQuestionMarkCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+        </button>
         </div>
 
-        {/* Address Section */}
-        <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white">Tu Dirección</h2>
+        {/* Carnet Section */}
+        <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-6 sm:p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-white">Tu carnet universitario</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                Comparte este carnet para que otras personas puedan enviarte fondos.
+              </p>
+            </div>
+          </div>
+          {success && (
+            <div className="bg-positive/10 border border-positive/40 text-positive px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+              <HiCheckCircle className="w-5 h-5" />
+              <span>{success}</span>
+            </div>
+          )}
+          {error && (
+            <div className="bg-negative/10 border border-negative/40 text-negative px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+              <HiExclamationCircle className="w-5 h-5" />
+              <span>{error}</span>
+        </div>
+          )}
+          <div className="bg-dark-bg rounded-lg p-4 border border-dark-border flex items-center justify-between">
+            <p className="text-lg sm:text-xl font-semibold text-white">{carnet}</p>
+            <div className="flex items-center space-x-3">
             <button
-              onClick={handleCopy}
-              className="flex items-center space-x-2 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-bg/80 transition-colors"
+                onClick={handleShare}
+                disabled={loading}
+                className="flex items-center space-x-2 px-3 py-2 bg-dark-card border border-dark-border rounded-lg hover:bg-dark-bg/80 transition-colors disabled:opacity-50"
             >
-              {copied ? (
-                <>
-                  <HiCheckCircle className="w-4 h-4 text-positive" />
-                  <span className="text-sm text-positive">Copiado</span>
-                </>
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-red"></div>
               ) : (
-                <>
                   <HiDuplicate className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm text-gray-400">Copiar</span>
-                </>
-              )}
+                )}
+                <span className="text-sm text-gray-400">Copiar carnet</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-center space-x-2 px-3 py-2 bg-primary-red text-white rounded-lg hover:bg-primary-red/90 transition-colors"
+              >
+                <HiArrowDown className="w-4 h-4" />
+                <span className="text-sm font-medium">Compartir QR</span>
             </button>
           </div>
-          <div className="bg-dark-bg rounded-lg p-4 border border-dark-border">
-            {loading ? (
-              <div className="animate-pulse bg-dark-card h-6 rounded"></div>
-            ) : (
-              <p className="text-sm font-mono text-gray-300 break-all">{address || 'Cargando...'}</p>
-            )}
           </div>
-          <p className="text-xs text-gray-500 mt-3">
-            Comparte esta dirección para recibir ETH. Solo envía ETH a esta dirección en la red Sepolia.
-          </p>
         </div>
 
-        {/* Info */}
         <div className="bg-dark-card/50 border border-dark-border rounded-xl p-4">
           <div className="flex items-start space-x-3">
             <HiArrowDown className="w-5 h-5 text-primary-red flex-shrink-0 mt-0.5" />
@@ -113,8 +125,40 @@ export default function Receive() {
             </div>
           </div>
         </div>
+
+      {showHelp && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            onClick={() => setShowHelp(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl sm:text-2xl font-bold text-white">Ayuda</h3>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+                >
+                  <HiX className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+              <div className="space-y-4 text-sm sm:text-base text-gray-300">
+                <p>
+                  Escanea el código QR o copia tu dirección para recibir fondos en tu wallet.
+                </p>
+                <p>
+                  Asegúrate de compartir esta dirección solo en la red Sepolia Testnet para evitar pérdidas.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       </div>
-    
   );
 }
 

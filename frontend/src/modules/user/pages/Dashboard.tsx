@@ -8,7 +8,9 @@ import {
   HiCalendar,
   HiHome,
   HiQuestionMarkCircle,
-  HiX
+  HiX,
+  HiLocationMarker,
+  HiClock
 } from 'react-icons/hi';
 import api from '../../../services/api';
 
@@ -27,6 +29,15 @@ interface Transaction {
   description?: string;
 }
 
+interface DashboardEvent {
+  id: number;
+  title: string;
+  date: string;
+  location: string;
+  description: string;
+  time?: string;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [balance, setBalance] = useState<WalletBalance | null>(null);
@@ -34,6 +45,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
 
   const fetchBalance = async () => {
     try {
@@ -149,6 +161,39 @@ export default function Dashboard() {
     if (num < 0.001) return num.toFixed(6);
     if (num < 1) return num.toFixed(4);
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const upcomingEvents: DashboardEvent[] = [
+    {
+      id: 1,
+      title: 'Conferencia Blockchain 2024',
+      date: '2024-11-15',
+      time: '9:00 AM - 5:00 PM',
+      location: 'Auditorio UFM',
+      description: 'Conferencia sobre tecnología blockchain y su aplicación en el mundo financiero.'
+    },
+    {
+      id: 2,
+      title: 'Feria de Innovación',
+      date: '2024-12-02',
+      time: '10:00 AM - 6:00 PM',
+      location: 'Campus UFM',
+      description: 'Feria donde se presentan los proyectos más innovadores de estudiantes y profesores.'
+    },
+    {
+      id: 3,
+      title: 'Hackathon UFM',
+      date: '2024-12-10',
+      time: '8:00 AM - 8:00 PM',
+      location: 'Centro de Innovación',
+      description: 'Competencia de desarrollo donde equipos crean soluciones tecnológicas innovadoras.'
+    }
+  ];
+
+  const formatEventCardDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return `${date.getDate()} ${months[date.getMonth()]}, ${date.getFullYear()}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -356,59 +401,27 @@ export default function Dashboard() {
 
           <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
             <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
-              {/* Event Card 1 */}
-              <div
-                onClick={() => navigate('/events')}
-                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-              >
-                <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                  <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                </div>
-                <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                      Conferencia Blockchain 2024
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-400 font-medium">15 Nov, 2024</p>
+              {upcomingEvents.map((eventCard) => (
+                <div
+                  key={eventCard.id}
+                  onClick={() => setSelectedEvent(eventCard)}
+                  className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
+                >
+                  <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                    <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
+                  </div>
+                  <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
+                    <div>
+                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+                        {eventCard.title}
+                      </h3>
+                      <p className="text-sm sm:text-base text-gray-400 font-medium">
+                        {formatEventCardDate(eventCard.date)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Event Card 2 */}
-              <div
-                onClick={() => navigate('/events')}
-                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-              >
-                <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                  <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                </div>
-                <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                      Feria de Innovación
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-400 font-medium">2 Dic, 2024</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Event Card 3 */}
-              <div
-                onClick={() => navigate('/events')}
-                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-              >
-                <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                  <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                </div>
-                <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                  <div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                      Hackathon UFM
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-400 font-medium">10 Dic, 2024</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -441,6 +454,68 @@ export default function Dashboard() {
                   <p>
                     Usa los botones de acción para recargar o retirar fondos, y navega a otras secciones desde el menú inferior.
                   </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+        {selectedEvent && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+              onClick={() => setSelectedEvent(null)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 lg:p-10 shadow-2xl max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-6">
+                  <div className="h-40 sm:h-48 bg-gradient-to-br from-primary-red/30 via-primary-red/20 to-primary-red/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-4 sm:mb-6 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-primary-red/5"></div>
+                    <HiCalendar className="w-16 h-16 sm:w-20 sm:h-20 text-primary-red relative z-10" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">{selectedEvent.title}</h2>
+                  <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-gray-300">
+                    <div className="flex items-center space-x-3">
+                      <HiCalendar className="w-5 h-5 text-primary-red" />
+                      <span>{formatEventCardDate(selectedEvent.date)}</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <HiLocationMarker className="w-5 h-5 text-primary-red" />
+                      <span>{selectedEvent.location}</span>
+                    </div>
+                    {selectedEvent.time && (
+                      <div className="flex items-center space-x-3">
+                        <HiClock className="w-5 h-5 text-primary-red" />
+                        <span>{selectedEvent.time}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mb-6">
+                  <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Descripción</h3>
+                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
+                    {selectedEvent.description}
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                  <button
+                    onClick={() => setSelectedEvent(null)}
+                    className="flex-1 px-4 sm:px-6 py-3 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white hover:bg-dark-bg/80 transition-colors text-sm sm:text-base font-medium"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedEvent(null);
+                      navigate('/events');
+                    }}
+                    className="flex-1 px-4 sm:px-6 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg sm:rounded-xl transition-colors text-sm sm:text-base font-medium flex items-center justify-center space-x-2"
+                  >
+                    <span>Ver todos los eventos</span>
+                    <HiArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>

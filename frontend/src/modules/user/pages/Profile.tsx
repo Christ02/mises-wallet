@@ -164,7 +164,7 @@ export default function Profile() {
             </button>
 
             <button
-              onClick={() => {/* TODO: Implementar editar perfil */}}
+              onClick={() => navigate('/profile/edit')}
               className="w-full flex items-center justify-between p-4 sm:p-5 bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl hover:border-primary-red/50 transition-all group"
             >
               <div className="flex items-center space-x-3 sm:space-x-4">
@@ -175,7 +175,7 @@ export default function Profile() {
             </button>
 
             <button
-              onClick={() => {/* TODO: Implementar cambiar contraseña */}}
+              onClick={() => navigate('/profile/change-password')}
               className="w-full flex items-center justify-between p-4 sm:p-5 bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl hover:border-primary-red/50 transition-all group"
             >
               <div className="flex items-center space-x-3 sm:space-x-4">

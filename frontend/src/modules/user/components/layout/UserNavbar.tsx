@@ -156,14 +156,6 @@ export default function UserNavbar({ onMenuClick }: UserNavbarProps) {
                     <HiUserCircle className="w-5 h-5 text-gray-400 group-hover:text-white" />
                     <span className="text-sm font-medium">Ver perfil</span>
                   </Link>
-                  <Link
-                    to="/settings"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg transition-all group"
-                  >
-                    <HiUserCircle className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                    <span className="text-sm font-medium">Configuración</span>
-                  </Link>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-negative hover:bg-red-500/10 transition-all group"
