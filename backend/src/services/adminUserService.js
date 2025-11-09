@@ -26,6 +26,22 @@ export class AdminUserService {
     };
   }
 
+  static async searchUsers(query, limit = 5) {
+    if (!query || !query.trim()) {
+      return [];
+    }
+
+    const users = await UserRepository.findAll({ search: query.trim(), limit, offset: 0 });
+    return users.map((user) => ({
+      id: user.id,
+      nombres: user.nombres,
+      apellidos: user.apellidos,
+      carnet: user.carnet_universitario,
+      email: user.email,
+      status: user.status
+    }));
+  }
+
   static async getRoles() {
     return RoleRepository.findAll();
   }

@@ -4,21 +4,24 @@ export class AdminUserController {
   static async list(req, res) {
     try {
       const { search, limit, offset } = req.query;
-      const parsedLimit = limit ? parseInt(limit, 10) : undefined;
-      const parsedOffset = offset ? parseInt(offset, 10) : undefined;
-
-      const result = await AdminUserService.listUsers({
+      const response = await AdminUserService.listUsers({
         search,
-        limit: parsedLimit,
-        offset: parsedOffset
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined
       });
-
-      res.status(200).json(result);
+      res.status(200).json(response);
     } catch (error) {
-      res.status(500).json({
-        error: 'Error al obtener usuarios',
-        details: error.message
-      });
+      res.status(500).json({ error: error.message || 'Error al obtener usuarios' });
+    }
+  }
+
+  static async search(req, res) {
+    try {
+      const { query, limit } = req.query;
+      const users = await AdminUserService.searchUsers(query, limit ? parseInt(limit, 10) : undefined);
+      res.status(200).json({ data: users });
+    } catch (error) {
+      res.status(500).json({ error: error.message || 'Error al buscar usuarios' });
     }
   }
 

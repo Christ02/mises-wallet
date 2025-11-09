@@ -33,23 +33,24 @@ export class UserRepository {
 
   static async findAll({ search, limit = 50, offset = 0 } = {}) {
     const params = [];
-    let whereClauses = [];
+    const whereClauses = [];
+    let paramIndex = 1;
 
     if (search) {
-      params.push(`%${search.toLowerCase()}%`);
-      params.push(`%${search.toLowerCase()}%`);
-      params.push(`%${search.toLowerCase()}%`);
+      const likeValue = `%${search.toLowerCase()}%`;
       whereClauses.push(`(
-        LOWER(u.nombres) LIKE $${params.length - 2}
-        OR LOWER(u.apellidos) LIKE $${params.length - 1}
-        OR LOWER(u.email) LIKE $${params.length}
+        LOWER(u.nombres) LIKE $${paramIndex}
+        OR LOWER(u.apellidos) LIKE $${paramIndex + 1}
+        OR LOWER(u.email) LIKE $${paramIndex + 2}
+        OR LOWER(u.carnet_universitario) LIKE $${paramIndex + 3}
       )`);
+      params.push(likeValue, likeValue, likeValue, likeValue);
+      paramIndex += 4;
     }
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-    params.push(limit);
-    params.push(offset);
+    params.push(limit, offset);
 
     const query = `
       SELECT 
@@ -69,8 +70,8 @@ export class UserRepository {
       LEFT JOIN wallets w ON w.user_id = u.id
       ${whereSQL}
       ORDER BY u.created_at DESC
-      LIMIT $${params.length - 1}
-      OFFSET $${params.length}
+      LIMIT $${paramIndex}
+      OFFSET $${paramIndex + 1}
     `;
 
     const result = await pool.query(query, params);
@@ -79,17 +80,19 @@ export class UserRepository {
 
   static async countAll({ search } = {}) {
     const params = [];
-    let whereClauses = [];
+    const whereClauses = [];
+    let paramIndex = 1;
 
     if (search) {
-      params.push(`%${search.toLowerCase()}%`);
-      params.push(`%${search.toLowerCase()}%`);
-      params.push(`%${search.toLowerCase()}%`);
+      const likeValue = `%${search.toLowerCase()}%`;
       whereClauses.push(`(
-        LOWER(nombres) LIKE $${params.length - 2}
-        OR LOWER(apellidos) LIKE $${params.length - 1}
-        OR LOWER(email) LIKE $${params.length}
+        LOWER(nombres) LIKE $${paramIndex}
+        OR LOWER(apellidos) LIKE $${paramIndex + 1}
+        OR LOWER(email) LIKE $${paramIndex + 2}
+        OR LOWER(carnet_universitario) LIKE $${paramIndex + 3}
       )`);
+      params.push(likeValue, likeValue, likeValue, likeValue);
+      paramIndex += 4;
     }
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
