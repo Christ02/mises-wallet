@@ -31,7 +31,8 @@ export class AuthService {
       carnet_universitario,
       email,
       password_hash,
-      role_id: 3 // Usuario por defecto
+      role_id: 3, // Usuario por defecto
+      status: 'activo'
     });
 
     // 🆕 CREAR WALLET AUTOMÁTICAMENTE (SILENCIOSO - El usuario no lo sabe)
@@ -62,7 +63,8 @@ export class AuthService {
         apellidos: user.apellidos,
         email: user.email,
         carnet_universitario: user.carnet_universitario,
-        role: user.role_name || 'usuario'
+        role: user.role_name || 'usuario',
+        status: user.status || 'activo'
       },
       token
     };
@@ -73,6 +75,10 @@ export class AuthService {
     const user = await UserRepository.findByEmail(email);
     if (!user) {
       throw new Error('Credenciales inválidas');
+    }
+
+    if (user.status && user.status !== 'activo') {
+      throw new Error('El usuario está inactivo. Contacta al administrador.');
     }
 
     // Verificar contraseña
@@ -91,7 +97,8 @@ export class AuthService {
         apellidos: user.apellidos,
         email: user.email,
         carnet_universitario: user.carnet_universitario,
-        role: user.role_name
+        role: user.role_name,
+        status: user.status
       },
       token
     };

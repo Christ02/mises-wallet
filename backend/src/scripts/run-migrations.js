@@ -15,11 +15,15 @@ const __dirname = path.dirname(__filename);
 
 async function runMigrations() {
   try {
-    // Ruta a las migraciones - siempre usar /app/database/migrations en Docker
-    // El volumen está montado en docker-compose.yml
-    const migrationsDir = '/app/database/migrations';
-    
-    // Verificar que el directorio existe
+    const dockerMigrationsDir = '/app/database/migrations';
+    const localMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
+
+    let migrationsDir = dockerMigrationsDir;
+
+    if (!fs.existsSync(migrationsDir)) {
+      migrationsDir = localMigrationsDir;
+    }
+
     if (!fs.existsSync(migrationsDir)) {
       throw new Error(`El directorio de migraciones no existe: ${migrationsDir}`);
     }
