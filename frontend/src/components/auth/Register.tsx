@@ -23,6 +23,7 @@ export default function Register() {
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -40,6 +41,7 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+    setSuccessMessage('');
 
     const newErrors: Record<string, string> = {};
 
@@ -75,7 +77,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await api.post('/api/auth/register', {
+      await api.post('/api/auth/register', {
         nombres: formData.nombres.trim(),
         apellidos: formData.apellidos.trim(),
         carnet_universitario: formData.carnet_universitario.trim(),
@@ -84,10 +86,10 @@ export default function Register() {
         confirmPassword: formData.confirmPassword.trim(),
       });
 
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      navigate('/dashboard');
+      setSuccessMessage('Cuenta creada correctamente. Ahora puedes iniciar sesión.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 600);
     } catch (err: any) {
       if (err.response?.data?.errors) {
         const validationErrors: Record<string, string> = {};
@@ -122,6 +124,12 @@ export default function Register() {
         {/* Formulario */}
         <div className="space-y-5">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {successMessage && (
+              <div className="bg-positive/10 border border-positive/40 text-positive px-4 py-3 rounded-lg text-sm">
+                {successMessage}
+              </div>
+            )}
+
             {errors.general && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
                 {errors.general}
@@ -235,6 +243,39 @@ export default function Register() {
               </div>
               {errors.password && (
                 <p className="mt-1 text-sm text-red-400">{errors.password}</p>
+              )}
+            </div>
+
+            <div>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  className="w-full px-4 py-3 pr-12 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+                  placeholder="Confirmar contraseña"
+                  value={formData.confirmPassword}
+                  onChange={(e) => {
+                    setFormData({ ...formData, confirmPassword: e.target.value });
+                    clearFieldError('confirmPassword');
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 focus:outline-none transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? (
+                    <FaEyeSlash className="w-5 h-5" />
+                  ) : (
+                    <FaEye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
               )}
             </div>
 

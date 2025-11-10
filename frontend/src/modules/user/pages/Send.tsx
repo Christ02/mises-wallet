@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowUp, HiCheckCircle, HiExclamationCircle, HiQuestionMarkCircle, HiSearch, HiUserCircle, HiX } from 'react-icons/hi';
 import api from '../../../services/api';
@@ -19,6 +19,7 @@ export default function Send() {
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -69,17 +70,13 @@ export default function Send() {
       clearTimeout(searchTimeout.current);
     }
 
-    if (selectedRecipient && searchTerm === `${selectedRecipient.fullName} · ${selectedRecipient.carnet}`) {
-      setRecipientResults([selectedRecipient]);
-      setIsSearching(false);
-      setShowDropdown(false);
-      return;
-    }
+    const trimmedQuery = searchTerm.trim();
 
-    if (!searchTerm || searchTerm.trim().length < 2) {
+    if (!trimmedQuery || trimmedQuery.length < 2) {
       setRecipientResults([]);
       setIsSearching(false);
       setShowDropdown(false);
+      setHighlightIndex(-1);
       return;
     }
 
@@ -87,13 +84,16 @@ export default function Send() {
       try {
         setIsSearching(true);
         const response = await api.get('/api/wallet/recipients/search', {
-          params: { query: searchTerm }
+          params: { query: trimmedQuery, limit: 10 }
         });
         setRecipientResults(response.data?.recipients || []);
         setShowDropdown(true);
+        setHighlightIndex(-1);
       } catch (fetchError) {
         console.error('Error fetching recipients', fetchError);
         setRecipientResults([]);
+        setShowDropdown(false);
+        setHighlightIndex(-1);
       } finally {
         setIsSearching(false);
       }
@@ -170,6 +170,7 @@ export default function Send() {
                     setSearchTerm(e.target.value);
                     setSelectedRecipient(null);
                     setError('');
+                    setHighlightIndex(-1);
                   }}
                   onFocus={() => {
                     if (recipientResults.length > 0) {
@@ -177,6 +178,41 @@ export default function Send() {
                     }
                   }}
                   onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  onKeyDown={(e) => {
+                    if (!showDropdown || recipientResults.length === 0) {
+                      return;
+                    }
+
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setHighlightIndex((prev) => {
+                        const next = prev + 1;
+                        return next >= recipientResults.length ? 0 : next;
+                      });
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setHighlightIndex((prev) => {
+                        const next = prev - 1;
+                        if (next < 0) {
+                          return recipientResults.length - 1;
+                        }
+                        return next;
+                      });
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const indexToUse = highlightIndex >= 0 ? highlightIndex : 0;
+                      const recipientToSelect = recipientResults[indexToUse];
+                      if (recipientToSelect) {
+                        setSelectedRecipient(recipientToSelect);
+                        setSearchTerm(`${recipientToSelect.fullName} · ${recipientToSelect.carnet}`);
+                        setShowDropdown(false);
+                        setHighlightIndex(-1);
+                      }
+                    } else if (e.key === 'Escape') {
+                      setShowDropdown(false);
+                      setHighlightIndex(-1);
+                    }
+                  }}
                   placeholder="Busca por carnet, nombre o correo"
                   className="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-sm"
                 />
@@ -199,8 +235,19 @@ export default function Send() {
                             setSelectedRecipient(recipient);
                             setSearchTerm(`${recipient.fullName} · ${recipient.carnet}`);
                             setShowDropdown(false);
+                            setHighlightIndex(-1);
                           }}
-                          className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-dark-card transition-colors"
+                          onClick={() => {
+                            setSelectedRecipient(recipient);
+                            setSearchTerm(`${recipient.fullName} · ${recipient.carnet}`);
+                            setShowDropdown(false);
+                            setHighlightIndex(-1);
+                          }}
+                          className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors ${
+                            highlightIndex >= 0 && recipientResults[highlightIndex]?.id === recipient.id
+                              ? 'bg-primary-red/10 border-l-2 border-primary-red'
+                              : 'hover:bg-dark-card'
+                          }`}
                         >
                           <HiUserCircle className="w-8 h-8 text-primary-red/80 flex-shrink-0" />
                           <div className="flex-1 min-w-0">

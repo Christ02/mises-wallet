@@ -7,9 +7,9 @@ import {
   HiCheckCircle,
   HiQrcode,
   HiQuestionMarkCircle,
-  HiX
+  HiX,
+  HiExclamationCircle
 } from 'react-icons/hi';
-import api from '../../../services/api';
 
 export default function Receive() {
   const navigate = useNavigate();
@@ -17,10 +17,30 @@ export default function Receive() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const carnet = 'SUPER001';
+  const [carnet, setCarnet] = useState<string>('');
+
+  const carnetLabel = carnet || 'Carnet no disponible';
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const parsed = JSON.parse(userStr);
+        if (parsed?.carnet_universitario) {
+          setCarnet(parsed.carnet_universitario);
+        }
+      } catch (err) {
+        console.error('Error parsing stored user:', err);
+      }
+    }
+  }, []);
 
   const handleShare = async () => {
-      try {
+    if (!carnet) {
+      setError('No se pudo obtener tu carnet. Por favor, intenta iniciar sesión nuevamente.');
+      return;
+    }
+    try {
       setLoading(true);
       setSuccess('');
       setError('');
@@ -29,8 +49,8 @@ export default function Receive() {
     } catch (err) {
       console.error('Error copying carnet:', err);
       setError('No se pudo copiar el carnet. Intenta nuevamente.');
-      } finally {
-        setLoading(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,7 +108,7 @@ export default function Receive() {
         </div>
           )}
           <div className="bg-dark-bg rounded-lg p-4 border border-dark-border flex items-center justify-between">
-            <p className="text-lg sm:text-xl font-semibold text-white">{carnet}</p>
+            <p className="text-lg sm:text-xl font-semibold text-white">{carnetLabel}</p>
             <div className="flex items-center space-x-3">
             <button
                 onClick={handleShare}
