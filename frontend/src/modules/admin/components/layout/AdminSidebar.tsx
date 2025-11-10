@@ -1,5 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { HiX, HiHome, HiUsers, HiCalendar, HiChartBar, HiCog } from 'react-icons/hi';
+import {
+  HiX,
+  HiHome,
+  HiUsers,
+  HiCalendar,
+  HiChartBar,
+  HiCog,
+  HiClipboardList,
+  HiOutlineDocumentText,
+  HiCurrencyDollar
+} from 'react-icons/hi';
 
 interface MenuItem {
   name: string;
@@ -17,6 +27,9 @@ const menuItems: MenuItem[] = [
   { name: 'Gestión de Usuarios', path: '/admin/users', icon: HiUsers },
   { name: 'Gestión de Eventos', path: '/admin/events', icon: HiCalendar },
   { name: 'Transacciones Globales', path: '/admin/transactions', icon: HiChartBar },
+  { name: 'Reportes', path: '/admin/reports', icon: HiOutlineDocumentText },
+  { name: 'Wallet Central', path: '/admin/central-wallet', icon: HiCurrencyDollar },
+  { name: 'Auditoría', path: '/admin/audit', icon: HiClipboardList },
 ];
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
@@ -84,7 +97,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </nav>
 
         {/* Settings */}
-        <div className="p-4 border-t border-dark-border">
+        <div className="p-4 border-t border-dark-border space-y-2">
           <Link
             to="/admin/settings"
             onClick={onClose}

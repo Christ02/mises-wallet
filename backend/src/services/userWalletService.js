@@ -27,17 +27,8 @@ export class UserWalletService {
    * Filtrado por userId, no por dirección técnica
    */
   static async getTransactionHistory(userId) {
-    // Implementar consulta a la blockchain o tabla de transacciones
-    // Usando el userId, no la dirección
-    const wallet = await WalletService.getUserWallet(userId);
-    if (!wallet) {
-      return [];
-    }
-
-    // Aquí consultarías la blockchain o tu tabla de transacciones
-    // usando wallet.address internamente, pero retornando solo datos
-    // relevantes para el usuario sin mencionar direcciones técnicas
-    return [];
+    const result = await WalletService.getTransactions(userId);
+    return result || [];
   }
 }
 

@@ -5,6 +5,10 @@ import UserManagement from './pages/UserManagement';
 import EventManagement from './pages/EventManagement';
 import EventBusinesses from './pages/EventBusinesses';
 import TransactionManagement from './pages/TransactionManagement';
+import Settings from './pages/Settings';
+import AuditLogs from './pages/AuditLogs';
+import Reports from './pages/Reports';
+import CentralWallet from './pages/CentralWallet';
 
 export default function AdminRoutes() {
   return (
@@ -15,6 +19,10 @@ export default function AdminRoutes() {
         <Route path="/events" element={<EventManagement />} />
         <Route path="/events/:eventId" element={<EventBusinesses />} />
         <Route path="/transactions" element={<TransactionManagement />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/audit" element={<AuditLogs />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/central-wallet" element={<CentralWallet />} />
         
         {/* Redirect por defecto */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />

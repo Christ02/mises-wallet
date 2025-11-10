@@ -2,6 +2,10 @@ import express from 'express';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import { AdminUserController } from '../controllers/adminUserController.js';
 import { AdminEventController } from '../controllers/adminEventController.js';
+import { AdminTransactionController } from '../controllers/adminTransactionController.js';
+import { AdminAuditController } from '../controllers/adminAuditController.js';
+import { AdminReportController } from '../controllers/adminReportController.js';
+import { CentralWalletController } from '../controllers/centralWalletController.js';
 import { eventImageUpload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
@@ -41,6 +45,18 @@ router.delete('/events/:eventId/businesses/:businessId', AdminEventController.de
 // Miembros del negocio
 router.post('/events/:eventId/businesses/:businessId/members', AdminEventController.addBusinessMember);
 router.delete('/events/:eventId/businesses/:businessId/members/:memberId', AdminEventController.removeBusinessMember);
+
+// Transacciones
+router.get('/transactions', AdminTransactionController.list);
+
+// Auditoría
+router.get('/audit/logs', AdminAuditController.list);
+
+// Reportes
+router.get('/reports', AdminReportController.list);
+
+// Wallet central
+router.get('/central-wallet/status', CentralWalletController.status);
 
 export default router;
 

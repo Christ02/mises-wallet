@@ -106,30 +106,86 @@ export class WalletService {
    * El usuario solo necesita su carnet (ya autenticado)
    */
   static async sendTransaction(userId, toAddress, amount) {
+    let txRecord;
     try {
+      const walletRecord = await this.getUserWallet(userId);
+      if (!walletRecord) {
+        throw new Error('Wallet no encontrada para este usuario');
+      }
+
+      const { TransactionRepository } = await import('../repositories/transactionRepository.js');
+      const numericAmount = typeof amount === 'string' ? amount : amount.toString();
+      const metadata = { to: toAddress };
+
+      txRecord = await TransactionRepository.create({
+        user_id: userId,
+        type: 'transferencia',
+        status: 'pendiente',
+        direction: 'saliente',
+        amount: numericAmount,
+        currency: walletRecord.network || 'ETH',
+        description: `Transferencia hacia ${toAddress}`,
+        metadata
+      });
+
       const privateKey = await this.getDecryptedPrivateKey(userId);
       const wallet = new ethers.Wallet(privateKey);
-      
+
       const { config } = await import('../config/config.js');
       const provider = new ethers.JsonRpcProvider(
         process.env.SEPOLIA_RPC_URL || config.sepolia?.rpcUrl || 'https://sepolia.infura.io/v3/YOUR_KEY'
       );
-      
+
       const connectedWallet = wallet.connect(provider);
-      
+
       const tx = await connectedWallet.sendTransaction({
         to: toAddress,
-        value: ethers.parseEther(amount.toString())
+        value: ethers.parseEther(numericAmount.toString())
       });
-      
-      // Retornamos solo el hash de la transacción, NO la dirección de la wallet
+
+      await TransactionRepository.updateById(txRecord.id, {
+        reference: tx.hash,
+        status: 'en_proceso',
+        metadata: { ...metadata, hash: tx.hash }
+      });
+
+      const receipt = await tx.wait();
+      const finalStatus = receipt.status === 1 ? 'completada' : 'fallida';
+
+      await TransactionRepository.updateById(txRecord.id, {
+        status: finalStatus,
+        completed_at: new Date(),
+        metadata: {
+          ...metadata,
+          hash: tx.hash,
+          block_number: receipt.blockNumber,
+          gas_used: receipt.gasUsed?.toString()
+        }
+      });
+
       return {
         transactionHash: tx.hash,
-        status: 'pending'
+        status: finalStatus === 'completada' ? 'confirmed' : 'failed'
       };
     } catch (error) {
+      if (txRecord) {
+        const { TransactionRepository } = await import('../repositories/transactionRepository.js');
+        await TransactionRepository.updateById(txRecord.id, {
+          status: 'fallida',
+          completed_at: new Date(),
+          metadata: {
+            ...(txRecord.metadata || {}),
+            error: error.message
+          }
+        });
+      }
       throw new Error(`Error al enviar transacción: ${error.message}`);
     }
+  }
+
+  static async getTransactions(userId, options = {}) {
+    const { TransactionRepository } = await import('../repositories/transactionRepository.js');
+    return TransactionRepository.findByUserId(userId, options);
   }
 }
 
