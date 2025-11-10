@@ -44,10 +44,12 @@ app.get('/health', (req, res) => {
 import authRoutes from './auth/routes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/user', userRoutes);
 
 // Manejo de errores
 app.use((err, req, res, next) => {

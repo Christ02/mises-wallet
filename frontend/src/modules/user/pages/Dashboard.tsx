@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiArrowUp, 
@@ -13,48 +13,94 @@ import {
   HiClock
 } from 'react-icons/hi';
 import api from '../../../services/api';
+import { fetchUserEvents, UserEvent } from '../services/events';
+import { fetchUserProfile } from '../services/profile';
 
 interface WalletBalance {
   balance: string;
-  currency: string;
+  tokenSymbol: string;
   network: string;
 }
 
-interface Transaction {
-  hash: string;
-  type: 'send' | 'receive';
-  amount: string;
-  date: string;
-  status: 'pending' | 'confirmed' | 'failed';
-  description?: string;
+interface RechargeSummary {
+  tokenSymbol: string;
+  totalTokens: number;
+  totalUsd: number;
+  usdToTokenRate: number;
 }
 
-interface DashboardEvent {
-  id: number;
-  title: string;
-  date: string;
-  location: string;
+interface DashboardTransaction {
+  id: string;
+  direction: 'entrante' | 'saliente';
+  amount: number;
+  currency: string;
+  created_at: string;
+  status: string;
   description: string;
-  time?: string;
+  counterparty: string;
 }
+
+type DashboardEvent = UserEvent;
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+  const [rechargeSummary, setRechargeSummary] = useState<RechargeSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [error, setError] = useState('');
+  const [transactions, setTransactions] = useState<DashboardTransaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<DashboardEvent[]>([]);
 
-  const fetchBalance = async () => {
+  const mapTransactions = (rawTransactions: any[]): DashboardTransaction[] => {
+    const defaultSymbol = walletBalance?.tokenSymbol || 'HC';
+    return rawTransactions.map((tx) => {
+      const direction: 'entrante' | 'saliente' = tx.direction === 'entrante' ? 'entrante' : 'saliente';
+      const amountNumber =
+        typeof tx.amount === 'number'
+          ? tx.amount
+          : parseFloat(tx.amount || '0');
+      const metadata = tx.metadata || {};
+      const counterparty =
+        metadata.recipient_name ||
+        metadata.merchant_name ||
+        metadata.merchant_group_id ||
+        metadata.sender_name ||
+        metadata.to ||
+        metadata.from ||
+        metadata.wallet ||
+        metadata.recipient_carnet ||
+        metadata.sender_carnet ||
+        tx.description ||
+        (direction === 'entrante' ? 'Ingreso recibido' : 'Envío realizado');
+
+      return {
+        id: String(tx.id ?? tx.reference ?? tx.hash ?? crypto.randomUUID()),
+        direction,
+        amount: Number.isNaN(amountNumber) ? 0 : amountNumber,
+        currency: tx.currency || defaultSymbol,
+        created_at: tx.created_at || tx.date || new Date().toISOString(),
+        status: tx.status || 'pendiente',
+        description:
+          tx.description ||
+          (direction === 'saliente'
+            ? `Envío a ${counterparty}`
+            : `Ingreso de ${counterparty}`),
+        counterparty
+      };
+    });
+  };
+
+  const fetchProfile = async () => {
     try {
-      const response = await api.get('/api/wallet/balance');
-      setBalance(response.data);
-      setError('');
+      const profile = await fetchUserProfile();
+      setWalletBalance(profile.wallet);
+      setRechargeSummary(profile.rechargeSummary);
+      setError(null);
     } catch (err: any) {
+      console.error('Error fetching profile balance:', err);
       setError('Error al cargar el balance');
-      console.error('Error fetching balance:', err);
     }
   };
 
@@ -62,94 +108,27 @@ export default function Dashboard() {
     try {
       const response = await api.get('/api/wallet/history');
       const realTransactions = response.data.transactions || [];
-      
-      // Si no hay transacciones reales, usar datos simulados
-      if (realTransactions.length === 0) {
-        const today = new Date();
-        today.setHours(10, 45, 0, 0);
-        
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(15, 20, 0, 0);
-        
-        const oct25 = new Date(2024, 9, 25, 9, 0, 0, 0);
-        
-        const mockTransactions: Transaction[] = [
-          {
-            hash: '0x1234567890abcdef',
-            type: 'receive',
-            amount: '50.25',
-            date: today.toISOString(),
-            status: 'confirmed',
-            description: 'Recibido de...'
-          },
-          {
-            hash: '0xabcdef1234567890',
-            type: 'send',
-            amount: '15.00',
-            date: yesterday.toISOString(),
-            status: 'confirmed',
-            description: 'Envío a Juan Pérez'
-          },
-          {
-            hash: '0x9876543210fedcba',
-            type: 'receive',
-            amount: '200.00',
-            date: oct25.toISOString(),
-            status: 'confirmed',
-            description: 'Compra de...'
-          }
-        ];
-        setTransactions(mockTransactions);
-      } else {
-        setTransactions(realTransactions);
-      }
+      setTransactions(mapTransactions(realTransactions).slice(0, 5));
     } catch (err: any) {
       console.error('Error fetching transactions:', err);
-      // Si hay error, mostrar datos simulados
-      const today = new Date();
-      today.setHours(10, 45, 0, 0);
-      
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(15, 20, 0, 0);
-      
-      const oct25 = new Date(2024, 9, 25, 9, 0, 0, 0);
-      
-      const mockTransactions: Transaction[] = [
-        {
-          hash: '0x1234567890abcdef',
-          type: 'receive',
-          amount: '50.25',
-          date: today.toISOString(),
-          status: 'confirmed',
-          description: 'Recibido de...'
-        },
-        {
-          hash: '0xabcdef1234567890',
-          type: 'send',
-          amount: '15.00',
-          date: yesterday.toISOString(),
-          status: 'confirmed',
-          description: 'Envío a Juan Pérez'
-        },
-        {
-          hash: '0x9876543210fedcba',
-          type: 'receive',
-          amount: '200.00',
-          date: oct25.toISOString(),
-          status: 'confirmed',
-          description: 'Compra de...'
-        }
-      ];
-      setTransactions(mockTransactions);
+      setTransactions([]);
+    }
+  };
+
+  const fetchEventsData = async () => {
+    try {
+      const { upcoming } = await fetchUserEvents();
+      setUpcomingEvents(upcoming.slice(0, 3));
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setUpcomingEvents([]);
     }
   };
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchBalance(), fetchTransactions()]);
+      await Promise.all([fetchProfile(), fetchTransactions(), fetchEventsData()]);
       setLoading(false);
     };
     loadData();
@@ -163,69 +142,29 @@ export default function Dashboard() {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const upcomingEvents: DashboardEvent[] = [
-    {
-      id: 1,
-      title: 'Conferencia Blockchain 2024',
-      date: '2024-11-15',
-      time: '9:00 AM - 5:00 PM',
-      location: 'Auditorio UFM',
-      description: 'Conferencia sobre tecnología blockchain y su aplicación en el mundo financiero.'
-    },
-    {
-      id: 2,
-      title: 'Feria de Innovación',
-      date: '2024-12-02',
-      time: '10:00 AM - 6:00 PM',
-      location: 'Campus UFM',
-      description: 'Feria donde se presentan los proyectos más innovadores de estudiantes y profesores.'
-    },
-    {
-      id: 3,
-      title: 'Hackathon UFM',
-      date: '2024-12-10',
-      time: '8:00 AM - 8:00 PM',
-      location: 'Centro de Innovación',
-      description: 'Competencia de desarrollo donde equipos crean soluciones tecnológicas innovadoras.'
-    }
-  ];
-
-  const formatEventCardDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    return `${date.getDate()} ${months[date.getMonth()]}, ${date.getFullYear()}`;
-  };
-
-  const formatDate = (dateString: string) => {
+  const formatEventCardDate = (dateString?: string) => {
+    if (!dateString) return 'Fecha por confirmar';
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    const formatTime = (d: Date) => {
-      const hours = d.getHours();
-      const minutes = d.getMinutes();
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours % 12 || 12;
-      const displayMinutes = minutes.toString().padStart(2, '0');
-      return `${displayHours}:${displayMinutes} ${ampm}`;
-    };
-
-    if (diffDays === 0) {
-      return `Hoy, ${formatTime(date)}`;
-    } else if (diffDays === 1) {
-      return `Ayer, ${formatTime(date)}`;
-    } else {
-      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      return `${date.getDate()} ${months[date.getMonth()]}, ${formatTime(date)}`;
-    }
+    const diffDays = Math.floor((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays > 1 && diffDays < 7) return `En ${diffDays} días`;
+    return `${date.getDate()} ${months[date.getMonth()]}`;
   };
 
-  const calculateUSD = (ethBalance: string) => {
-    const eth = parseFloat(ethBalance);
-    const ethPrice = 2000;
-    return (eth * ethPrice).toFixed(2);
+  const formatTransactionDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
+
+  const recentEvents = useMemo(() => upcomingEvents, [upcomingEvents]);
 
   return (
     <>
@@ -266,17 +205,36 @@ export default function Dashboard() {
               </div>
             ) : error ? (
               <div className="text-negative text-sm sm:text-base mt-4">{error}</div>
-            ) : balance && (
+            ) : walletBalance && (
               <div className="mt-4">
                 <div className="flex items-baseline space-x-2 mb-1">
                   <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                    {formatBalance(balance.balance)}
+                    {formatBalance(walletBalance.balance)}
                   </span>
                   <span className="text-lg sm:text-xl text-gray-300 font-semibold">
-                    {balance.currency || 'UFM'}
+                    {walletBalance.tokenSymbol || 'HC'}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">≈ ${calculateUSD(balance.balance)} USD</p>
+                <p className="text-xs sm:text-sm text-gray-400">{walletBalance.network || 'Red Universitaria'}</p>
+              </div>
+            )}
+            {rechargeSummary && (
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 mb-1">Recargas acumuladas</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">
+                    {rechargeSummary.totalTokens.toFixed(4)} {rechargeSummary.tokenSymbol}
+                  </p>
+                </div>
+                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 mb-1">Estimado en USD</p>
+                  <p className="text-lg sm:text-xl font-semibold text-white">
+                    ${rechargeSummary.totalUsd.toFixed(2)} USD
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    1 USD = {rechargeSummary.usdToTokenRate.toFixed(2)} {rechargeSummary.tokenSymbol}
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -327,19 +285,19 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {transactions.slice(0, 5).map((transaction, index) => (
+              {transactions.map((transaction) => (
                 <div
-                  key={index}
+                  key={transaction.id}
                   className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 hover:border-primary-red/30 transition-all"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
                       <div className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        transaction.type === 'receive' 
+                        transaction.direction === 'entrante' 
                           ? 'bg-positive/10' 
                           : 'bg-primary-red/10'
                       }`}>
-                        {transaction.type === 'receive' ? (
+                        {transaction.direction === 'entrante' ? (
                           <HiArrowDown className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-positive" />
                         ) : (
                           <HiArrowUp className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-primary-red" />
@@ -347,23 +305,24 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-base sm:text-lg lg:text-xl font-semibold text-white truncate">
-                          {transaction.description || (transaction.type === 'send' 
-                            ? 'Envío a dirección' 
-                            : 'Recibido de dirección')}
+                          {transaction.description}
                         </p>
                         <p className="text-sm sm:text-base text-gray-400 truncate mt-1">
-                          {formatDate(transaction.date)}
+                          {transaction.counterparty}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate mt-1">
+                          {formatTransactionDate(transaction.created_at)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 ml-4 sm:ml-6">
                       <p className={`text-base sm:text-lg lg:text-xl font-bold ${
-                        transaction.type === 'receive' 
+                        transaction.direction === 'entrante' 
                           ? 'text-positive' 
                           : 'text-primary-red'
                       }`}>
-                        {transaction.type === 'receive' ? '+' : '-'}
-                        {parseFloat(transaction.amount).toFixed(2)} UFM
+                        {transaction.direction === 'entrante' ? '+' : '-'}
+                        {transaction.amount.toFixed(4)} {transaction.currency}
                       </p>
                     </div>
                   </div>
@@ -399,31 +358,47 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
-            <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
-              {upcomingEvents.map((eventCard) => (
-                <div
-                  key={eventCard.id}
-                  onClick={() => setSelectedEvent(eventCard)}
-                  className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-                >
-                  <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                    <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                  </div>
-                  <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                    <div>
-                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                        {eventCard.title}
-                      </h3>
-                      <p className="text-sm sm:text-base text-gray-400 font-medium">
-                        {formatEventCardDate(eventCard.date)}
-                      </p>
+          {loading ? (
+            <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-10 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-red mx-auto mb-4"></div>
+              <p className="text-sm text-gray-400">Cargando eventos...</p>
+            </div>
+          ) : recentEvents.length === 0 ? (
+            <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-10 text-center text-sm text-gray-400">
+              No hay eventos próximos disponibles.
+            </div>
+          ) : (
+            <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
+              <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
+                {recentEvents.map((eventCard) => (
+                  <div
+                    key={eventCard.id}
+                    onClick={() => setSelectedEvent(eventCard)}
+                    className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
+                  >
+                    <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                      <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
+                    </div>
+                    <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
+                      <div>
+                        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+                          {eventCard.name}
+                        </h3>
+                        <p className="text-sm sm:text-base text-gray-400 font-medium">
+                          {formatEventCardDate(eventCard.event_date)}
+                        </p>
+                        {eventCard.location && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {eventCard.location}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Help Modal */}
@@ -479,16 +454,19 @@ export default function Dashboard() {
                   <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-gray-300">
                     <div className="flex items-center space-x-3">
                       <HiCalendar className="w-5 h-5 text-primary-red" />
-                      <span>{formatEventCardDate(selectedEvent.date)}</span>
+                    <span>{formatEventCardDate(selectedEvent.event_date)}</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <HiLocationMarker className="w-5 h-5 text-primary-red" />
-                      <span>{selectedEvent.location}</span>
+                    <span>{selectedEvent.location || 'Por confirmar'}</span>
                     </div>
-                    {selectedEvent.time && (
+                    {(selectedEvent.start_time || selectedEvent.end_time) && (
                       <div className="flex items-center space-x-3">
                         <HiClock className="w-5 h-5 text-primary-red" />
-                        <span>{selectedEvent.time}</span>
+                        <span>
+                          {selectedEvent.start_time}
+                          {selectedEvent.end_time && ` - ${selectedEvent.end_time}`}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -496,7 +474,7 @@ export default function Dashboard() {
                 <div className="mb-6">
                   <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Descripción</h3>
                   <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
-                    {selectedEvent.description}
+                    {selectedEvent.description || 'Aún no hay una descripción para este evento.'}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">

@@ -57,6 +57,14 @@ router.get('/reports', AdminReportController.list);
 
 // Wallet central
 router.get('/central-wallet/status', CentralWalletController.status);
+router.get('/central-wallet/config', CentralWalletController.getConfig);
+router.put('/central-wallet/config', CentralWalletController.updateConfig);
+router.get('/central-wallet/activity', CentralWalletController.activity);
+router.get('/central-wallet/settlements', CentralWalletController.listSettlements);
+router.get('/central-wallet/withdrawals', CentralWalletController.listWithdrawals);
+router.post('/central-wallet/withdrawals/:withdrawalId/approve', CentralWalletController.approveWithdrawal);
+router.post('/central-wallet/withdrawals/:withdrawalId/reject', CentralWalletController.rejectWithdrawal);
+router.post('/central-wallet/settlements/:settlementId/approve', CentralWalletController.approveSettlement);
 
 export default router;
 

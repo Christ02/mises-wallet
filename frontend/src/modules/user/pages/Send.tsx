@@ -1,15 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiArrowUp, HiExclamationCircle, HiQrcode, HiQuestionMarkCircle, HiX } from 'react-icons/hi';
+import { HiArrowLeft, HiArrowUp, HiCheckCircle, HiExclamationCircle, HiQuestionMarkCircle, HiSearch, HiUserCircle, HiX } from 'react-icons/hi';
 import api from '../../../services/api';
+
+interface RecipientOption {
+  id: number;
+  fullName: string;
+  carnet: string;
+  email: string;
+  walletAddress: string;
+}
 
 export default function Send() {
   const navigate = useNavigate();
-  const [carnet, setCarnet] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRecipient, setSelectedRecipient] = useState<RecipientOption | null>(null);
+  const [recipientResults, setRecipientResults] = useState<RecipientOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
+  const [tokenSymbol, setTokenSymbol] = useState('HC');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,9 +31,22 @@ export default function Send() {
     setLoading(true);
 
     try {
+      if (!selectedRecipient) {
+        setError('Selecciona un destinatario válido');
+        setLoading(false);
+        return;
+      }
+
+      const parsedAmount = parseFloat(amount);
+      if (!parsedAmount || parsedAmount <= 0) {
+        setError('Ingresa una cantidad válida');
+        setLoading(false);
+        return;
+      }
+
       await api.post('/api/wallet/send', {
-        carnet,
-        amount: parseFloat(amount)
+        carnet: selectedRecipient.carnet,
+        amount: parsedAmount
       });
       navigate('/transactions');
     } catch (err: any) {
@@ -29,7 +56,64 @@ export default function Send() {
     }
   };
 
-  const carnetPlaceholder = 'SUPER001';
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    if (selectedRecipient && searchTerm === `${selectedRecipient.fullName} · ${selectedRecipient.carnet}`) {
+      setRecipientResults([selectedRecipient]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      setRecipientResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const response = await api.get('/api/wallet/recipients/search', {
+          params: { query: searchTerm }
+        });
+        setRecipientResults(response.data?.recipients || []);
+        setShowDropdown(true);
+      } catch (fetchError) {
+        console.error('Error fetching recipients', fetchError);
+        setRecipientResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, [searchTerm, selectedRecipient]);
+
+  useEffect(() => {
+    const loadTokenSymbol = async () => {
+      try {
+        const response = await api.get('/api/wallet/balance');
+        if (response.data?.tokenSymbol) {
+          setTokenSymbol(response.data.tokenSymbol);
+        }
+      } catch (err) {
+        console.error('Error fetching wallet symbol', err);
+      }
+    };
+
+    loadTokenSymbol();
+  }, []);
 
   return (
     <div className="space-y-8 sm:space-y-10">
@@ -50,8 +134,8 @@ export default function Send() {
             <HiArrowUp className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Enviar ETH</h2>
-            <p className="text-sm sm:text-base text-gray-400">Envía ETH a otra dirección</p>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Enviar HayekCoin</h2>
+            <p className="text-sm sm:text-base text-gray-400">Envía {tokenSymbol} a otro carnet universitario</p>
           </div>
         </div>
         <button
@@ -72,28 +156,84 @@ export default function Send() {
               </div>
             )}
 
-            {/* Address Input */}
+            {/* Recipient Search */}
             <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Carnet universitario del destinatario
-                </label>
-              <input
-                type="text"
-            value={carnet}
-            onChange={(e) => setCarnet(e.target.value)}
-            placeholder="Ingresa el carnet (ej. SUPER001)"
-                required
-            className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-sm"
-              />
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Carnet universitario del destinatario
+              </label>
+              <div className="relative">
+                <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setSelectedRecipient(null);
+                    setError('');
+                  }}
+                  onFocus={() => {
+                    if (recipientResults.length > 0) {
+                      setShowDropdown(true);
+                    }
+                  }}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                  placeholder="Busca por carnet, nombre o correo"
+                  className="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-sm"
+                />
+                {showDropdown && (
+                  <div className="absolute z-20 mt-2 w-full bg-dark-bg border border-dark-border rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                    {isSearching ? (
+                      <div className="flex items-center justify-center py-4 text-sm text-gray-400">
+                        Buscando destinatarios...
+                      </div>
+                    ) : recipientResults.length === 0 ? (
+                      <div className="py-4 px-4 text-sm text-gray-500">
+                        No encontramos resultados para esa búsqueda.
+                      </div>
+                    ) : (
+                      recipientResults.map((recipient) => (
+                        <button
+                          key={recipient.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setSelectedRecipient(recipient);
+                            setSearchTerm(`${recipient.fullName} · ${recipient.carnet}`);
+                            setShowDropdown(false);
+                          }}
+                          className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-dark-card transition-colors"
+                        >
+                          <HiUserCircle className="w-8 h-8 text-primary-red/80 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{recipient.fullName}</p>
+                            <p className="text-xs text-gray-400 truncate">{recipient.carnet}</p>
+                            <p className="text-xs text-gray-500 truncate">{recipient.email}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-2">
-            El sistema localizará automáticamente la wallet asociada a este carnet.
+                Escribe al menos 2 caracteres y selecciona al destinatario correcto de la lista.
               </p>
             </div>
+
+            {selectedRecipient && (
+              <div className="bg-dark-bg/60 border border-dark-border rounded-lg px-4 py-3 flex items-start gap-3">
+                <HiCheckCircle className="w-6 h-6 text-positive flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-white font-semibold">{selectedRecipient.fullName}</p>
+                  <p className="text-xs text-gray-400">Carnet: {selectedRecipient.carnet}</p>
+                  <p className="text-xs text-gray-500">Correo: {selectedRecipient.email}</p>
+                </div>
+              </div>
+            )}
 
             {/* Amount Input */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Cantidad (ETH)
+                Cantidad ({tokenSymbol})
               </label>
               <div className="relative">
                 <input
@@ -101,13 +241,16 @@ export default function Send() {
                   step="0.001"
                   min="0.001"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setError('');
+                  }}
                   placeholder="0.00"
                   required
                   className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-lg"
                 />
                 <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  ETH
+                  {tokenSymbol}
                 </span>
               </div>
             </div>
@@ -115,7 +258,7 @@ export default function Send() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || !amount || !carnet}
+              disabled={loading || !amount || !selectedRecipient}
               className="w-full bg-primary-red hover:bg-primary-red/90 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
             >
               {loading ? (
@@ -140,7 +283,7 @@ export default function Send() {
             <div>
               <p className="text-sm font-medium text-accent-yellow mb-1">Advertencia</p>
               <p className="text-xs text-gray-300">
-                Las transacciones en blockchain son irreversibles. Verifica cuidadosamente la dirección de destino antes de confirmar.
+                Las transacciones en blockchain son irreversibles. Verifica cuidadosamente el carnet y la cantidad antes de confirmar.
               </p>
             </div>
           </div>
@@ -167,8 +310,8 @@ export default function Send() {
                 </button>
               </div>
               <div className="space-y-4 text-sm sm:text-base text-gray-300">
-                <p>Introduce la dirección destino o escanea un QR compatible.</p>
-                <p>Revisa la cantidad y confirma; las transacciones en blockchain no se pueden revertir.</p>
+                <p>Busca al destinatario por su carnet, nombre o correo y selecciona la opción correcta antes de continuar.</p>
+                <p>Revisa la cantidad y confirma: las transacciones de HayekCoin no se pueden revertir una vez enviadas.</p>
               </div>
             </div>
           </div>

@@ -16,28 +16,35 @@ import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
-  currency: string;
+  tokenSymbol: string;
   network: string;
 }
 
 interface Transaction {
-  hash: string;
-  type: 'send' | 'receive';
-  amount: string;
-  date: string;
-  status: 'pending' | 'confirmed' | 'failed';
-  description?: string;
+  id: string;
+  direction: 'entrante' | 'saliente';
+  amount: number;
+  currency: string;
+  created_at: string;
+  status: string;
+  description: string;
+  counterparty: string;
+  reference: string | null;
 }
 
 export default function Transactions() {
   const navigate = useNavigate();
+  const generateTransactionId = () =>
+    (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `tx-${Date.now()}-${Math.random()}`);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'send' | 'receive'>('all');
+  const [filter, setFilter] = useState<'all' | 'entrante' | 'saliente'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [usdToTokenRate, setUsdToTokenRate] = useState(1);
+  const [tokenSymbol, setTokenSymbol] = useState('HC');
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,89 +54,56 @@ export default function Transactions() {
           api.get('/api/wallet/balance'),
           api.get('/api/wallet/history')
         ]);
-        setBalance(balanceResponse.data);
-        const realTransactions = transactionsResponse.data.transactions || [];
-        
-        // Si no hay transacciones reales, usar datos simulados
-        if (realTransactions.length === 0) {
-          const today = new Date();
-          today.setHours(10, 45, 0, 0);
-          
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          yesterday.setHours(15, 20, 0, 0);
-          
-          const oct25 = new Date(2024, 9, 25, 9, 0, 0, 0);
-          
-          const mockTransactions: Transaction[] = [
-            {
-              hash: '0x1234567890abcdef',
-              type: 'receive',
-              amount: '50.25',
-              date: today.toISOString(),
-              status: 'confirmed',
-              description: 'Recibido de...'
-            },
-            {
-              hash: '0xabcdef1234567890',
-              type: 'send',
-              amount: '15.00',
-              date: yesterday.toISOString(),
-              status: 'confirmed',
-              description: 'Envío a Juan Pérez'
-            },
-            {
-              hash: '0x9876543210fedcba',
-              type: 'receive',
-              amount: '200.00',
-              date: oct25.toISOString(),
-              status: 'confirmed',
-              description: 'Compra de...'
-            }
-          ];
-          setTransactions(mockTransactions);
-        } else {
-          setTransactions(realTransactions);
+        const { balance: tokenBalance, tokenSymbol: symbol, network, rechargeSummary } = balanceResponse.data || {};
+        if (tokenBalance !== undefined && symbol) {
+          setBalance({
+            balance: String(tokenBalance),
+            tokenSymbol: symbol,
+            network: network || 'Sepolia Testnet'
+          });
+          setTokenSymbol(symbol);
         }
+        if (rechargeSummary?.usdToTokenRate) {
+          setUsdToTokenRate(rechargeSummary.usdToTokenRate);
+        }
+        const realTransactions = transactionsResponse.data.transactions || [];
+        const mappedTransactions: Transaction[] = realTransactions.map((tx: any) => {
+          const direction: 'entrante' | 'saliente' = tx.direction === 'entrante' ? 'entrante' : 'saliente';
+          const amountNumber = typeof tx.amount === 'number' ? tx.amount : parseFloat(tx.amount || '0');
+          const metadata = tx.metadata || {};
+          const counterparty =
+            metadata.recipient_name ||
+            metadata.merchant_name ||
+            metadata.merchant_group_id ||
+            metadata.sender_name ||
+            metadata.to ||
+            metadata.from ||
+            metadata.wallet ||
+            metadata.recipient_carnet ||
+            metadata.sender_carnet ||
+            tx.description ||
+            (direction === 'entrante' ? 'Ingreso recibido' : 'Envío realizado');
+
+          return {
+            id: String(tx.id ?? tx.reference ?? tx.hash ?? generateTransactionId()),
+            direction,
+            amount: Number.isNaN(amountNumber) ? 0 : amountNumber,
+            currency: tx.currency || symbol || tokenSymbol,
+            created_at: tx.created_at || tx.date || new Date().toISOString(),
+            status: tx.status || 'pendiente',
+            description:
+              tx.description ||
+              (direction === 'saliente'
+                ? `Envío a ${counterparty}`
+                : `Ingreso de ${counterparty}`),
+            counterparty,
+            reference: tx.reference || tx.hash || null
+          };
+        });
+
+        setTransactions(mappedTransactions);
       } catch (err: any) {
         console.error('Error loading data:', err);
-        // Si hay error, mostrar datos simulados
-        const today = new Date();
-        today.setHours(10, 45, 0, 0);
-        
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(15, 20, 0, 0);
-        
-        const oct25 = new Date(2024, 9, 25, 9, 0, 0, 0);
-        
-        const mockTransactions: Transaction[] = [
-          {
-            hash: '0x1234567890abcdef',
-            type: 'receive',
-            amount: '50.25',
-            date: today.toISOString(),
-            status: 'confirmed',
-            description: 'Recibido de...'
-          },
-          {
-            hash: '0xabcdef1234567890',
-            type: 'send',
-            amount: '15.00',
-            date: yesterday.toISOString(),
-            status: 'confirmed',
-            description: 'Envío a Juan Pérez'
-          },
-          {
-            hash: '0x9876543210fedcba',
-            type: 'receive',
-            amount: '200.00',
-            date: oct25.toISOString(),
-            status: 'confirmed',
-            description: 'Compra de...'
-          }
-        ];
-        setTransactions(mockTransactions);
       } finally {
         setLoading(false);
       }
@@ -170,18 +144,34 @@ export default function Transactions() {
     }
   };
 
-  const calculateUSD = (ethBalance: string) => {
-    const eth = parseFloat(ethBalance);
-    const ethPrice = 2000;
-    return (eth * ethPrice).toFixed(2);
+  const convertTokenToUsd = (tokenBalance: string) => {
+    const tokens = parseFloat(tokenBalance);
+    if (!tokens || !usdToTokenRate) return '0.00';
+    return (tokens / usdToTokenRate).toFixed(2);
   };
 
-  const filteredTransactions = transactions.filter(tx => {
-    const matchesFilter = filter === 'all' || tx.type === filter;
-    const matchesSearch = searchQuery === '' || 
-      tx.hash.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.amount.includes(searchQuery) ||
-      (tx.description && tx.description.toLowerCase().includes(searchQuery.toLowerCase()));
+  const toStatusColor = (status: string) => {
+    const normalized = status.toLowerCase();
+    if (normalized === 'completada' || normalized === 'confirmed') {
+      return 'bg-positive/10 text-positive border border-positive/20';
+    }
+    if (normalized === 'pendiente' || normalized === 'pending' || normalized === 'en_proceso') {
+      return 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/20';
+    }
+    if (normalized === 'fallida' || normalized === 'failed') {
+      return 'bg-negative/10 text-negative border border-negative/20';
+    }
+    return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
+  };
+
+  const filteredTransactions = transactions.filter((tx) => {
+    const matchesFilter = filter === 'all' || tx.direction === filter;
+    const matchesSearch =
+      searchQuery === '' ||
+      (tx.reference && tx.reference.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      tx.counterparty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.amount.toString().includes(searchQuery);
     return matchesFilter && matchesSearch;
   });
 
@@ -228,10 +218,10 @@ export default function Transactions() {
                     {formatBalance(balance.balance)}
                   </span>
                   <span className="text-lg sm:text-xl text-gray-300 font-semibold">
-                    {balance.currency || 'UFM'}
+                    {balance.tokenSymbol || tokenSymbol}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">≈ ${calculateUSD(balance.balance)} USD</p>
+                <p className="text-xs sm:text-sm text-gray-400">≈ ${convertTokenToUsd(balance.balance)} USD</p>
               </div>
             )}
           </div>
@@ -321,19 +311,21 @@ export default function Transactions() {
               </div>
             ) : (
               <div className="space-y-3 sm:space-y-4">
-                {filteredTransactions.map((transaction, index) => (
+                {filteredTransactions.map((transaction) => (
                   <div
-                    key={index}
+                    key={transaction.id}
                     className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 hover:border-primary-red/30 transition-all"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                        <div className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          transaction.type === 'receive' 
-                            ? 'bg-positive/10' 
-                            : 'bg-primary-red/10'
-                        }`}>
-                          {transaction.type === 'receive' ? (
+                        <div
+                          className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            transaction.direction === 'entrante'
+                              ? 'bg-positive/10'
+                              : 'bg-primary-red/10'
+                          }`}
+                        >
+                          {transaction.direction === 'entrante' ? (
                             <HiArrowDown className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-positive" />
                           ) : (
                             <HiArrowUp className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-primary-red" />
@@ -341,24 +333,40 @@ export default function Transactions() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-base sm:text-lg lg:text-xl font-semibold text-white truncate">
-                            {transaction.description || (transaction.type === 'send' 
-                              ? 'Envío a dirección' 
-                              : 'Recibido de dirección')}
+                            {transaction.description}
                           </p>
                           <p className="text-sm sm:text-base text-gray-400 truncate mt-1">
-                            {formatDate(transaction.date)}
+                            {formatDate(transaction.created_at)}
+                          </p>
+                          {transaction.reference && (
+                            <p className="text-xs text-gray-500 font-mono truncate mt-1">
+                              Ref: {transaction.reference}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-500 truncate">
+                            {transaction.direction === 'entrante' ? 'Desde' : 'Hacia'}{' '}
+                            {transaction.counterparty}
                           </p>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-4 sm:ml-6">
-                        <p className={`text-base sm:text-lg lg:text-xl font-bold ${
-                          transaction.type === 'receive' 
-                            ? 'text-positive' 
-                            : 'text-primary-red'
-                        }`}>
-                          {transaction.type === 'receive' ? '+' : '-'}
-                          {parseFloat(transaction.amount).toFixed(2)} UFM
+                        <p
+                          className={`text-base sm:text-lg lg:text-xl font-bold ${
+                            transaction.direction === 'entrante'
+                              ? 'text-positive'
+                              : 'text-primary-red'
+                          }`}
+                        >
+                          {transaction.direction === 'entrante' ? '+' : '-'}
+                          {transaction.amount.toFixed(4)} {transaction.currency}
                         </p>
+                        <span
+                          className={`mt-2 inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${toStatusColor(
+                            transaction.status
+                          )}`}
+                        >
+                          {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -406,11 +414,11 @@ export default function Transactions() {
                   </button>
                   <button
                     onClick={() => {
-                      setFilter('send');
+                      setFilter('saliente');
                       setFilterModalOpen(false);
                     }}
                     className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
-                      filter === 'send'
+                      filter === 'saliente'
                         ? 'bg-primary-red text-white'
                         : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
                     }`}
@@ -419,11 +427,11 @@ export default function Transactions() {
                   </button>
                   <button
                     onClick={() => {
-                      setFilter('receive');
+                      setFilter('entrante');
                       setFilterModalOpen(false);
                     }}
                     className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
-                      filter === 'receive'
+                      filter === 'entrante'
                         ? 'bg-primary-red text-white'
                         : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
                     }`}

@@ -53,8 +53,8 @@ export default function Receive() {
             <HiQrcode className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Recibir ETH</h2>
-            <p className="text-sm sm:text-base text-gray-400">Comparte tu dirección para recibir fondos</p>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Recibir HayekCoin</h2>
+            <p className="text-sm sm:text-base text-gray-400">Comparte tu carnet universitario para recibir HC</p>
           </div>
         </div>
         <button
@@ -71,7 +71,7 @@ export default function Receive() {
             <div>
               <h2 className="text-lg sm:text-xl font-semibold text-white">Tu carnet universitario</h2>
               <p className="text-sm text-gray-400 mt-1">
-                Comparte este carnet para que otras personas puedan enviarte fondos.
+                Comparte este carnet para que otras personas puedan enviarte HayekCoin.
               </p>
             </div>
           </div>
@@ -118,9 +118,8 @@ export default function Receive() {
             <HiArrowDown className="w-5 h-5 text-primary-red flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-white mb-1">Información</p>
-              <p className="text-xs text-gray-400">
-                Asegúrate de que la red sea Sepolia Testnet antes de enviar fondos. 
-                Los fondos enviados a una dirección incorrecta se perderán permanentemente.
+              <p className="text-xs text-gray-400 mt-3">
+                Comparte esta información para recibir HayekCoin en tu wallet
               </p>
             </div>
           </div>
@@ -147,12 +146,8 @@ export default function Receive() {
                 </button>
               </div>
               <div className="space-y-4 text-sm sm:text-base text-gray-300">
-                <p>
-                  Escanea el código QR o copia tu dirección para recibir fondos en tu wallet.
-                </p>
-                <p>
-                  Asegúrate de compartir esta dirección solo en la red Sepolia Testnet para evitar pérdidas.
-                </p>
+                <p>Escanea el código QR o copia tu carnet para recibir HayekCoin en tu wallet.</p>
+                <p>Comparte la información únicamente en la red Sepolia Testnet para evitar pérdidas.</p>
               </div>
             </div>
           </div>

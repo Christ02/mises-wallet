@@ -18,8 +18,8 @@ export class UserWalletService {
    * El usuario solo proporciona: destino y cantidad
    * NO necesita saber su dirección técnica
    */
-  static async sendTokens(userId, toAddress, amount) {
-    return await WalletService.sendTransaction(userId, toAddress, amount);
+  static async sendTokens(userId, toAddress, amount, metadata = {}, options = {}) {
+    return await WalletService.sendTransaction(userId, toAddress, amount, metadata, options);
   }
 
   /**

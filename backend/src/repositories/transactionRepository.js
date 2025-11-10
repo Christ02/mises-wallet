@@ -108,7 +108,7 @@ export class TransactionRepository {
       data.status ?? 'pendiente',
       data.direction ?? 'saliente',
       data.amount ?? 0,
-      data.currency ?? 'ETH',
+      data.currency ?? 'HC',
       data.description ?? null,
       data.metadata ? JSON.stringify(data.metadata) : null
     ];
@@ -243,6 +243,68 @@ export class TransactionRepository {
     `;
     const result = await pool.query(query, [userId, limit, offset]);
     return result.rows.map(mapRow);
+  }
+
+  static async findCentralWalletActivity(limit = 25) {
+    const query = `
+      SELECT
+        t.*
+      FROM transactions t
+      WHERE t.metadata::text LIKE $1
+      ORDER BY t.created_at DESC
+      LIMIT $2
+    `;
+
+    const result = await pool.query(query, ['%"token_amount"%', limit]);
+    return result.rows.map(mapRow);
+  }
+
+  static async sumAmountByUser(userId, { currency, type, direction, status } = {}) {
+    const conditions = ['t.user_id = $1'];
+    const params = [userId];
+    let index = 2;
+
+    if (currency) {
+      conditions.push(`t.currency = $${index}`);
+      params.push(currency);
+      index += 1;
+    }
+
+    if (type) {
+      conditions.push(`t.type = $${index}`);
+      params.push(type);
+      index += 1;
+    }
+
+    if (direction) {
+      conditions.push(`t.direction = $${index}`);
+      params.push(direction);
+      index += 1;
+    }
+
+    if (status) {
+      if (Array.isArray(status)) {
+        const placeholders = status.map((_, i) => `$${index + i}`).join(', ');
+        conditions.push(`t.status IN (${placeholders})`);
+        params.push(...status);
+        index += status.length;
+      } else {
+        conditions.push(`t.status = $${index}`);
+        params.push(status);
+        index += 1;
+      }
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = `
+      SELECT COALESCE(SUM(CAST(t.amount AS NUMERIC)), 0)::numeric AS total
+      FROM transactions t
+      ${whereClause}
+    `;
+
+    const result = await pool.query(query, params);
+    const total = result.rows[0]?.total ?? 0;
+    return parseFloat(total);
   }
 }
 

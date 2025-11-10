@@ -43,6 +43,30 @@ export class EventRepository {
     return result.rows[0] || null;
   }
 
+  static async findUpcoming(limit = 20) {
+    const query = `
+      SELECT *
+      FROM events
+      WHERE event_date >= CURRENT_DATE
+      ORDER BY event_date ASC, start_time ASC
+      LIMIT $1
+    `;
+
+    const result = await pool.query(query, [limit]);
+    if (result.rows.length > 0) {
+      return result.rows;
+    }
+
+    const fallbackQuery = `
+      SELECT *
+      FROM events
+      ORDER BY event_date DESC, start_time DESC
+      LIMIT $1
+    `;
+    const fallbackResult = await pool.query(fallbackQuery, [limit]);
+    return fallbackResult.rows;
+  }
+
   static async update(id, data) {
     const allowedFields = ['name', 'event_date', 'location', 'start_time', 'end_time', 'description', 'status', 'cover_image_url'];
     const setClauses = [];

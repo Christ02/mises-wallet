@@ -8,6 +8,12 @@ const router = express.Router();
 router.get('/balance', authenticate, WalletController.getBalance);
 router.post('/send', authenticate, WalletController.sendTokens);
 router.get('/history', authenticate, WalletController.getHistory);
+router.get('/recipients/search', authenticate, WalletController.searchRecipients);
+router.get('/merchants/search', authenticate, WalletController.searchMerchants);
+router.post('/merchants/pay', authenticate, WalletController.payMerchant);
+router.post('/recharge', authenticate, WalletController.recharge);
+router.post('/withdrawals', authenticate, WalletController.requestWithdrawal);
+router.get('/withdrawals', authenticate, WalletController.listWithdrawals);
 
 export default router;
 

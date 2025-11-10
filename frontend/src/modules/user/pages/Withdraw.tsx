@@ -12,24 +12,39 @@ import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
-  currency: string;
+  tokenSymbol: string;
 }
+
+type WithdrawalRequest = {
+  id: number;
+  amount: number;
+  token_symbol: string;
+  status: string;
+  created_at: string;
+  notes?: string | null;
+};
 
 export default function Withdraw() {
   const navigate = useNavigate();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
+  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
 
   useEffect(() => {
     const fetchBalance = async () => {
       setBalanceLoading(true);
       try {
         const response = await api.get('/api/wallet/balance');
-        setBalance(response.data);
+        const { balance: tokenBalance, tokenSymbol } = response.data || {};
+        if (tokenBalance !== undefined && tokenSymbol) {
+          setBalance({ balance: String(tokenBalance), tokenSymbol });
+        }
       } catch (err) {
         console.error('Error fetching balance:', err);
       } finally {
@@ -37,7 +52,20 @@ export default function Withdraw() {
       }
     };
 
+    const fetchWithdrawals = async () => {
+      setRequestsLoading(true);
+      try {
+        const response = await api.get('/api/wallet/withdrawals');
+        setRequests(response.data?.withdrawals || []);
+      } catch (err) {
+        console.error('Error fetching withdrawals:', err);
+      } finally {
+        setRequestsLoading(false);
+      }
+    };
+
     fetchBalance();
+    fetchWithdrawals();
   }, []);
 
   const formattedBalance = useMemo(() => {
@@ -52,13 +80,23 @@ export default function Withdraw() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
-      await api.post('/api/wallet/withdraw', {
+      const response = await api.post('/api/wallet/withdrawals', {
         amount: parseFloat(amount)
       });
-      navigate('/transactions');
+
+      setSuccess(response.data?.message || 'Solicitud enviada. El equipo financiero revisará el retiro.');
+      setAmount('');
+      const balanceResponse = await api.get('/api/wallet/balance');
+      const { balance: tokenBalance, tokenSymbol } = balanceResponse.data || {};
+      if (tokenBalance !== undefined && tokenSymbol) {
+        setBalance({ balance: String(tokenBalance), tokenSymbol });
+      }
+      const refreshed = await api.get('/api/wallet/withdrawals');
+      setRequests(refreshed.data?.withdrawals || []);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al retirar fondos');
     } finally {
@@ -109,7 +147,7 @@ export default function Withdraw() {
             <div>
               <p className="text-sm text-gray-400">Balance disponible</p>
               <p className="text-xl sm:text-2xl font-bold text-white">
-                {balanceLoading ? '— — —' : `${formattedBalance} ${balance?.currency || 'UFM'}`}
+                {balanceLoading ? '— — —' : `${formattedBalance} ${balance?.tokenSymbol || 'HC'}`}
               </p>
             </div>
           </div>
@@ -126,9 +164,15 @@ export default function Withdraw() {
             </div>
           )}
 
+          {success && (
+            <div className="bg-positive/10 border border-positive/40 text-positive px-4 py-3 rounded-lg text-sm">
+              {success}
+            </div>
+          )}
+
           {/* Amount Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Cantidad a retirar</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Cantidad a retirar ({balance?.tokenSymbol || 'HC'})</label>
             <div className="relative">
               <input
                 type="number"
@@ -141,11 +185,11 @@ export default function Withdraw() {
                 className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-lg"
               />
               <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                {balance?.currency || 'UFM'}
+                {balance?.tokenSymbol || 'HC'}
               </span>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Máximo disponible: {balanceLoading ? '— — —' : `${formattedBalance} ${balance?.currency || 'UFM'}`}
+              Máximo disponible: {balanceLoading ? '— — —' : `${formattedBalance} ${balance?.tokenSymbol || 'HC'}`}
             </p>
           </div>
 
@@ -163,7 +207,7 @@ export default function Withdraw() {
             ) : (
               <>
                 <HiArrowUp className="w-5 h-5" />
-                <span>Retirar ahora</span>
+                <span>Solicitar retiro</span>
               </>
             )}
           </button>
@@ -171,14 +215,86 @@ export default function Withdraw() {
       </div>
 
       {/* Info */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Mis solicitudes de retiro</h3>
+          <p className="text-xs text-gray-500">
+            Aquí puedes consultar el estado de cada retiro que solicitaste.
+          </p>
+        </div>
+        {requestsLoading ? (
+          <div className="py-6 text-center text-sm text-gray-500">
+            <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin inline-block mr-3" />
+            Cargando solicitudes...
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="py-4 text-sm text-gray-400 text-center">
+            No tienes solicitudes de retiro registradas.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {requests.map((request) => (
+              <div
+                key={request.id}
+                className="bg-dark-bg border border-dark-border rounded-lg px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                <div>
+                  <p className="text-sm text-gray-400">Monto</p>
+                  <p className="text-lg font-semibold text-white">
+                    {request.amount.toLocaleString('es-ES', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}{' '}
+                    {request.token_symbol}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Fecha</p>
+                  <p className="text-sm text-gray-300">
+                    {new Date(request.created_at).toLocaleString('es-GT', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Estado</p>
+                  <span
+                    className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${
+                      request.status === 'pendiente'
+                        ? 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/20'
+                        : request.status === 'aprobado' || request.status === 'completado'
+                        ? 'bg-positive/10 text-positive border border-positive/20'
+                        : request.status === 'rechazado'
+                        ? 'bg-negative/10 text-negative border border-negative/20'
+                        : 'bg-gray-600/10 text-gray-300 border border-gray-600/20'
+                    }`}
+                  >
+                    {request.status.toUpperCase()}
+                  </span>
+                </div>
+                {request.notes ? (
+                  <div className="sm:max-w-xs text-xs text-gray-400">
+                    <p className="font-semibold text-gray-300">Notas</p>
+                    <p>{request.notes}</p>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="bg-dark-card/60 border border-dark-border rounded-xl p-4 sm:p-5">
         <div className="flex items-start space-x-3">
           <HiExclamationCircle className="w-5 h-5 text-accent-yellow flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-white mb-1">Recuerda</p>
             <p className="text-xs text-gray-400 leading-relaxed">
-              Los retiros se procesan en la red Sepolia Testnet y son solo para fines de demostración. Los
-              fondos pueden tardar algunos minutos en reflejarse.
+              Los retiros se procesan en la red Sepolia Testnet y son solo para fines de demostración. El equipo revisará tu solicitud antes de ejecutar la transferencia.
             </p>
           </div>
         </div>

@@ -36,6 +36,27 @@ export class EventBusinessMemberRepository {
     return result.rows[0] || null;
   }
 
+  static async findDetailedByBusinessId(businessId) {
+    const query = `
+      SELECT ebm.id,
+             ebm.business_id,
+             ebm.carnet,
+             ebm.role,
+             ebm.created_at,
+             ebm.updated_at,
+             u.nombres,
+             u.apellidos,
+             u.email
+      FROM event_business_members ebm
+      LEFT JOIN users u ON u.carnet_universitario = ebm.carnet
+      WHERE ebm.business_id = $1
+      ORDER BY ebm.created_at ASC
+    `;
+
+    const result = await pool.query(query, [businessId]);
+    return result.rows;
+  }
+
   static async findByBusinessId(businessId) {
     const query = `
       SELECT ebm.id,
@@ -54,6 +75,42 @@ export class EventBusinessMemberRepository {
     `;
 
     const result = await pool.query(query, [businessId]);
+    return result.rows;
+  }
+
+  static async findByEventAndCarnet(eventId, carnet) {
+    const query = `
+      SELECT ebm.id,
+             ebm.business_id,
+             ebm.carnet,
+             ebm.role,
+             ebm.created_at,
+             ebm.updated_at,
+             eb.id AS business_id,
+             eb.event_id,
+             eb.group_id,
+             eb.name AS business_name
+      FROM event_business_members ebm
+      JOIN event_businesses eb ON eb.id = ebm.business_id
+      WHERE eb.event_id = $1 AND ebm.carnet = $2
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [eventId, carnet]);
+    return result.rows[0] || null;
+  }
+
+  static async findByUserCarnet(carnet) {
+    const query = `
+      SELECT ebm.*,
+             eb.event_id,
+             eb.group_id
+      FROM event_business_members ebm
+      JOIN event_businesses eb ON eb.id = ebm.business_id
+      WHERE ebm.carnet = $1
+    `;
+
+    const result = await pool.query(query, [carnet]);
     return result.rows;
   }
 

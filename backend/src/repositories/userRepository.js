@@ -138,6 +138,41 @@ export class UserRepository {
     return result.rows[0];
   }
 
+  static async searchActiveUsers(query, limit = 5) {
+    if (!query) {
+      return [];
+    }
+
+    const normalizedLimit = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 25);
+    const searchValue = `%${query.toLowerCase()}%`;
+
+    const sql = `
+      SELECT 
+        u.id,
+        u.nombres,
+        u.apellidos,
+        u.carnet_universitario,
+        u.email,
+        u.status,
+        w.address AS wallet_address
+      FROM users u
+      LEFT JOIN wallets w ON w.user_id = u.id
+      WHERE u.status = 'activo'
+        AND (
+          LOWER(u.carnet_universitario) LIKE $1 OR
+          LOWER(u.email) LIKE $1 OR
+          LOWER(u.nombres) LIKE $1 OR
+          LOWER(u.apellidos) LIKE $1 OR
+          LOWER((u.nombres || ' ' || u.apellidos)) LIKE $1
+        )
+      ORDER BY u.nombres ASC, u.apellidos ASC
+      LIMIT $2
+    `;
+
+    const result = await pool.query(sql, [searchValue, normalizedLimit]);
+    return result.rows;
+  }
+
   static async findById(id) {
     const query = `
       SELECT 

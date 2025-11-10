@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  HiUser, 
   HiMail, 
   HiIdentification, 
   HiShieldCheck, 
@@ -13,58 +12,51 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-import api from '../../../services/api';
-
-interface User {
-  id: number;
-  nombres: string;
-  apellidos: string;
-  email: string;
-  carnet_universitario: string;
-  role: string;
-}
-
-interface WalletBalance {
-  balance: string;
-  currency: string;
-  network: string;
-}
+import { fetchUserProfile, UserProfile as UserProfileResponse } from '../services/profile';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
+  const [profile, setProfile] = useState<UserProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
+    const loadProfile = async () => {
       try {
-        setUser(JSON.parse(userData));
-      } catch (err) {
-        console.error('Error parsing user data:', err);
-      }
-    }
-
-    const loadBalance = async () => {
-      try {
-        const response = await api.get('/api/wallet/balance');
-        setBalance(response.data);
+        setLoading(true);
+        const data = await fetchUserProfile();
+        setProfile(data);
       } catch (err: any) {
-        console.error('Error loading balance:', err);
+        console.error('Error loading profile:', err);
+        setError(err.response?.data?.error || 'No se pudo cargar el perfil del usuario');
       } finally {
         setLoading(false);
       }
     };
 
-    loadBalance();
+    loadProfile();
   }, []);
 
   const getRoleDisplay = (role: string) => {
-    return role.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
+    if (!role) return 'Usuario';
+    return role
+      .split(/[_\s]+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const getStatusDisplay = (status?: string) => {
+    if (!status) return 'No disponible';
+    if (status === 'activo') return 'Cuenta activa';
+    if (status === 'inactivo') return 'Cuenta inactiva';
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getStatusStyle = (status?: string) => {
+    if (status === 'activo') return 'text-positive';
+    if (status === 'inactivo') return 'text-negative';
+    return 'text-gray-300';
   };
 
   const formatBalance = (balance: string) => {
@@ -85,15 +77,19 @@ export default function Profile() {
     );
   }
 
-  if (!user) {
+  if (error) {
     return (
-      
-        <div className="text-center py-12">
-          <p className="text-gray-400">Error al cargar información del usuario</p>
-        </div>
-      
+      <div className="text-center py-12">
+        <p className="text-gray-400">{error}</p>
+      </div>
     );
   }
+
+  if (!profile) {
+    return null;
+  }
+
+  const { user, wallet, rechargeSummary } = profile;
 
   const initials = `${user.nombres.charAt(0)}${user.apellidos.charAt(0)}`.toUpperCase();
 
@@ -127,22 +123,39 @@ export default function Profile() {
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2">Mi Wallet UFM</h3>
-                <p className="text-sm sm:text-base text-gray-300">Gestiona tus fondos universitarios de forma segura</p>
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2">Mi Wallet HayekCoin</h3>
+                <p className="text-sm sm:text-base text-gray-300">Gestiona tus HayekCoin de forma segura</p>
               </div>
               <HiCreditCard className="w-12 h-12 sm:w-16 sm:h-16 text-primary-red/80" />
             </div>
-            {balance && (
+            {wallet && (
               <div className="mt-4">
                 <div className="flex items-baseline space-x-2 mb-1">
                   <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                    {formatBalance(balance.balance)}
+                    {formatBalance(wallet.balance)}
                   </span>
                   <span className="text-lg sm:text-xl text-gray-300 font-semibold">
-                    {balance.currency || 'UFM'}
+                    {wallet.tokenSymbol || 'HC'}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">{balance.network || 'Red Universitaria'}</p>
+                <p className="text-xs sm:text-sm text-gray-400">{wallet.network || 'Red Universitaria'}</p>
+              </div>
+            )}
+            {rechargeSummary && (
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 mb-1">Recargas acumuladas</p>
+                  <p className="text-lg font-semibold text-white">
+                    {rechargeSummary.totalTokens.toFixed(4)} {rechargeSummary.tokenSymbol}
+                  </p>
+                </div>
+                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 mb-1">Equivalente en USD</p>
+                  <p className="text-lg font-semibold text-white">${rechargeSummary.totalUsd.toFixed(2)} USD</p>
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    1 USD = {rechargeSummary.usdToTokenRate.toFixed(2)} {rechargeSummary.tokenSymbol}
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -226,7 +239,9 @@ export default function Profile() {
                 <HiShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-positive flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-400 mb-1">Estado de cuenta</p>
-                  <p className="text-sm sm:text-base font-medium text-positive">Verificada</p>
+                  <p className={`text-sm sm:text-base font-medium ${getStatusStyle(user.status)}`}>
+                    {getStatusDisplay(user.status)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -270,3 +285,4 @@ export default function Profile() {
     
   );
 }
+

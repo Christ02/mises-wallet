@@ -1,7 +1,30 @@
 import { ethers } from 'ethers';
 import { EncryptionService } from './encryptionService.js';
+import { CentralWalletService } from './centralWalletService.js';
+import { config } from '../config/config.js';
 
 export class WalletService {
+  static getProvider() {
+    return new ethers.JsonRpcProvider(
+      process.env.SEPOLIA_RPC_URL ||
+        config.sepolia?.rpcUrl ||
+        'https://sepolia.infura.io/v3/YOUR_KEY'
+    );
+  }
+
+  static getTokenContract(providerOrSigner) {
+    return CentralWalletService.getTokenContract(providerOrSigner);
+  }
+
+  static getTokenSymbol() {
+    return CentralWalletService.getTokenSymbol();
+  }
+
+  static getTokenDecimals() {
+    return CentralWalletService.getTokenDecimals();
+  }
+
+
   /**
    * Crea una nueva wallet para Sepolia testnet
    * SOLO USO INTERNO - El usuario nunca ve esto
@@ -61,26 +84,25 @@ export class WalletService {
    */
   static async getBalanceForUser(userId) {
     try {
+      await CentralWalletService.ensureSettingsLoaded();
       const wallet = await this.getUserWallet(userId);
       if (!wallet) {
-        return { balance: '0.0', network: 'sepolia' };
+        return { balance: '0.0', network: 'sepolia', currency: this.getTokenSymbol() };
       }
 
-      const { config } = await import('../config/config.js');
-      const provider = new ethers.JsonRpcProvider(
-        process.env.SEPOLIA_RPC_URL || config.sepolia?.rpcUrl || 'https://sepolia.infura.io/v3/YOUR_KEY'
-      );
-      
-      const balance = await provider.getBalance(wallet.address);
-      
-      // Retornamos solo el balance, NO la dirección
+      const provider = this.getProvider();
+      const contract = this.getTokenContract(provider);
+      const decimals = this.getTokenDecimals();
+      const balance = await contract.balanceOf(wallet.address);
+
       return {
-        balance: ethers.formatEther(balance),
-        network: wallet.network
+        balance: ethers.formatUnits(balance, decimals),
+        network: wallet.network,
+        currency: this.getTokenSymbol()
       };
     } catch (error) {
       console.error('Error al obtener balance:', error);
-      return { balance: '0.0', network: 'sepolia' };
+      return { balance: '0.0', network: 'sepolia', currency: this.getTokenSymbol() };
     }
   }
 
@@ -105,48 +127,76 @@ export class WalletService {
    * Envía una transacción desde la wallet del usuario
    * El usuario solo necesita su carnet (ya autenticado)
    */
-  static async sendTransaction(userId, toAddress, amount) {
+  static async sendTransaction(userId, toAddress, amount, metadata = {}, options = {}) {
     let txRecord;
+    let metadataPayload;
     try {
+      await CentralWalletService.ensureSettingsLoaded();
       const walletRecord = await this.getUserWallet(userId);
       if (!walletRecord) {
         throw new Error('Wallet no encontrada para este usuario');
       }
 
       const { TransactionRepository } = await import('../repositories/transactionRepository.js');
-      const numericAmount = typeof amount === 'string' ? amount : amount.toString();
-      const metadata = { to: toAddress };
+      const tokenSymbol = this.getTokenSymbol();
+      const decimals = this.getTokenDecimals();
+      const transactionType = options.transactionType || 'transferencia';
+
+      const numericAmount =
+        typeof amount === 'number'
+          ? amount
+          : parseFloat(typeof amount === 'string' ? amount : amount?.toString() || '0');
+
+      if (!numericAmount || numericAmount <= 0) {
+        throw new Error('Cantidad inválida para transferencia de token');
+      }
+
+      const currentBalanceInfo = await this.getBalanceForUser(userId);
+      const availableBalance = parseFloat(currentBalanceInfo.balance || '0');
+      if (!Number.isFinite(availableBalance) || availableBalance < numericAmount) {
+        throw new Error(`Saldo insuficiente de ${tokenSymbol}. Disponible: ${availableBalance.toFixed(4)}`);
+      }
+
+      await CentralWalletService.ensureGasBalance(walletRecord.address);
+
+      metadataPayload = {
+        to_address: toAddress,
+        token_symbol: tokenSymbol,
+        token_decimals: decimals,
+        token_amount: numericAmount,
+        ...metadata
+      };
+
+      const amountFormatted = numericAmount.toFixed(4);
+      const description =
+        options.description ||
+        (metadata?.recipient_name
+          ? `Transferencia a ${metadata.recipient_name}`
+          : `Transferencia hacia ${toAddress}`);
 
       txRecord = await TransactionRepository.create({
         user_id: userId,
-        type: 'transferencia',
+        type: transactionType,
         status: 'pendiente',
         direction: 'saliente',
-        amount: numericAmount,
-        currency: walletRecord.network || 'ETH',
-        description: `Transferencia hacia ${toAddress}`,
-        metadata
+        amount: amountFormatted,
+        currency: tokenSymbol,
+        description,
+        metadata: metadataPayload
       });
 
       const privateKey = await this.getDecryptedPrivateKey(userId);
-      const wallet = new ethers.Wallet(privateKey);
+      const provider = this.getProvider();
+      const signer = new ethers.Wallet(privateKey, provider);
+      const contract = this.getTokenContract(signer);
+      const amountUnits = ethers.parseUnits(amountFormatted, decimals);
 
-      const { config } = await import('../config/config.js');
-      const provider = new ethers.JsonRpcProvider(
-        process.env.SEPOLIA_RPC_URL || config.sepolia?.rpcUrl || 'https://sepolia.infura.io/v3/YOUR_KEY'
-      );
-
-      const connectedWallet = wallet.connect(provider);
-
-      const tx = await connectedWallet.sendTransaction({
-        to: toAddress,
-        value: ethers.parseEther(numericAmount.toString())
-      });
+      const tx = await contract.transfer(toAddress, amountUnits);
 
       await TransactionRepository.updateById(txRecord.id, {
         reference: tx.hash,
         status: 'en_proceso',
-        metadata: { ...metadata, hash: tx.hash }
+        metadata: { ...metadataPayload, hash: tx.hash }
       });
 
       const receipt = await tx.wait();
@@ -156,16 +206,20 @@ export class WalletService {
         status: finalStatus,
         completed_at: new Date(),
         metadata: {
-          ...metadata,
+          ...metadataPayload,
           hash: tx.hash,
           block_number: receipt.blockNumber,
-          gas_used: receipt.gasUsed?.toString()
+          gas_used: receipt.gasUsed?.toString(),
+          token_symbol: tokenSymbol,
+          token_decimals: decimals,
+          token_contract: CentralWalletService.getTokenAddress()
         }
       });
 
       return {
         transactionHash: tx.hash,
-        status: finalStatus === 'completada' ? 'confirmed' : 'failed'
+        status: finalStatus === 'completada' ? 'confirmed' : 'failed',
+        transactionId: txRecord.id
       };
     } catch (error) {
       if (txRecord) {
@@ -174,7 +228,7 @@ export class WalletService {
           status: 'fallida',
           completed_at: new Date(),
           metadata: {
-            ...(txRecord.metadata || {}),
+            ...(txRecord?.metadata || metadataPayload || {}),
             error: error.message
           }
         });

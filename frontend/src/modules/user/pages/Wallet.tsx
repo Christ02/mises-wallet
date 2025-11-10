@@ -14,7 +14,7 @@ import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
-  currency: string;
+  tokenSymbol: string;
   network: string;
 }
 
@@ -29,7 +29,14 @@ export default function Wallet() {
     const loadWallet = async () => {
       try {
         const response = await api.get('/api/wallet/balance');
-        setBalance(response.data);
+        const { balance: tokenBalance, tokenSymbol, network } = response.data || {};
+        if (tokenBalance !== undefined && tokenSymbol) {
+          setBalance({
+            balance: String(tokenBalance),
+            tokenSymbol,
+            network: network || 'Sepolia Testnet'
+          });
+        }
         // TODO: Obtener dirección de wallet cuando el backend lo permita
         // setAddress(response.data.address);
       } catch (err: any) {
@@ -81,7 +88,7 @@ export default function Wallet() {
                   {balance ? formatBalance(balance.balance) : '0.00'}
                 </span>
                 <span className="text-lg sm:text-xl font-semibold text-gray-400">
-                  {balance?.currency || 'ETH'}
+                  {balance?.tokenSymbol || 'HC'}
                 </span>
               </div>
               <p className="text-sm text-gray-500">

@@ -1,53 +1,48 @@
-import { useState } from 'react';
-import { HiBell, HiCheckCircle, HiXCircle, HiInformationCircle, HiQuestionMarkCircle, HiX } from 'react-icons/hi';
-
-interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  date: string;
-  read: boolean;
-  type: 'success' | 'error' | 'info';
-}
-
-const notifications: Notification[] = [
-  {
-    id: 1,
-    title: 'Transacción completada',
-    message: 'Tu transacción de 50.25 UFM ha sido completada exitosamente',
-    date: '2024-11-15T10:45:00',
-    read: false,
-    type: 'success'
-  },
-  {
-    id: 2,
-    title: 'Nuevo evento disponible',
-    message: 'La Conferencia Blockchain 2024 está disponible para registro',
-    date: '2024-11-14T15:20:00',
-    read: false,
-    type: 'info'
-  },
-  {
-    id: 3,
-    title: 'Sesión iniciada',
-    message: 'Has iniciado sesión desde un nuevo dispositivo',
-    date: '2024-11-13T09:00:00',
-    read: true,
-    type: 'info'
-  }
-];
+import { useState, useEffect, useMemo } from 'react';
+import {
+  HiBell,
+  HiCheckCircle,
+  HiXCircle,
+  HiInformationCircle,
+  HiQuestionMarkCircle,
+  HiX
+} from 'react-icons/hi';
+import {
+  fetchNotifications,
+  UserNotification,
+  NotificationType
+} from '../services/notifications';
 
 export default function Notifications() {
-  const [notifs, setNotifs] = useState<Notification[]>(notifications);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
-  const markAsRead = (id: number) => {
-    setNotifs(notifs.map(notif => 
-      notif.id === id ? { ...notif, read: true } : notif
-    ));
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchNotifications();
+        setNotifications(data);
+      } catch (err: any) {
+        console.error('Error cargando notificaciones:', err);
+        setError(err.response?.data?.error || 'No se pudieron cargar las notificaciones');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadNotifications();
+  }, []);
+
+  const markAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif))
+    );
   };
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: NotificationType) => {
     switch (type) {
       case 'success':
         return <HiCheckCircle className="w-6 h-6 text-positive" />;
@@ -78,6 +73,11 @@ export default function Notifications() {
     }
   };
 
+  const unreadCount = useMemo(
+    () => notifications.filter((notif) => !notif.read).length,
+    [notifications]
+  );
+
   return (
       <div>
         {/* Header Section */}
@@ -88,7 +88,14 @@ export default function Notifications() {
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Notificaciones</h2>
-              <p className="text-sm sm:text-base text-gray-400">Gestiona tus notificaciones</p>
+              <p className="text-sm sm:text-base text-gray-400">
+                Gestiona tus notificaciones
+                {unreadCount > 0 && (
+                  <span className="ml-2 text-primary-red font-semibold">
+                    • {unreadCount} sin leer
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <button
@@ -101,7 +108,16 @@ export default function Notifications() {
 
         {/* NOTIFICACIONES Section */}
         <div className="mt-8 sm:mt-10 lg:mt-12">
-          {notifs.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12 sm:py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-red mx-auto mb-4"></div>
+              <p className="text-sm sm:text-base text-gray-400">Cargando notificaciones...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 sm:py-16 text-negative">
+              {error}
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="text-center py-12 sm:py-16">
               <HiBell className="w-16 h-16 sm:w-20 sm:h-20 text-gray-400 mx-auto mb-4" />
               <p className="text-base sm:text-lg text-gray-400 mb-2">No hay notificaciones</p>
@@ -109,7 +125,7 @@ export default function Notifications() {
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {notifs.map((notif) => (
+              {notifications.map((notif) => (
                 <div
                   key={notif.id}
                   onClick={() => markAsRead(notif.id)}

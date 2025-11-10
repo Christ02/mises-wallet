@@ -34,7 +34,7 @@ services:
       # Encriptación para wallets
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-this-to-a-strong-random-key-in-production-32-chars}
       # Sepolia Testnet RPC
-      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://sepolia.infura.io/v3/YOUR_INFURA_KEY}
+      SEPOLIA_RPC_URL: ${SEPOLIA_RPC_URL:-https://sepolia.infura.io/v3/98a6b9d7d4b84d5bbcdc57c490922e15}
     ports:
       - "3001:3000"
     volumes:

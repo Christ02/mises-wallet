@@ -1,5 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { HiCheckCircle, HiCog, HiEye, HiEyeOff, HiInformationCircle, HiLockClosed, HiSave } from 'react-icons/hi';
+import {
+  HiCheckCircle,
+  HiCog,
+  HiEye,
+  HiEyeOff,
+  HiInformationCircle,
+  HiLockClosed,
+  HiSave,
+  HiExclamationCircle
+} from 'react-icons/hi';
+import {
+  fetchCentralWalletConfig,
+  updateCentralWalletConfig,
+  CentralWalletConfig
+} from '../services/centralWallet';
 
 type EmailMode = 'smtp' | 'api';
 
@@ -27,17 +41,7 @@ interface EmailSettings {
   api: ApiSettings;
 }
 
-interface WalletSettings {
-  bankName: string;
-  network: string;
-  walletAddress: string;
-  walletPrivateKey: string;
-  publicApiKey: string;
-  secretApiKey: string;
-}
-
 const EMAIL_STORAGE_KEY = 'admin-email-settings';
-const WALLET_STORAGE_KEY = 'admin-wallet-settings';
 
 const defaultEmailSettings: EmailSettings = {
   mode: 'smtp',
@@ -59,23 +63,28 @@ const defaultEmailSettings: EmailSettings = {
   }
 };
 
-const defaultWalletSettings: WalletSettings = {
+const defaultWalletSettings: CentralWalletConfig = {
   bankName: 'Banco Central UFM',
   network: 'sepolia',
   walletAddress: '',
   walletPrivateKey: '',
   publicApiKey: '',
-  secretApiKey: ''
+  secretApiKey: '',
+  tokenSymbol: 'HC',
+  tokenAddress: '',
+  tokenDecimals: 18
 };
 
 export default function Settings() {
   const [emailSettings, setEmailSettings] = useState<EmailSettings>(defaultEmailSettings);
-  const [walletSettings, setWalletSettings] = useState<WalletSettings>(defaultWalletSettings);
+  const [walletSettings, setWalletSettings] = useState<CentralWalletConfig>(defaultWalletSettings);
 
   const [emailSaving, setEmailSaving] = useState(false);
   const [walletSaving, setWalletSaving] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState('');
   const [walletSuccess, setWalletSuccess] = useState('');
+  const [walletError, setWalletError] = useState('');
+  const [walletLoading, setWalletLoading] = useState(true);
 
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
@@ -92,15 +101,28 @@ export default function Settings() {
       console.error('Error loading email settings from storage:', error);
     }
 
-    try {
-      const storedWallet = localStorage.getItem(WALLET_STORAGE_KEY);
-      if (storedWallet) {
-        const parsed = JSON.parse(storedWallet);
-        setWalletSettings((prev) => ({ ...prev, ...parsed }));
+    const loadWalletConfig = async () => {
+      setWalletLoading(true);
+      try {
+        const response = await fetchCentralWalletConfig();
+        if (response) {
+          setWalletSettings((prev) => ({
+            ...prev,
+            ...response,
+            walletPrivateKey: '',
+            secretApiKey: ''
+          }));
+        }
+        setWalletError('');
+      } catch (error) {
+        console.error('Error loading wallet settings:', error);
+        setWalletError('No se pudo cargar la configuración actual de la wallet.');
+      } finally {
+        setWalletLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading wallet settings from storage:', error);
-    }
+    };
+
+    loadWalletConfig();
   }, []);
 
   useEffect(() => {
@@ -146,10 +168,10 @@ export default function Settings() {
     }));
   };
 
-  const handleWalletChange = (field: keyof WalletSettings, value: string) => {
+  const handleWalletChange = (field: keyof CentralWalletConfig, value: string | number) => {
     setWalletSettings((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value as any
     }));
   };
 
@@ -169,11 +191,27 @@ export default function Settings() {
   const handleSaveWallet = async () => {
     setWalletSaving(true);
     try {
-      localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(walletSettings));
-      setWalletSuccess('Credenciales de la wallet actualizadas.');
-    } catch (error) {
+      setWalletError('');
+      const payload: CentralWalletConfig = {
+        ...walletSettings,
+        tokenDecimals:
+          typeof walletSettings.tokenDecimals === 'string'
+            ? parseInt(walletSettings.tokenDecimals, 10) || 18
+            : walletSettings.tokenDecimals
+      };
+
+      const result = await updateCentralWalletConfig(payload);
+      setWalletSettings((prev) => ({
+        ...prev,
+        ...result,
+        walletPrivateKey: '',
+        secretApiKey: ''
+      }));
+      setWalletSuccess('Credenciales de la wallet central actualizadas correctamente.');
+    } catch (error: any) {
       console.error('Error guardando configuración de wallet:', error);
-      setWalletSuccess('Ocurrió un problema al guardar las credenciales.');
+      const message = error?.response?.data?.error || 'Ocurrió un problema al guardar las credenciales.';
+      setWalletError(message);
     } finally {
       setWalletSaving(false);
     }
@@ -436,6 +474,19 @@ export default function Settings() {
           </div>
         )}
 
+        {walletError && (
+          <div className="bg-negative/10 border border-negative/30 text-negative px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+            <HiExclamationCircle className="w-5 h-5" />
+            <span>{walletError}</span>
+          </div>
+        )}
+
+        {walletLoading ? (
+          <div className="py-8 flex items-center justify-center text-gray-400 text-sm">
+            <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin mr-3" />
+            Cargando configuración...
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="space-y-4">
             <div>
@@ -526,8 +577,42 @@ export default function Settings() {
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Token contract *</label>
+                <input
+                  type="text"
+                  value={walletSettings.tokenAddress}
+                  onChange={(e) => handleWalletChange('tokenAddress', e.target.value)}
+                  placeholder="0x..."
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Símbolo</label>
+                  <input
+                    type="text"
+                    value={walletSettings.tokenSymbol}
+                    onChange={(e) => handleWalletChange('tokenSymbol', e.target.value)}
+                    placeholder="HC"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Decimales</label>
+                  <input
+                    type="number"
+                    value={walletSettings.tokenDecimals}
+                    onChange={(e) => handleWalletChange('tokenDecimals', e.target.value)}
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+        )}
 
         <div className="bg-dark-bg/60 border border-dark-border rounded-xl p-4 text-sm text-gray-400 flex items-start gap-3">
           <HiInformationCircle className="w-5 h-5 text-primary-red flex-shrink-0" />

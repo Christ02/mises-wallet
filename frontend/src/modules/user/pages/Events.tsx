@@ -1,91 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  HiCalendar, 
-  HiArrowRight, 
-  HiLocationMarker, 
-  HiClock, 
-  HiUsers, 
+import {
+  HiCalendar,
+  HiLocationMarker,
+  HiClock,
+  HiUsers,
   HiCog,
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
-
-interface Event {
-  id: number;
-  title: string;
-  date: string;
-  location: string;
-  description: string;
-  time?: string;
-}
-
-const availableEvents: Event[] = [
-  {
-    id: 1,
-    title: 'Conferencia Blockchain 2024',
-    date: '2024-11-15',
-    location: 'Auditorio UFM',
-    description: 'Conferencia sobre tecnología blockchain y su aplicación en el mundo financiero.',
-    time: '9:00 AM - 5:00 PM'
-  },
-  {
-    id: 2,
-    title: 'Feria de Innovación',
-    date: '2024-12-02',
-    location: 'Campus UFM',
-    description: 'Feria donde se presentan los proyectos más innovadores de estudiantes y profesores.',
-    time: '10:00 AM - 6:00 PM'
-  },
-  {
-    id: 3,
-    title: 'Hackathon UFM',
-    date: '2024-12-10',
-    location: 'Centro de Innovación',
-    description: 'Competencia de desarrollo donde equipos crean soluciones tecnológicas innovadoras.',
-    time: '8:00 AM - 8:00 PM'
-  },
-  {
-    id: 4,
-    title: 'Workshop de Criptomonedas',
-    date: '2024-12-20',
-    location: 'Aula Magna',
-    description: 'Taller práctico sobre el uso y seguridad de criptomonedas.',
-    time: '2:00 PM - 5:00 PM'
-  },
-  {
-    id: 5,
-    title: 'Semana de Emprendimiento',
-    date: '2025-01-15',
-    location: 'Centro de Emprendimiento',
-    description: 'Evento con charlas y workshops sobre emprendimiento tecnológico.',
-    time: '9:00 AM - 4:00 PM'
-  }
-];
-
-const organizerEvents: Event[] = [
-  {
-    id: 101,
-    title: 'Evento de Tecnología UFM',
-    date: '2024-12-05',
-    location: 'Auditorio Principal',
-    description: 'Evento organizado por ti donde se presentarán las últimas tendencias en tecnología.',
-    time: '10:00 AM - 6:00 PM'
-  },
-  {
-    id: 102,
-    title: 'Taller de Blockchain',
-    date: '2025-01-10',
-    location: 'Sala de Conferencias',
-    description: 'Taller práctico sobre desarrollo de aplicaciones blockchain.',
-    time: '2:00 PM - 6:00 PM'
-  }
-];
+import { fetchUserEvents, UserEvent } from '../services/events';
 
 export default function Events() {
   const navigate = useNavigate();
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<UserEvent | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<UserEvent[]>([]);
+  const [organizerEvents, setOrganizerEvents] = useState<UserEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await fetchUserEvents();
+        setUpcomingEvents(response.upcoming || []);
+        setOrganizerEvents(response.organizer || []);
+      } catch (err: any) {
+        console.error('Error loading events:', err);
+        setError(err.response?.data?.error || 'No se pudieron cargar los eventos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -93,15 +44,14 @@ export default function Events() {
     return `${date.getDate()} ${months[date.getMonth()]}, ${date.getFullYear()}`;
   };
 
-  const getNextEvent = () => {
+  const featuredEvent = useMemo(() => {
+    if (upcomingEvents.length === 0) return null;
     const now = new Date();
-    const upcoming = availableEvents
-      .filter(e => new Date(e.date) >= now)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    return upcoming[0] || availableEvents[0];
-  };
-
-  const featuredEvent = getNextEvent();
+    const upcoming = upcomingEvents
+      .filter((event) => new Date(event.event_date) >= now)
+      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+    return upcoming[0] || upcomingEvents[0];
+  }, [upcomingEvents]);
 
   return (
     <div>
@@ -131,7 +81,7 @@ export default function Events() {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2">{featuredEvent.title}</h3>
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2">{featuredEvent.name}</h3>
                   <p className="text-sm sm:text-base text-gray-300 line-clamp-2">{featuredEvent.description}</p>
                 </div>
                 <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 text-primary-red/80 flex-shrink-0 ml-4" />
@@ -139,11 +89,15 @@ export default function Events() {
               <div className="mt-4 space-y-2">
                 <div className="flex items-center space-x-2 text-sm text-gray-300">
                   <HiClock className="w-4 h-4 text-primary-red" />
-                  <span>{formatDate(featuredEvent.date)} {featuredEvent.time && `• ${featuredEvent.time}`}</span>
+                  <span>
+                    {formatDate(featuredEvent.event_date)}
+                    {featuredEvent.start_time && ` • ${featuredEvent.start_time}`}
+                    {featuredEvent.end_time && ` - ${featuredEvent.end_time}`}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-300">
                   <HiLocationMarker className="w-4 h-4 text-primary-red" />
-                  <span>{featuredEvent.location}</span>
+                  <span>{featuredEvent.location || 'Por confirmar'}</span>
                 </div>
               </div>
               <button
@@ -159,29 +113,52 @@ export default function Events() {
         {/* EVENTOS DISPONIBLES Section */}
         <div className="mt-8 sm:mt-10 lg:mt-12">
           <h3 className="text-xs sm:text-sm text-gray-400 uppercase tracking-wider mb-3 sm:mb-4 font-semibold">EVENTOS DISPONIBLES</h3>
-          <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
-            <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
-              {availableEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-                  onClick={() => setSelectedEvent(event)}
-                >
-                  <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                    <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                  </div>
-                  <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                    <div>
-                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                        {event.title}
-                      </h3>
-                      <p className="text-sm sm:text-base text-gray-400 font-medium">{formatDate(event.date)}</p>
+
+          {loading ? (
+            <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-10 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-red mx-auto mb-4"></div>
+              <p className="text-sm sm:text-base text-gray-400">Cargando eventos...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-10 text-center text-sm sm:text-base text-negative">
+              {error}
+            </div>
+          ) : upcomingEvents.length === 0 ? (
+            <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-12 text-center">
+              <HiCalendar className="w-14 h-14 sm:w-16 sm:h-16 text-gray-500 mx-auto mb-4" />
+              <p className="text-base sm:text-lg text-gray-400 mb-2">No hay eventos disponibles por ahora</p>
+              <p className="text-sm sm:text-base text-gray-500">Vuelve más tarde para descubrir nuevos eventos.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
+              <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
+                {upcomingEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
+                    onClick={() => setSelectedEvent(event)}
+                  >
+                    <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                      <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
+                    </div>
+                    <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
+                      <div>
+                        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+                          {event.name}
+                        </h3>
+                        <p className="text-sm sm:text-base text-gray-400 font-medium">
+                          {formatDate(event.event_date)}
+                        </p>
+                        {event.location && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">{event.location}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* MIS EVENTOS Section */}
@@ -190,7 +167,12 @@ export default function Events() {
             MIS EVENTOS COMO ORGANIZADOR
           </h3>
 
-          {organizerEvents.length === 0 ? (
+          {loading ? (
+            <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-red mx-auto mb-4"></div>
+              <p className="text-sm sm:text-base text-gray-400">Cargando tus eventos...</p>
+            </div>
+          ) : organizerEvents.length === 0 ? (
             <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-12 lg:p-16 xl:p-20 text-center">
               <HiUsers className="w-16 h-16 sm:w-20 sm:h-20 text-gray-400 mx-auto mb-4" />
               <p className="text-base sm:text-lg text-gray-400 mb-2">No tienes eventos como organizador</p>
@@ -218,6 +200,9 @@ export default function Events() {
                           <HiCog className="w-3 h-3" />
                           <span>Organizador</span>
                         </div>
+                        {event.groupId && (
+                          <p className="text-xs text-gray-500 mt-2">Group ID: {event.groupId}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -250,20 +235,23 @@ export default function Events() {
                       </div>
                     )}
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">{selectedEvent.title}</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">{selectedEvent.name}</h2>
                   <div className="space-y-3 sm:space-y-4">
                     <div className="flex items-center space-x-3 text-sm sm:text-base text-gray-400">
                       <HiCalendar className="w-5 h-5 text-primary-red" />
-                      <span>{formatDate(selectedEvent.date)}</span>
+                      <span>{formatDate(selectedEvent.event_date)}</span>
                     </div>
                     <div className="flex items-center space-x-3 text-sm sm:text-base text-gray-400">
                       <HiLocationMarker className="w-5 h-5 text-primary-red" />
-                      <span>{selectedEvent.location}</span>
+                      <span>{selectedEvent.location || 'Por confirmar'}</span>
                     </div>
-                    {selectedEvent.time && (
+                    {(selectedEvent.start_time || selectedEvent.end_time) && (
                       <div className="flex items-center space-x-3 text-sm sm:text-base text-gray-400">
                         <HiClock className="w-5 h-5 text-primary-red" />
-                        <span>{selectedEvent.time}</span>
+                        <span>
+                          {selectedEvent.start_time}
+                          {selectedEvent.end_time && ` - ${selectedEvent.end_time}`}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -271,7 +259,7 @@ export default function Events() {
                 <div className="mb-6">
                   <h3 className="text-sm sm:text-base font-semibold text-white mb-2 sm:mb-3">Descripción</h3>
                   <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
-                    {selectedEvent.description}
+                    {selectedEvent.description || 'Aún no hay una descripción para este evento.'}
                   </p>
                 </div>
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">

@@ -1,6 +1,20 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiArrowDown, HiCreditCard, HiQuestionMarkCircle, HiX, HiChevronDown } from 'react-icons/hi';
+import { HiArrowLeft, HiArrowDown, HiCreditCard, HiQuestionMarkCircle, HiX, HiChevronDown, HiExclamationCircle, HiCheckCircle } from 'react-icons/hi';
+import api from '../../../services/api';
+
+interface WalletBalanceSummary {
+  balance: string;
+  tokenSymbol: string;
+  network: string;
+}
+
+interface RechargeSummary {
+  tokenSymbol: string;
+  totalTokens: number;
+  totalUsd: number;
+  usdToTokenRate: number;
+}
 
 export default function Recharge() {
   const navigate = useNavigate();
@@ -12,26 +26,147 @@ export default function Recharge() {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [cardExpanded, setCardExpanded] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [walletBalance, setWalletBalance] = useState<WalletBalanceSummary | null>(null);
+  const [rechargeSummary, setRechargeSummary] = useState<RechargeSummary | null>(null);
+  const [usdToTokenRate, setUsdToTokenRate] = useState(1);
+  const [tokenSymbol, setTokenSymbol] = useState('HC');
 
-  const quickAmounts = ['0.01', '0.05', '0.1', '0.5', '1.0', '5.0'];
+  const quickAmounts = ['10', '25', '50', '75', '100', '250'];
+
+  const formatTokenAmount = (value: number | string | null | undefined) => {
+    const numeric = typeof value === 'string' ? parseFloat(value) : value ?? 0;
+    if (!Number.isFinite(numeric)) return `0.0000`;
+    if (numeric === 0) return '0.0000';
+    if (numeric < 0.001) return numeric.toFixed(6);
+    if (numeric < 1) return numeric.toFixed(4);
+    return numeric.toFixed(4);
+  };
+
+  useEffect(() => {
+    const loadBalances = async () => {
+      try {
+        const response = await api.get('/api/wallet/balance');
+        const { balance, tokenSymbol: symbol, network, rechargeSummary: summary } = response.data || {};
+
+        if (balance !== undefined && symbol) {
+          setWalletBalance({
+            balance: String(balance),
+            tokenSymbol: symbol,
+            network: network || 'Sepolia Testnet'
+          });
+          setTokenSymbol(symbol);
+        }
+
+        if (summary) {
+          setRechargeSummary(summary);
+          if (summary.usdToTokenRate) {
+            setUsdToTokenRate(summary.usdToTokenRate);
+          }
+          if (summary.tokenSymbol) {
+            setTokenSymbol(summary.tokenSymbol);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading balances:', err);
+      }
+    };
+
+    loadBalances();
+  }, []);
+
+  const convertedTokens = useMemo(() => {
+    const numericAmount = parseFloat(amount);
+    if (!numericAmount || !Number.isFinite(numericAmount)) {
+      return '0.0000';
+    }
+    return (numericAmount * usdToTokenRate).toFixed(4);
+  }, [amount, usdToTokenRate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
     if (!cardExpanded) {
       setCardExpanded(true);
       return;
     }
 
-    if (!cardNumber || !cardName || !cardExpiry || !cardCvv) {
+    if (!cardNumber || !cardName || !cardExpiry || !cardCvv || !amount) {
+      setErrorMessage('Completa la información de tarjeta y la cantidad a recargar.');
+      return;
+    }
+
+    const numericAmount = parseFloat(amount);
+    if (!numericAmount || numericAmount <= 0) {
+      setErrorMessage('Ingresa una cantidad válida mayor a 0.');
       return;
     }
     setLoading(true);
-    
-    // TODO: Implementar lógica de recarga
-    setTimeout(() => {
+
+    try {
+      const sanitizedNumber = cardNumber.replace(/\s/g, '');
+      const response = await api.post('/api/wallet/recharge', {
+        amountUsd: numericAmount,
+        cardNumber: sanitizedNumber,
+        cardHolder: cardName
+      });
+
+      const {
+        tokenAmount,
+        usdAmount,
+        usdToTokenRate: newRate,
+        tokenSymbol: newSymbol,
+        balanceTokens,
+        rechargeSummary: summary,
+        network: updatedNetwork
+      } = response.data || {};
+
+      if (balanceTokens !== undefined && (newSymbol || tokenSymbol)) {
+        const nextSymbol = newSymbol || tokenSymbol;
+        const nextNetwork = updatedNetwork || walletBalance?.network || 'Sepolia Testnet';
+        setWalletBalance({
+          balance: String(balanceTokens),
+          tokenSymbol: nextSymbol,
+          network: nextNetwork
+        });
+      }
+
+      if (summary) {
+        setRechargeSummary(summary);
+      }
+
+      if (newRate) {
+        setUsdToTokenRate(newRate);
+      }
+      if (newSymbol) {
+        setTokenSymbol(newSymbol);
+      }
+
+      const finalTokenAmountRaw = tokenAmount ?? parseFloat(convertedTokens);
+      const finalUsdAmount = usdAmount ?? numericAmount;
+      const finalTokenAmount = Number.isFinite(finalTokenAmountRaw) ? finalTokenAmountRaw : 0;
+
+      setSuccessMessage(
+        `Recarga exitosa de ${finalTokenAmount.toFixed(4)} ${newSymbol || tokenSymbol} (≈ $${finalUsdAmount.toFixed(2)} USD).`
+      );
+
+      setAmount('');
+      setCardNumber('');
+      setCardName('');
+      setCardExpiry('');
+      setCardCvv('');
+      setCardExpanded(false);
+
+      setTimeout(() => navigate('/wallet'), 1500);
+    } catch (err: any) {
+      console.error('Error processing recharge:', err);
+      setErrorMessage(err.response?.data?.error || 'No se pudo procesar la recarga. Intenta nuevamente.');
+    } finally {
       setLoading(false);
-      navigate('/wallet');
-    }, 2000);
+    }
   };
 
   return (
@@ -54,7 +189,7 @@ export default function Recharge() {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">Recargar Wallet</h2>
-            <p className="text-sm sm:text-base text-gray-400">Agrega fondos a tu wallet en pocos pasos</p>
+            <p className="text-sm sm:text-base text-gray-400">Usa tu tarjeta para recibir HayekCoin (HC) en tu wallet universitaria</p>
           </div>
         </div>
         <button
@@ -65,29 +200,91 @@ export default function Recharge() {
         </button>
         </div>
 
+        {/* Wallet Overview */}
+        <div className="bg-gradient-to-br from-primary-red/20 via-primary-red/10 to-primary-red/5 border border-primary-red/30 rounded-xl sm:rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg sm:text-xl font-semibold text-white">Saldo disponible</h3>
+              <p className="text-xs sm:text-sm text-gray-400">HayekCoin listo para usar en la wallet</p>
+            </div>
+            <HiCreditCard className="w-10 h-10 text-primary-red/80" />
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-end sm:space-x-6 space-y-3 sm:space-y-0">
+            <p className="text-2xl sm:text-3xl font-bold text-white">
+              {formatTokenAmount(walletBalance?.balance)} {walletBalance?.tokenSymbol || tokenSymbol}
+            </p>
+            <div>
+              <p className="text-sm sm:text-base text-gray-300">
+                Red: {walletBalance?.network || 'Sepolia Testnet'}
+              </p>
+              <p className="text-xs text-gray-500">Tipo de cambio actual: 1 USD = {usdToTokenRate.toFixed(2)} {tokenSymbol}</p>
+            </div>
+          </div>
+          {rechargeSummary && (
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Recargas acumuladas</p>
+                <p className="text-lg sm:text-xl font-semibold text-white">
+                  {rechargeSummary.totalTokens.toFixed(4)} {rechargeSummary.tokenSymbol}
+                </p>
+              </div>
+              <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
+                <p className="text-xs text-gray-400 mb-1">Equivalente estimado en USD</p>
+                <p className="text-lg sm:text-xl font-semibold text-white">
+                  ${rechargeSummary.totalUsd.toFixed(2)} USD
+                </p>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  1 USD = {rechargeSummary.usdToTokenRate.toFixed(2)} {rechargeSummary.tokenSymbol}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Recharge Form */}
         <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {errorMessage && (
+              <div className="bg-negative/10 border border-negative/40 text-negative px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+                <HiExclamationCircle className="w-5 h-5" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="bg-positive/10 border border-positive/40 text-positive px-4 py-3 rounded-lg text-sm flex items-center space-x-2">
+                <HiCheckCircle className="w-5 h-5" />
+                <span>{successMessage}</span>
+              </div>
+            )}
+
             {/* Amount Input */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Cantidad a Recargar (ETH)
+                Cantidad a Recargar (USD)
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  step="0.001"
+                  step="0.01"
                   min="0"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
                   placeholder="0.00"
                   required
                   className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-lg"
                 />
                 <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  ETH
+                  USD
                 </span>
               </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Equivalente aproximado: <span className="text-white font-semibold">{convertedTokens}</span> {tokenSymbol}
+              </p>
             </div>
 
             {/* Quick Amounts */}
@@ -98,10 +295,14 @@ export default function Recharge() {
                   <button
                     key={quickAmount}
                     type="button"
-                    onClick={() => setAmount(quickAmount)}
+                    onClick={() => {
+                      setAmount(quickAmount);
+                      setErrorMessage('');
+                      setSuccessMessage('');
+                    }}
                     className="px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-300 hover:border-primary-red/50 hover:text-white transition-colors"
                   >
-                    {quickAmount}
+                    ${quickAmount}
                   </button>
                 ))}
               </div>
@@ -234,7 +435,7 @@ export default function Recharge() {
         {/* Info */}
         <div className="bg-dark-card/50 border border-dark-border rounded-xl p-4">
           <p className="text-xs text-gray-400 text-center">
-            La recarga se procesará en la red Sepolia Testnet. Los fondos son de prueba únicamente.
+            Esta recarga es una simulación para pruebas: el cargo se captura en USD y se liquida instantáneamente en HayekCoin dentro de tu wallet.
           </p>
         </div>
 
@@ -259,12 +460,8 @@ export default function Recharge() {
                 </button>
               </div>
               <div className="space-y-4 text-sm sm:text-base text-gray-300">
-                <p>
-                  Ingresa la cantidad que deseas recargar o selecciona una de las cantidades rápidas.
-                </p>
-                <p>
-                  Una vez confirmada, la recarga se procesará en la red Sepolia Testnet. Los fondos son de prueba.
-                </p>
+                <p>Ingresa la cantidad en USD o selecciona una opción rápida para simular el pago con tarjeta.</p>
+                <p>Automáticamente convertimos el monto a HayekCoin usando la tasa vigente. Esta operación es solo para pruebas y no mueve fondos reales.</p>
               </div>
             </div>
           </div>

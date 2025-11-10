@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiShoppingCart, 
@@ -7,51 +7,35 @@ import {
   HiArrowRight,
   HiQuestionMarkCircle,
   HiX,
-  HiOfficeBuilding
+  HiOfficeBuilding,
+  HiCheckCircle,
+  HiSearch
 } from 'react-icons/hi';
 import api from '../../../services/api';
 
 interface WalletBalance {
   balance: string;
-  currency: string;
+  tokenSymbol: string;
   network: string;
 }
 
-interface MerchantTeam {
+interface MerchantOption {
   id: number;
   name: string;
-  event: string;
-  carnet: string;
-  description: string;
+  groupId: string;
+  description?: string;
+  eventName?: string;
+  walletAddress?: string;
 }
-
-const merchantTeams: MerchantTeam[] = [
-  {
-    id: 101,
-    name: 'Comercio Hackathon UFM',
-    event: 'Hackathon UFM',
-    carnet: 'TEAM-HACK-101',
-    description: 'Equipo organizador del Hackathon UFM 2024.'
-  },
-  {
-    id: 102,
-    name: 'Café Blockchain',
-    event: 'Conferencia Blockchain 2024',
-    carnet: 'TEAM-BCONF-102',
-    description: 'Cafetería oficial del evento con bebidas temáticas.'
-  },
-  {
-    id: 103,
-    name: 'Tienda Innovación UFM',
-    event: 'Feria de Innovación',
-    carnet: 'TEAM-INNO-103',
-    description: 'Merchandising y material educativo del evento.'
-  }
-];
 
 export default function Pay() {
   const navigate = useNavigate();
   const [merchantQuery, setMerchantQuery] = useState('');
+  const [selectedMerchant, setSelectedMerchant] = useState<MerchantOption | null>(null);
+  const [merchantResults, setMerchantResults] = useState<MerchantOption[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
@@ -59,12 +43,27 @@ export default function Pay() {
   const [showHelp, setShowHelp] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [usdToTokenRate, setUsdToTokenRate] = useState(1);
+  const [tokenSymbol, setTokenSymbol] = useState('HC');
+  const formatMerchantLabel = (merchant: MerchantOption) =>
+    merchant.groupId ? `${merchant.name} · ${merchant.groupId}` : merchant.name;
 
   useEffect(() => {
     const loadBalance = async () => {
       try {
         const response = await api.get('/api/wallet/balance');
-        setBalance(response.data);
+        const { balance: tokenBalance, tokenSymbol: symbol, network, rechargeSummary } = response.data || {};
+        if (tokenBalance !== undefined && symbol) {
+          setBalance({
+            balance: String(tokenBalance),
+            tokenSymbol: symbol,
+            network: network || 'Sepolia Testnet'
+          });
+          setTokenSymbol(symbol);
+        }
+        if (rechargeSummary?.usdToTokenRate) {
+          setUsdToTokenRate(rechargeSummary.usdToTokenRate);
+        }
       } catch (err: any) {
         console.error('Error loading balance:', err);
       } finally {
@@ -74,32 +73,73 @@ export default function Pay() {
     loadBalance();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    const trimmedQuery = merchantQuery.trim();
+
+    if (
+      selectedMerchant &&
+      trimmedQuery === formatMerchantLabel(selectedMerchant)
+    ) {
+      setMerchantResults([selectedMerchant]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+
+    if (!trimmedQuery || trimmedQuery.length < 2) {
+      setMerchantResults([]);
+      setIsSearching(false);
+      setShowDropdown(false);
+      return;
+    }
+
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const response = await api.get('/api/wallet/merchants/search', {
+          params: { query: trimmedQuery }
+        });
+        const merchants: MerchantOption[] = (response.data?.merchants || []).map((merchant: any) => ({
+          id: merchant.id,
+          name: merchant.name,
+          groupId: merchant.groupId,
+          description: merchant.description,
+          eventName: merchant.eventName,
+          walletAddress: merchant.walletAddress
+        }));
+        setMerchantResults(merchants);
+        setShowDropdown(true);
+      } catch (err) {
+        console.error('Error searching merchants:', err);
+        setMerchantResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+  }, [merchantQuery, selectedMerchant]);
+
   const handleScan = () => {
     // TODO: Implementar escaneo de QR
     alert('Funcionalidad de escaneo de QR próximamente');
   };
 
-  const matchedMerchants = useMemo(() => {
-    if (!merchantQuery.trim()) return [];
-    const query = merchantQuery.trim().toLowerCase();
-    return merchantTeams.filter(team =>
-      team.name.toLowerCase().includes(query) ||
-      team.event.toLowerCase().includes(query) ||
-      team.carnet.toLowerCase().includes(query)
-    ).slice(0, 5);
-  }, [merchantQuery]);
-
-  const selectedMerchant = useMemo(() => {
-    if (!merchantQuery.trim()) return null;
-    const query = merchantQuery.trim().toLowerCase();
-    return merchantTeams.find(team =>
-      team.name.toLowerCase() === query ||
-      team.carnet.toLowerCase() === query
-    ) || null;
-  }, [merchantQuery]);
-
-  const handleSelectMerchant = (team: MerchantTeam) => {
-    setMerchantQuery(team.name);
+  const handleSelectMerchant = (merchant: MerchantOption) => {
+    setSelectedMerchant(merchant);
+    setMerchantQuery(formatMerchantLabel(merchant));
+    setShowDropdown(false);
+    setErrorMessage('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,21 +152,30 @@ export default function Pay() {
       return;
     }
 
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      setErrorMessage('Ingresa una cantidad válida.');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      await api.post('/api/payments/merchant', {
+      const response = await api.post('/api/wallet/merchants/pay', {
         merchantId: selectedMerchant.id,
-        merchantCarnet: selectedMerchant.carnet,
-        amount: parseFloat(amount)
+        groupId: selectedMerchant.groupId,
+        amount: parsedAmount
       });
-      setSuccessMessage(`Pago enviado a ${selectedMerchant.name}.`);
+      const message = response.data?.message || `Pago enviado a ${selectedMerchant.name}.`;
+      setSuccessMessage(message);
       setMerchantQuery('');
+      setMerchantResults([]);
+      setSelectedMerchant(null);
       setAmount('');
       setTimeout(() => navigate('/transactions'), 1500);
     } catch (err: any) {
       console.error('Error processing payment:', err);
-      setErrorMessage('No se pudo procesar el pago. Intenta nuevamente.');
+      setErrorMessage(err.response?.data?.error || 'No se pudo procesar el pago. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -140,10 +189,10 @@ export default function Pay() {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const calculateUSD = (ethBalance: string) => {
-    const eth = parseFloat(ethBalance);
-    const ethPrice = 2000;
-    return (eth * ethPrice).toFixed(2);
+  const convertTokenToUsd = (tokenBalance: string) => {
+    const tokens = parseFloat(tokenBalance);
+    if (!tokens || !usdToTokenRate) return '0.00';
+    return (tokens / usdToTokenRate).toFixed(2);
   };
 
   return (
@@ -189,10 +238,10 @@ export default function Pay() {
                     {formatBalance(balance.balance)}
                   </span>
                   <span className="text-lg sm:text-xl text-gray-300 font-semibold">
-                    {balance.currency || 'UFM'}
+                    {balance.tokenSymbol || tokenSymbol}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">≈ ${calculateUSD(balance.balance)} USD</p>
+                <p className="text-xs sm:text-sm text-gray-400">≈ ${convertTokenToUsd(balance.balance)} USD</p>
               </div>
             )}
           </div>
@@ -232,51 +281,91 @@ export default function Pay() {
                 <label className="block text-sm sm:text-base font-medium text-gray-300 mb-2 sm:mb-3">
                     Nombre del comercio o grupo-id del equipo organizador
                 </label>
-                <input
-                  type="text"
-                  value={merchantQuery}
-                  onChange={(e) => setMerchantQuery(e.target.value)}
-                  placeholder="Busca el comercio (ej. Hackathon UFM)"
-                    className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm sm:text-base"
-                />
-                {matchedMerchants.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {matchedMerchants.map(team => (
-                      <button
-                        key={team.id}
-                        type="button"
-                        onClick={() => handleSelectMerchant(team)}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-dark-bg border border-dark-border rounded-lg hover:border-primary-red/40 transition-all text-left"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-white">{team.name}</p>
-                          <p className="text-xs text-gray-400">{team.event}</p>
+                <div className="relative">
+                  <HiSearch className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                  <input
+                    type="text"
+                    value={merchantQuery}
+                    onChange={(e) => {
+                      setMerchantQuery(e.target.value);
+                      setSelectedMerchant(null);
+                      setErrorMessage('');
+                    }}
+                    onFocus={() => {
+                      if (merchantResults.length > 0) {
+                        setShowDropdown(true);
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    placeholder="Busca el comercio (ej. Hackathon UFM)"
+                    className="w-full pl-10 sm:pl-12 lg:pl-14 pr-4 sm:pr-5 lg:pr-6 py-3 sm:py-4 lg:py-5 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm sm:text-base"
+                  />
+                  {showDropdown && (
+                    <div className="absolute z-20 mt-2 w-full bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl shadow-xl max-h-72 overflow-y-auto">
+                      {isSearching ? (
+                        <div className="py-4 px-4 text-sm text-gray-400">
+                          Buscando comercios...
                         </div>
-                        <HiOfficeBuilding className="w-5 h-5 text-primary-red" />
-                      </button>
-                    ))}
-                  </div>
-                )}
+                      ) : merchantResults.length === 0 ? (
+                        <div className="py-4 px-4 text-sm text-gray-500">
+                          No encontramos comercios que coincidan con tu búsqueda.
+                        </div>
+                      ) : (
+                        merchantResults.map((merchant) => (
+                          <button
+                            key={merchant.id}
+                            type="button"
+                            onMouseDown={() => handleSelectMerchant(merchant)}
+                            className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-dark-card transition-colors"
+                          >
+                            <div className="w-10 h-10 rounded-full bg-primary-red/10 flex items-center justify-center text-primary-red">
+                              <HiOfficeBuilding className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-white truncate">
+                                {merchant.name}
+                              </p>
+                              <p className="text-xs text-gray-400 truncate">
+                                {merchant.groupId}
+                              </p>
+                              {merchant.eventName && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  {merchant.eventName}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Escribe al menos 2 caracteres y selecciona el comercio correcto de la lista.
+                </p>
               </div>
 
               {/* Amount Input */}
               <div>
                 <label className="block text-sm sm:text-base font-medium text-gray-300 mb-2 sm:mb-3">
-                  Cantidad (UFM)
+                  Cantidad ({tokenSymbol})
                 </label>
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.001"
-                    min="0.001"
+                    step="0.01"
+                    min="0"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      setErrorMessage('');
+                    }}
                     placeholder="0.00"
                     required
                     className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 pr-16 sm:pr-20 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm sm:text-base lg:text-lg font-semibold"
                   />
                   <span className="absolute right-4 sm:right-6 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm sm:text-base lg:text-lg font-medium">
-                    UFM
+                    {tokenSymbol}
                   </span>
                 </div>
               </div>
@@ -285,11 +374,15 @@ export default function Pay() {
                 <div className="bg-dark-bg border border-dark-border rounded-lg p-4 sm:p-5 text-sm text-gray-300 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-white">Comercio seleccionado</span>
-                    <span className="text-xs text-gray-500">{selectedMerchant.carnet}</span>
+                    <span className="text-xs text-gray-500">Grupo-id: {selectedMerchant.groupId}</span>
                   </div>
                   <p className="text-base font-semibold text-white">{selectedMerchant.name}</p>
-                  <p className="text-xs text-gray-400">{selectedMerchant.event}</p>
-                  <p className="text-xs text-gray-500">{selectedMerchant.description}</p>
+                  {selectedMerchant.eventName && (
+                    <p className="text-xs text-gray-400">{selectedMerchant.eventName}</p>
+                  )}
+                  {selectedMerchant.description && (
+                    <p className="text-xs text-gray-500">{selectedMerchant.description}</p>
+                  )}
                 </div>
               )}
 
@@ -367,10 +460,10 @@ export default function Pay() {
                 </div>
                 <div className="space-y-4 text-sm sm:text-base text-gray-300">
                   <p>
-                    Puedes realizar pagos escaneando un código QR o ingresando manualmente el número de carnet del destinatario o el nombre del comercio.
+                    Puedes realizar pagos escaneando un código QR o ingresando manualmente el nombre o el grupo-id del comercio autorizado.
                   </p>
                   <p>
-                    Verifica siempre la información antes de confirmar el pago. Los pagos no pueden ser revertidos una vez confirmados.
+                    Verifica siempre el comercio y la cantidad antes de confirmar. Los pagos no pueden ser revertidos una vez enviados.
                   </p>
                 </div>
               </div>
