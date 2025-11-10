@@ -66,6 +66,9 @@ export class BusinessWalletService {
 
     const provider = CentralWalletService.getProvider();
     const signer = new ethers.Wallet(privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`, provider);
+
+    await CentralWalletService.ensureGasBalance(signer.address);
+
     const contract = CentralWalletService.getTokenContract(signer);
     const decimals = CentralWalletService.getTokenDecimals();
 
