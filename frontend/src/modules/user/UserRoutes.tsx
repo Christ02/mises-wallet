@@ -14,7 +14,6 @@ import Withdraw from './pages/Withdraw';
 import Send from './pages/Send';
 import Receive from './pages/Receive';
 import Pay from './pages/Pay';
-import Wallet from './pages/Wallet';
 
 export default function UserRoutes() {
   return (
@@ -30,8 +29,6 @@ export default function UserRoutes() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/settings" element={<Settings />} />
         
-        {/* Wallet routes */}
-        <Route path="/wallet" element={<Wallet />} />
         <Route path="/wallet/recharge" element={<Recharge />} />
         <Route path="/wallet/withdraw" element={<Withdraw />} />
         <Route path="/wallet/send" element={<Send />} />

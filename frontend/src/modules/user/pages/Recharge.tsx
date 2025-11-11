@@ -160,7 +160,7 @@ export default function Recharge() {
       setCardCvv('');
       setCardExpanded(false);
 
-      setTimeout(() => navigate('/wallet'), 1500);
+      setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err: any) {
       console.error('Error processing recharge:', err);
       setErrorMessage(err.response?.data?.error || 'No se pudo procesar la recarga. Intenta nuevamente.');
@@ -173,11 +173,11 @@ export default function Recharge() {
     <div className="space-y-8 sm:space-y-10">
       <div className="mt-5">
           <button
-          onClick={() => navigate('/wallet')}
+          onClick={() => navigate('/dashboard')}
           className="inline-flex items-center space-x-2 text-xs sm:text-sm text-gray-400 hover:text-white transition-colors bg-dark-card border border-dark-border px-3 py-2 rounded-lg"
           >
           <HiArrowLeft className="w-4 h-4" />
-          <span>Volver a la wallet</span>
+          <span>Volver al inicio</span>
           </button>
       </div>
 
