@@ -24,7 +24,11 @@ import {
   HiEye,
   HiUserAdd,
   HiX,
-  HiShoppingBag
+  HiShoppingBag,
+  HiDuplicate,
+  HiCheckCircle,
+  HiUserCircle,
+  HiCreditCard
 } from 'react-icons/hi';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
@@ -106,6 +110,7 @@ export default function EventBusinesses() {
   const [selectedMemberUser, setSelectedMemberUser] = useState<AdminUserSummary | null>(null);
   const [memberRole, setMemberRole] = useState('');
   const [addingMember, setAddingMember] = useState(false);
+  const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
   const numericEventId = useMemo(() => Number(eventId), [eventId]);
 
@@ -400,6 +405,22 @@ export default function EventBusinesses() {
     });
   };
 
+  const handleCopyWallet = async (address: string) => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedWallet(address);
+      setTimeout(() => setCopiedWallet(null), 2000);
+    } catch (err) {
+      console.error('Error copying wallet address', err);
+    }
+  };
+
+  const truncateAddress = (address: string | null | undefined) => {
+    if (!address) return 'Pendiente de asignar';
+    if (address.length <= 20) return address;
+    return `${address.slice(0, 10)}...${address.slice(-8)}`;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -428,50 +449,75 @@ export default function EventBusinesses() {
     <div className="space-y-6">
       <button
         onClick={() => navigate('/admin/events')}
-        className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+        className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-dark-card border border-dark-border px-3 py-2 rounded-lg"
       >
-        <HiArrowLeft className="w-5 h-5" />
-        Volver a eventos
+        <HiArrowLeft className="w-4 h-4" />
+        <span className="text-sm">Volver a eventos</span>
       </button>
 
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">{event.name}</h1>
-            <p className="text-sm text-gray-400 mt-1">Gestiona negocios y equipos asociados a este evento.</p>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0">
+              <HiShoppingBag className="w-6 h-6 sm:w-7 sm:h-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">{event.name}</h1>
+                <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
+                  {STATUS_LABELS[event.status]}
+                </span>
+              </div>
+              <p className="text-sm text-gray-400">Gestiona negocios y equipos asociados a este evento.</p>
+            </div>
           </div>
-          <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
-            {STATUS_LABELS[event.status]}
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm text-gray-300">
-          <div className="flex items-center gap-2">
-            <HiCalendar className="w-4 h-4 text-gray-400" />
-            <span>{formatDate(event.event_date)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <HiClock className="w-4 h-4 text-gray-400" />
-            <span>
-              {event.start_time.substring(0, 5)} - {event.end_time.substring(0, 5)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <HiLocationMarker className="w-4 h-4 text-gray-400" />
-            <span>{event.location}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <HiShoppingBag className="w-4 h-4 text-gray-400" />
-            <span>Negocios: {businesses.length}</span>
-          </div>
-        </div>
-        <div className="flex justify-end">
           <button
             onClick={openCreateBusinessModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all self-start lg:self-auto"
           >
             <HiPlus className="w-5 h-5" />
             Nuevo negocio
           </button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-dark-border">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary-red/10 border border-primary-red/20 flex items-center justify-center">
+              <HiCalendar className="w-4 h-4 text-primary-red" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Fecha</p>
+              <p className="text-sm font-semibold text-white">{formatDate(event.event_date)}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center">
+              <HiClock className="w-4 h-4 text-accent-blue" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Horario</p>
+              <p className="text-sm font-semibold text-white">
+                {event.start_time.substring(0, 5)} - {event.end_time.substring(0, 5)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-accent-yellow/10 border border-accent-yellow/20 flex items-center justify-center">
+              <HiLocationMarker className="w-4 h-4 text-accent-yellow" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Ubicación</p>
+              <p className="text-sm font-semibold text-white truncate">{event.location}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-positive/10 border border-positive/20 flex items-center justify-center">
+              <HiShoppingBag className="w-4 h-4 text-positive" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Negocios</p>
+              <p className="text-sm font-semibold text-white">{businesses.length}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -489,106 +535,109 @@ export default function EventBusinesses() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {businesses.map((business) => {
             const membersToDisplay = buildMembersList(business);
 
             return (
-              <div key={business.id} className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-bold text-white">{business.name}</h3>
-                    {business.description && (
-                      <p className="text-sm text-gray-300 leading-relaxed">{business.description}</p>
-                    )}
-                    <div className="text-sm text-gray-400">
-                      Responsable principal:{' '}
-                      {business.lead_user ? (
-                        <span className="text-white font-semibold">
-                          {business.lead_user.nombres} {business.lead_user.apellidos} ({business.lead_user.carnet})
-                        </span>
-                      ) : (
-                        <span className="text-white font-semibold">{business.lead_carnet}</span>
+              <div 
+                key={business.id} 
+                onClick={() => openViewMembersModal(business)}
+                className="bg-dark-card border border-dark-border rounded-xl p-6 hover:border-primary-red/30 transition-all flex flex-col h-full cursor-pointer group"
+              >
+                <div className="flex-1">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-primary-red transition-colors">{business.name}</h3>
+                      {business.description && (
+                        <p className="text-sm text-gray-300 leading-relaxed mb-4">{business.description}</p>
                       )}
                     </div>
-                    <div className="text-sm text-gray-400">
-                      ID de grupo: <span className="text-white font-semibold">{business.group_id}</span>
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Wallet del negocio: <span className="text-white font-semibold break-all">{business.wallet_address ?? 'Pendiente de asignar'}</span>
+                    <div className="flex flex-row gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => openEditBusinessModal(business)}
+                        className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+                        title="Editar negocio"
+                      >
+                        <HiPencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBusiness(business)}
+                        className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
+                        title="Eliminar negocio"
+                      >
+                        <HiTrash className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => openEditBusinessModal(business)}
-                      className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
-                      title="Editar negocio"
-                    >
-                      <HiPencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteBusiness(business)}
-                      className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
-                      title="Eliminar negocio"
-                    >
-                      <HiTrash className="w-4 h-4" />
-                    </button>
+
+                  <div className="space-y-3 mb-4">
+                    <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-1">Responsable principal</p>
+                      <div className="flex items-center gap-2">
+                        <HiUserCircle className="w-4 h-4 text-primary-red flex-shrink-0" />
+                        <p className="text-sm text-white font-semibold truncate">
+                          {business.lead_user ? (
+                            <>
+                              {business.lead_user.nombres} {business.lead_user.apellidos}
+                              <span className="text-gray-400 ml-1">({business.lead_user.carnet})</span>
+                            </>
+                          ) : (
+                            business.lead_carnet
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-1">ID de grupo</p>
+                      <p className="text-sm text-white font-semibold font-mono">{business.group_id}</p>
+                    </div>
+
+                    <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-3">
+                      <p className="text-xs text-gray-500 mb-2">Wallet del negocio</p>
+                      {business.wallet_address ? (
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <HiCreditCard className="w-4 h-4 text-accent-blue flex-shrink-0" />
+                          <code className="text-xs text-white font-mono flex-1 truncate" title={business.wallet_address}>
+                            {truncateAddress(business.wallet_address)}
+                          </code>
+                          <button
+                            onClick={() => handleCopyWallet(business.wallet_address!)}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-bg rounded transition-all flex-shrink-0"
+                            title="Copiar dirección"
+                          >
+                            {copiedWallet === business.wallet_address ? (
+                              <HiCheckCircle className="w-4 h-4 text-positive" />
+                            ) : (
+                              <HiDuplicate className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400">Pendiente de asignar</p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-dark-bg border border-dark-border rounded-xl p-4 space-y-3">
+                <div className="bg-dark-bg border border-dark-border rounded-xl p-4 mt-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-300">Miembros</h4>
-                      <p className="text-xs text-gray-500">{membersToDisplay.length} integrantes</p>
+                      <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <HiUserCircle className="w-4 h-4 text-primary-red" />
+                        Miembros
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-0.5">{membersToDisplay.length} integrantes</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openViewMembersModal(business)}
-                        className="p-2 text-gray-300 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
-                        title="Ver miembros"
-                      >
-                        <HiEye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openAddMemberModal(business)}
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-xs font-semibold transition-all"
-                      >
-                        <HiUserAdd className="w-4 h-4" />
-                        <span>Agregar</span>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => openAddMemberModal(business)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-xs font-semibold transition-all"
+                    >
+                      <HiUserAdd className="w-3.5 h-3.5" />
+                      <span>Agregar</span>
+                    </button>
                   </div>
-                  {membersToDisplay.length === 0 ? (
-                    <p className="text-sm text-gray-500">Este negocio aún no tiene usuarios asignados.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {membersToDisplay.slice(0, 3).map((member) => (
-                        <div
-                          key={member.id}
-                          className="flex items-center justify-between bg-dark-card border border-dark-border rounded-lg px-3 py-2"
-                        >
-                          <div>
-                            <p className="text-sm text-white font-medium">
-                              {member.nombres || member.apellidos
-                                ? `${member.nombres ?? ''} ${member.apellidos ?? ''}`.trim()
-                                : member.carnet}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {member.role}
-                              {member.carnet ? ` · ${member.carnet}` : ''}
-                            </p>
-                          </div>
-                          {member.isLead && (
-                            <span className="text-xs font-semibold text-primary-red">Responsable</span>
-                          )}
-                        </div>
-                      ))}
-                      {membersToDisplay.length > 3 && (
-                        <p className="text-xs text-gray-500">+{membersToDisplay.length - 3} miembros más</p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             );

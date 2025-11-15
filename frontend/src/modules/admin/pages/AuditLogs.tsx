@@ -4,7 +4,9 @@ import {
   HiChevronDown,
   HiClipboardList,
   HiFilter,
-  HiSearch
+  HiSearch,
+  HiEye,
+  HiX
 } from 'react-icons/hi';
 import { fetchAuditLogs, AuditLog } from '../services/auditLogs';
 
@@ -37,6 +39,7 @@ export default function AuditLogs() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
@@ -242,6 +245,9 @@ export default function AuditLogs() {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Descripción
                     </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-border">
@@ -276,25 +282,16 @@ export default function AuditLogs() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{log.description ?? '—'}</p>
-                        {log.metadata && Object.keys(log.metadata).length > 0 && (
-                          <div className="mt-2 bg-dark-bg/70 border border-dark-border rounded-lg px-3 py-2 text-xs text-gray-400">
-                            {Object.entries(log.metadata).map(([key, value]) => (
-                              <div key={key} className="flex justify-between gap-4">
-                                <span className="text-gray-500">{key}</span>
-                                <span className="font-mono text-gray-300 truncate max-w-[220px]" title={String(value)}>
-                                  {String(value)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {(log.ip_address || log.user_agent) && (
-                          <div className="mt-2 text-xs text-gray-500 space-y-1">
-                            {log.ip_address && <div>IP: {log.ip_address}</div>}
-                            {log.user_agent && <div className="line-clamp-2">UA: {log.user_agent}</div>}
-                          </div>
-                        )}
+                        <p className="text-sm text-gray-300 line-clamp-2">{log.description ?? '—'}</p>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="p-2 hover:bg-dark-bg rounded-lg transition-colors text-gray-400 hover:text-primary-red"
+                          title="Ver detalles"
+                        >
+                          <HiEye className="w-5 h-5" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -329,6 +326,162 @@ export default function AuditLogs() {
           </>
         )}
       </div>
+
+      {/* Modal de detalles */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-dark-card border border-dark-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-dark-border">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary-red/10 border border-primary-red/20 flex items-center justify-center">
+                  <HiEye className="w-5 h-5 text-primary-red" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Detalles del log</h2>
+                  <p className="text-sm text-gray-400">Información completa de la acción</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="p-2 hover:bg-dark-bg rounded-lg transition-colors text-gray-400 hover:text-white"
+              >
+                <HiX className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Información básica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Fecha y hora</p>
+                  <p className="text-sm text-white font-semibold">{formatDateTime(selectedLog.created_at)}</p>
+                </div>
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Acción</p>
+                  <p className="text-sm text-white font-semibold">{selectedLog.action}</p>
+                </div>
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Entidad</p>
+                  <p className="text-sm text-white font-semibold">{selectedLog.entity ?? '—'}</p>
+                </div>
+                {selectedLog.entity_id && (
+                  <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">ID de entidad</p>
+                    <p className="text-sm text-white font-mono">{selectedLog.entity_id}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Usuario */}
+              <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Usuario</p>
+                {selectedLog.user ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">Nombre completo</span>
+                      <span className="text-sm text-white font-semibold">
+                        {selectedLog.user.nombres} {selectedLog.user.apellidos}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">Carnet</span>
+                      <span className="text-sm text-white font-mono">{selectedLog.user.carnet}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">Email</span>
+                      <span className="text-sm text-white">{selectedLog.user.email}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-300">Sistema</p>
+                )}
+              </div>
+
+              {/* Descripción */}
+              {selectedLog.description && (
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Descripción</p>
+                  <p className="text-sm text-white whitespace-pre-wrap">{selectedLog.description}</p>
+                </div>
+              )}
+
+              {/* Metadatos */}
+              {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Metadatos</p>
+                  <div className="space-y-2">
+                    {Object.entries(selectedLog.metadata).map(([key, value]) => {
+                      // Si el valor es un objeto, mostrarlo formateado
+                      if (typeof value === 'object' && value !== null) {
+                        return (
+                          <div key={key} className="space-y-1">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider">{key}</p>
+                            <div className="bg-dark-card border border-dark-border rounded-lg p-3 space-y-1">
+                              {Object.entries(value).map(([subKey, subValue]) => (
+                                <div key={subKey} className="flex justify-between gap-4 text-xs">
+                                  <span className="text-gray-400">{subKey}:</span>
+                                  <span className="text-gray-300 font-mono text-right break-all">
+                                    {String(subValue)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={key} className="flex justify-between gap-4">
+                          <span className="text-sm text-gray-400">{key}</span>
+                          <span className="text-sm text-white font-mono text-right break-all">
+                            {String(value)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Información de conexión */}
+              {(selectedLog.ip_address || selectedLog.user_agent) && (
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Información de conexión</p>
+                  <div className="space-y-2">
+                    {selectedLog.ip_address && (
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="text-sm text-gray-400">Dirección IP</span>
+                        <span className="text-sm text-white font-mono text-right break-all">
+                          {selectedLog.ip_address}
+                        </span>
+                      </div>
+                    )}
+                    {selectedLog.user_agent && (
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="text-sm text-gray-400">User Agent</span>
+                        <span className="text-sm text-white text-right break-all">
+                          {selectedLog.user_agent}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-dark-border flex justify-end">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="px-4 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-medium transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

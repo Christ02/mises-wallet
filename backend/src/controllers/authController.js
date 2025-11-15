@@ -1,4 +1,5 @@
 import { AuthService } from '../services/authService.js';
+import { AuditService } from '../services/auditService.js';
 
 export class AuthController {
   static async register(req, res) {
@@ -12,6 +13,16 @@ export class AuthController {
         email,
         password
       });
+
+      // Log de registro
+      await AuditService.logCreate(
+        result.user.id,
+        'user',
+        result.user.id,
+        `Usuario registrado: ${email} (${carnet_universitario})`,
+        { email, carnet_universitario },
+        req
+      );
 
       res.status(201).json({
         message: 'Usuario registrado exitosamente',
@@ -30,11 +41,17 @@ export class AuthController {
       
       const result = await AuthService.login(email, password);
 
+      // Log de login exitoso
+      await AuditService.logLogin(result.user.id, email, true, req);
+
       res.status(200).json({
         message: 'Login exitoso',
         ...result
       });
     } catch (error) {
+      // Log de login fallido
+      await AuditService.logLogin(null, email, false, req);
+
       res.status(401).json({
         error: error.message
       });

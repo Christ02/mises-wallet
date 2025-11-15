@@ -9,7 +9,10 @@ import {
   HiTrash,
   HiShoppingBag,
   HiX,
-  HiPhotograph
+  HiPhotograph,
+  HiSearch,
+  HiFilter,
+  HiChevronDown
 } from 'react-icons/hi';
 import {
   AdminEvent,
@@ -63,10 +66,14 @@ export default function EventManagement() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
   const [saving, setSaving] = useState(false);
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
-  const [coverImageChanged, setCoverImageChanged] = useState(false);
-  const [existingCoverImage, setExistingCoverImage] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<Array<{ url: string; isExisting: boolean }>>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
 
   const buildCoverImageUrl = (path?: string | null) => {
     if (!path) return null;
@@ -74,18 +81,21 @@ export default function EventManagement() {
     return `${API_BASE_URL}${path}`;
   };
 
-  const revokePreview = (preview: string | null) => {
-    if (preview && preview.startsWith('blob:')) {
-      URL.revokeObjectURL(preview);
+  const revokePreview = (url: string) => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
     }
   };
 
-  const resetCoverImageState = () => {
-    revokePreview(coverImagePreview);
-    setCoverImageFile(null);
-    setCoverImagePreview(null);
-    setCoverImageChanged(false);
-    setExistingCoverImage(null);
+  const resetImageState = () => {
+    imagePreviews.forEach((preview) => {
+      if (!preview.isExisting) {
+        revokePreview(preview.url);
+      }
+    });
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
   };
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -94,41 +104,86 @@ export default function EventManagement() {
       return;
     }
 
-    const file = fileList[0];
-    if (!file.type.startsWith('image/')) {
-      alert('Selecciona un archivo de imagen válido.');
-      event.target.value = '';
-      return;
+    const newFiles: File[] = [];
+    const newPreviews: Array<{ url: string; isExisting: boolean }> = [];
+
+    Array.from(fileList).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        alert(`El archivo "${file.name}" no es una imagen válida.`);
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`La imagen "${file.name}" supera el tamaño máximo permitido de 5MB.`);
+        return;
+      }
+
+      newFiles.push(file);
+      newPreviews.push({ url: URL.createObjectURL(file), isExisting: false });
+    });
+
+    if (newFiles.length > 0) {
+      setImageFiles((prev) => [...prev, ...newFiles]);
+      setImagePreviews((prev) => [...prev, ...newPreviews]);
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen supera el tamaño máximo permitido de 5MB.');
-      event.target.value = '';
-      return;
-    }
-
-    revokePreview(coverImagePreview);
-    setCoverImageFile(file);
-    setCoverImagePreview(URL.createObjectURL(file));
-    setCoverImageChanged(true);
     event.target.value = '';
   };
 
-  const handleRemoveSelectedImage = () => {
-    revokePreview(coverImagePreview);
-    setCoverImageFile(null);
-    if (editingEvent && existingCoverImage) {
-      setCoverImagePreview(existingCoverImage);
-      setCoverImageChanged(false);
+  const handleRemoveImage = (index: number) => {
+    const preview = imagePreviews[index];
+    
+    if (preview.isExisting) {
+      // Es una imagen existente, solo la removemos de los arrays
+      const existingIndex = existingImages.findIndex((url) => url === preview.url);
+      if (existingIndex !== -1) {
+        setExistingImages((prev) => prev.filter((_, i) => i !== existingIndex));
+      }
     } else {
-      setCoverImagePreview(null);
-      setCoverImageChanged(false);
+      // Es una imagen nueva, revocamos el blob URL y la removemos de files
+      revokePreview(preview.url);
+      // Encontramos el índice en imageFiles contando solo las nuevas imágenes
+      const newImageIndex = imagePreviews.slice(0, index).filter((p) => !p.isExisting).length;
+      setImageFiles((prev) => prev.filter((_, i) => i !== newImageIndex));
     }
+
+    // Removemos de previews
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
-  }, [events]);
+  const filteredEvents = useMemo(() => {
+    let filtered = [...events];
+
+    // Búsqueda por texto
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (event) =>
+          event.name.toLowerCase().includes(search) ||
+          event.location.toLowerCase().includes(search) ||
+          (event.description && event.description.toLowerCase().includes(search))
+      );
+    }
+
+    // Filtro por estado
+    if (filterStatus) {
+      filtered = filtered.filter((event) => event.status === filterStatus);
+    }
+
+    // Filtro por rango de fechas
+    if (filterDateFrom) {
+      const fromDate = new Date(filterDateFrom);
+      filtered = filtered.filter((event) => new Date(event.event_date) >= fromDate);
+    }
+
+    if (filterDateTo) {
+      const toDate = new Date(filterDateTo);
+      toDate.setHours(23, 59, 59, 999); // Incluir todo el día
+      filtered = filtered.filter((event) => new Date(event.event_date) <= toDate);
+    }
+
+    return filtered.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+  }, [events, searchTerm, filterStatus, filterDateFrom, filterDateTo]);
 
   useEffect(() => {
     const load = async () => {
@@ -151,7 +206,7 @@ export default function EventManagement() {
   const openCreateModal = () => {
     setFormState(initialForm);
     setEditingEvent(null);
-    resetCoverImageState();
+    resetImageState();
     setIsCreateOpen(true);
   };
 
@@ -166,11 +221,14 @@ export default function EventManagement() {
       status: event.status === 'publicado' ? 'publicado' : 'borrador'
     });
     setEditingEvent(event);
+    resetImageState();
+    
+    // Si el evento tiene imágenes existentes, las cargamos
+    // Por ahora solo manejamos cover_image_url, pero esto se puede extender
     const imageUrl = buildCoverImageUrl(event.cover_image_url);
-    resetCoverImageState();
     if (imageUrl) {
-      setExistingCoverImage(imageUrl);
-      setCoverImagePreview(imageUrl);
+      setExistingImages([imageUrl]);
+      setImagePreviews([{ url: imageUrl, isExisting: true }]);
     }
     setIsCreateOpen(true);
   };
@@ -179,7 +237,7 @@ export default function EventManagement() {
     setIsCreateOpen(false);
     setEditingEvent(null);
     setFormState(initialForm);
-    resetCoverImageState();
+    resetImageState();
   };
 
   const handleChange = (field: keyof EventFormState, value: string) => {
@@ -196,11 +254,16 @@ export default function EventManagement() {
 
     setSaving(true);
     try {
+      // Por ahora, usamos la primera imagen como cover_image para mantener compatibilidad con el backend
+      // En el futuro, el backend puede extenderse para manejar múltiples imágenes
+      const firstImageFile = imageFiles.length > 0 ? imageFiles[0] : undefined;
+      const hasNewImages = imageFiles.length > 0;
+      
       if (editingEvent) {
         const updated = await updateEvent(
           editingEvent.id,
           formState,
-          coverImageChanged ? coverImageFile : undefined
+          hasNewImages ? firstImageFile : undefined
         );
         setEvents((prev) => prev.map((evt) => (evt.id === updated.id ? { ...evt, ...updated } : evt)));
       } else {
@@ -213,7 +276,7 @@ export default function EventManagement() {
           description: formState.description,
           status: formState.status
         };
-        const created = await createEvent(payload, coverImageFile);
+        const created = await createEvent(payload, firstImageFile);
         setEvents((prev) => [{ ...created }, ...prev]);
       }
       closeModal();
@@ -315,8 +378,69 @@ export default function EventManagement() {
           <div className="w-12 h-12 rounded-xl bg-gray-500/10 border border-gray-500/30 flex items-center justify-center">
             <HiShoppingBag className="w-6 h-6 text-gray-400" />
                   </div>
-                </div>
             </div>
+      </div>
+
+      <div className="bg-dark-card rounded-xl border border-dark-border p-6">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, ubicación o descripción..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3.5 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+            />
+          </div>
+          <button
+            onClick={() => setFilterOpen((prev) => !prev)}
+            className="flex items-center justify-center w-12 h-12 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:border-primary-red/50 transition-all"
+            title="Mostrar filtros avanzados"
+          >
+            <HiFilter className="w-5 h-5" />
+          </button>
+        </div>
+
+        {filterOpen && (
+          <div className="mt-4 border-t border-dark-border pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <div>
+              <label className="block text-gray-400 mb-2">Estado</label>
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                >
+                  <option value="">Todos</option>
+                  <option value="borrador">Borrador</option>
+                  <option value="publicado">Publicado</option>
+                  <option value="finalizado">Finalizado</option>
+                </select>
+                <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-400 mb-2">Desde</label>
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(e) => setFilterDateFrom(e.target.value)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 mb-2">Hasta</label>
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(e) => setFilterDateTo(e.target.value)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       {events.length === 0 ? (
         <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
@@ -332,57 +456,66 @@ export default function EventManagement() {
               </button>
             </div>
       ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {sortedEvents.map((event) => {
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {filteredEvents.length === 0 ? (
+            <div className="col-span-3 bg-dark-card border border-dark-border rounded-xl p-12 text-center">
+              <HiShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-300 mb-2">No se encontraron eventos</h2>
+              <p className="text-gray-500 mb-6">
+                No hay eventos que coincidan con los filtros actuales. Intenta con otros términos o crea un nuevo evento.
+              </p>
+              <button
+                onClick={openCreateModal}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all"
+              >
+                <HiPlus className="w-5 h-5" />
+                Crear evento
+              </button>
+            </div>
+          ) : (
+            filteredEvents.map((event) => {
             const coverImage = buildCoverImageUrl(event.cover_image_url);
 
             return (
               <div
                 key={event.id}
-                className="bg-dark-card border border-dark-border rounded-xl p-6 hover:border-primary-red/30 transition-all"
+                className="bg-dark-card border border-dark-border rounded-xl p-6 hover:border-primary-red/30 transition-all flex flex-col h-full"
               >
-                {coverImage && (
-                  <div className="mb-4 overflow-hidden rounded-xl border border-dark-border bg-dark-bg">
-                    <img
-                      src={coverImage}
-                      alt={`Portada del evento ${event.name}`}
-                      className="w-full h-40 object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-2">{event.name}</h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
-                      <HiCalendar className="w-4 h-4" />
-                      <span>{formatDate(event.event_date)}</span>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white mb-2">{event.name}</h3>
+                      <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
+                        <HiCalendar className="w-4 h-4" />
+                        <span>{formatDate(event.event_date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <HiClock className="w-4 h-4" />
+                        <span>
+                          {event.start_time.substring(0, 5)} - {event.end_time.substring(0, 5)}
+                        </span>
+                      </div>
                     </div>
+                    <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
+                      {STATUS_LABELS[event.status]}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 mb-5">
+                    {event.description && (
+                      <p className="text-sm text-gray-300 leading-relaxed">{event.description}</p>
+                    )}
                     <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <HiClock className="w-4 h-4" />
-                      <span>
-                        {event.start_time.substring(0, 5)} - {event.end_time.substring(0, 5)}
-                      </span>
+                      <HiLocationMarker className="w-4 h-4" />
+                      <span>{event.location}</span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      Negocios registrados: <span className="text-white font-semibold">{event.business_count}</span>
                     </div>
                   </div>
-                  <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
-                    {STATUS_LABELS[event.status]}
-                  </span>
                 </div>
 
-                <div className="space-y-3 mb-5">
-                  {event.description && (
-                    <p className="text-sm text-gray-300 leading-relaxed">{event.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <HiLocationMarker className="w-4 h-4" />
-                    <span>{event.location}</span>
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    Negocios registrados: <span className="text-white font-semibold">{event.business_count}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-dark-border">
+                <div className="flex items-center gap-2 pt-4 mt-auto border-t border-dark-border">
                   <button
                     onClick={() => handleManageBusinesses(event)}
                     className="flex-1 px-4 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-semibold transition-all"
@@ -406,14 +539,15 @@ export default function EventManagement() {
                 </div>
               </div>
             );
-          })}
-                </div>
-              )}
+            })
+          )}
+            </div>
+          )}
 
       {isCreateOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-dark-border sticky top-0 bg-dark-card z-10">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between p-6 border-b border-dark-border flex-shrink-0">
               <h2 className="text-xl font-bold text-white">
                 {editingEvent ? 'Editar evento' : 'Crear evento'}
               </h2>
@@ -422,7 +556,9 @@ export default function EventManagement() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              {/* Contenido scrolleable */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Nombre del evento *</label>
                 <input
@@ -506,43 +642,51 @@ export default function EventManagement() {
             </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Imagen de portada</label>
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                    <label className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-dark-bg border border-dashed border-dark-border rounded-lg text-sm font-semibold text-gray-300 hover:border-primary-red/60 hover:text-white cursor-pointer transition-all">
-                      <HiPhotograph className="w-5 h-5" />
-                      <span>{coverImagePreview ? 'Cambiar imagen' : 'Seleccionar imagen'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageChange}
-                      />
-                    </label>
-                    {coverImagePreview && (
-                      <img
-                        src={coverImagePreview}
-                        alt="Previsualización del evento"
-                        className="h-24 w-full sm:w-40 object-cover rounded-lg border border-dark-border"
-                      />
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                    <span>Formatos permitidos: JPG, PNG, WEBP, GIF · Máx 5MB</span>
-                    {coverImagePreview && coverImageChanged && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveSelectedImage}
-                        className="text-primary-red hover:text-primary-red/80 font-semibold"
-                      >
-                        Quitar imagen
-                      </button>
-                    )}
+                <label className="block text-sm font-medium text-gray-300 mb-2">Imágenes del evento</label>
+                <div className="space-y-4">
+                  <label className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-dark-bg border border-dashed border-dark-border rounded-lg text-sm font-semibold text-gray-300 hover:border-primary-red/60 hover:text-white cursor-pointer transition-all">
+                    <HiPhotograph className="w-5 h-5" />
+                    <span>Agregar imágenes</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+
+                  {imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview.url}
+                            alt={`Previsualización ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border border-dark-border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute top-2 right-2 w-7 h-7 bg-red-500/90 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Eliminar imagen"
+                          >
+                            <HiX className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500">
+                    <p>Formatos permitidos: JPG, PNG, WEBP, GIF · Máx 5MB por imagen</p>
+                    <p className="mt-1">Puedes seleccionar múltiples imágenes a la vez</p>
                   </div>
                 </div>
               </div>
+              </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-dark-border">
+              <div className="flex items-center justify-end gap-3 pt-4 px-6 pb-6 border-t border-dark-border flex-shrink-0">
               <button
                   type="button"
                   onClick={closeModal}

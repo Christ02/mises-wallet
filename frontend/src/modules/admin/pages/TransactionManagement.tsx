@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   HiChevronDown,
-  HiDownload,
   HiFilter,
-  HiRefresh,
   HiSearch,
   HiSwitchHorizontal,
   HiTrendingDown,
-  HiTrendingUp
+  HiTrendingUp,
+  HiExternalLink
 } from 'react-icons/hi';
 import { fetchTransactions, AdminTransaction } from '../services/transactions';
 
@@ -154,39 +153,124 @@ export default function TransactionManagement() {
     return Array.from(set);
   }, [transactions]);
 
-  const handleExport = () => {
-    console.log('Exportar CSV - próximamente');
+  const getEtherscanUrl = (txHash: string | null | undefined) => {
+    if (!txHash) return null;
+    // Sepolia testnet
+    return `https://sepolia.etherscan.io/tx/${txHash}`;
   };
 
-  const handleRefresh = () => {
-    setRefreshToken((prev) => prev + 1);
+  const formatError = (error: unknown): { short: string; full: string } => {
+    const errorStr = String(error);
+    let short = errorStr;
+    
+    // Normalizar el error a minúsculas para comparación
+    const errorLower = errorStr.toLowerCase();
+    
+    // Errores de fondos y gas
+    if (errorLower.includes('insufficient funds') || errorLower.includes('insufficient balance')) {
+      if (errorLower.includes('gas') || errorLower.includes('intrinsic')) {
+        short = 'Fondos insuficientes para gas';
+      } else {
+        short = 'Fondos insuficientes';
+      }
+    }
+    // Errores de ejecución revertida
+    else if (errorLower.includes('execution reverted')) {
+      // Intentar extraer el mensaje de error personalizado
+      const customErrorMatch = errorStr.match(/execution reverted[:\s]+([^(\n]+)/i);
+      if (customErrorMatch && customErrorMatch[1].trim().length < 50) {
+        short = `Revertido: ${customErrorMatch[1].trim()}`;
+      } else {
+        short = 'Transacción revertida';
+      }
+    }
+    // Errores de rechazo del usuario
+    else if (errorLower.includes('user rejected') || errorLower.includes('user denied') || errorLower.includes('rejected by user')) {
+      short = 'Usuario rechazó la transacción';
+    }
+    // Errores de nonce
+    else if (errorLower.includes('nonce too high') || errorLower.includes('nonce too low')) {
+      short = 'Error de nonce (número de secuencia)';
+    }
+    // Errores de límite de gas
+    else if (errorLower.includes('gas required exceeds allowance') || errorLower.includes('out of gas')) {
+      short = 'Límite de gas excedido';
+    }
+    // Errores de precio de gas
+    else if (errorLower.includes('gas price') && errorLower.includes('too low')) {
+      short = 'Precio de gas muy bajo';
+    }
+    // Errores de transacción pendiente
+    else if (errorLower.includes('replacement fee too low') || errorLower.includes('already known')) {
+      short = 'Transacción pendiente o duplicada';
+    }
+    // Errores de contrato
+    else if (errorLower.includes('contract call') || errorLower.includes('call exception')) {
+      short = 'Error en llamada al contrato';
+    }
+    // Errores de red
+    else if (errorLower.includes('network error') || errorLower.includes('connection') || errorLower.includes('timeout')) {
+      short = 'Error de conexión con la red';
+    }
+    // Errores de validación
+    else if (errorLower.includes('invalid') || errorLower.includes('malformed')) {
+      short = 'Datos de transacción inválidos';
+    }
+    // Errores de permisos
+    else if (errorLower.includes('unauthorized') || errorLower.includes('permission denied')) {
+      short = 'Sin permisos para esta operación';
+    }
+    // Errores de allowance (tokens)
+    else if (errorLower.includes('allowance') || errorLower.includes('insufficient allowance')) {
+      short = 'Permiso de tokens insuficiente';
+    }
+    // Errores de transferencia
+    else if (errorLower.includes('transfer') && errorLower.includes('failed')) {
+      short = 'Transferencia fallida';
+    }
+    // Errores de estimación de gas
+    else if (errorLower.includes('estimate gas') || errorLower.includes('gas estimation')) {
+      short = 'Error al estimar gas';
+    }
+    // Errores de transacción ya procesada
+    else if (errorLower.includes('already been mined') || errorLower.includes('already processed')) {
+      short = 'Transacción ya procesada';
+    }
+    // Errores de timeout
+    else if (errorLower.includes('timeout') || errorLower.includes('timed out')) {
+      short = 'Tiempo de espera agotado';
+    }
+    // Errores desconocidos - truncar si es muy largo
+    else if (errorStr.length > 60) {
+      // Intentar extraer solo la parte relevante antes de truncar
+      const firstLine = errorStr.split('\n')[0];
+      if (firstLine.length <= 60) {
+        short = firstLine;
+      } else {
+        short = errorStr.substring(0, 60) + '...';
+      }
+    }
+    
+    return {
+      short,
+      full: errorStr
+    };
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-red to-primary-red/70 border border-primary-red/40 text-white flex items-center justify-center shadow-lg">
-              <HiSwitchHorizontal className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Transacciones del sistema</h1>
-              <p className="text-sm text-gray-400">
-                Monitorea las operaciones realizadas por los usuarios y el banco central.
-              </p>
-            </div>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-red to-primary-red/70 border border-primary-red/40 text-white flex items-center justify-center shadow-lg">
+            <HiSwitchHorizontal className="w-6 h-6" />
           </div>
-        </div>
-        <div className="flex items-center gap-3 self-end sm:self-auto">
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg font-semibold transition-all"
-          >
-            <HiDownload className="w-5 h-5" />
-            <span>Exportar</span>
-          </button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">Transacciones del sistema</h1>
+            <p className="text-sm text-gray-400">
+              Monitorea las operaciones realizadas por los usuarios y el banco central.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -223,10 +307,10 @@ export default function TransactionManagement() {
         </div>
       </div>
       {/* Filters */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+      <div className="bg-dark-card rounded-xl border border-dark-border p-6">
+        <div className="flex items-center gap-3">
           <div className="relative flex-1">
-            <HiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
               placeholder="Buscar por ID, hash, usuario o carnet..."
@@ -235,48 +319,22 @@ export default function TransactionManagement() {
                 setSearchInput(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+              className="w-full pl-10 pr-4 py-3.5 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters((prev) => !prev)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
-            >
-              <HiFilter className="w-5 h-5" />
-              <span>Filtrar</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setShowFilters((prev) => !prev)}
+            className="flex items-center justify-center w-12 h-12 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:border-primary-red/50 transition-all"
+            title="Mostrar filtros avanzados"
+          >
+            <HiFilter className="w-5 h-5" />
+          </button>
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 border-t border-dark-border pt-4">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs uppercase tracking-wider text-gray-500">Desde</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all appearance-none [color-scheme:dark]"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs uppercase tracking-wider text-gray-500">Hasta</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all appearance-none [color-scheme:dark]"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs uppercase tracking-wider text-gray-500">Estado</label>
+          <div className="mt-4 border-t border-dark-border pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <div>
+              <label className="block text-gray-400 mb-2">Estado</label>
               <div className="relative">
                 <select
                   value={statusFilter}
@@ -284,7 +342,7 @@ export default function TransactionManagement() {
                     setStatusFilter(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full appearance-none px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all cursor-pointer"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
                 >
                   <option value="Todos">Todos</option>
                   <option value="completada">Completadas</option>
@@ -292,11 +350,11 @@ export default function TransactionManagement() {
                   <option value="en_proceso">En proceso</option>
                   <option value="fallida">Fallidas</option>
                 </select>
-                <HiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs uppercase tracking-wider text-gray-500">Tipo</label>
+            <div>
+              <label className="block text-gray-400 mb-2">Tipo</label>
               <div className="relative">
                 <select
                   value={typeFilter}
@@ -304,7 +362,7 @@ export default function TransactionManagement() {
                     setTypeFilter(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full appearance-none px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all cursor-pointer"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
                 >
                   <option value="Todos">Todos</option>
                   {uniqueTypes.length === 0 && <option value="transferencia">Transferencia</option>}
@@ -314,11 +372,11 @@ export default function TransactionManagement() {
                     </option>
                   ))}
                 </select>
-                <HiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs uppercase tracking-wider text-gray-500">Dirección</label>
+            <div>
+              <label className="block text-gray-400 mb-2">Dirección</label>
               <div className="relative">
                 <select
                   value={directionFilter}
@@ -326,14 +384,38 @@ export default function TransactionManagement() {
                     setDirectionFilter(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full appearance-none px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all cursor-pointer"
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
                 >
                   <option value="Todos">Todas</option>
                   <option value="saliente">Salidas</option>
                   <option value="entrante">Entradas</option>
                 </select>
-                <HiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
+            </div>
+            <div>
+              <label className="block text-gray-400 mb-2">Desde</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 mb-2">Hasta</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
+              />
             </div>
           </div>
         )}
@@ -434,19 +516,35 @@ export default function TransactionManagement() {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap max-w-xs">
-                        <div className="flex flex-col gap-1 text-xs text-gray-400">
-                          <span className="font-mono text-gray-300 truncate" title={tx.reference ?? '—'}>
-                            {tx.reference ?? '—'}
-                          </span>
-                          {tx.metadata?.to && (
-                            <span className="font-mono truncate" title={`Destino: ${tx.metadata.to as string}`}>
-                              Destino: {tx.metadata.to as string}
-                            </span>
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="flex flex-col gap-1.5 text-xs">
+                          {tx.reference ? (
+                            <a
+                              href={getEtherscanUrl(tx.reference) || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-accent-blue hover:text-primary-red transition-colors group"
+                              title={`Ver en Etherscan: ${tx.reference}`}
+                            >
+                              <span>Ver en Etherscan</span>
+                              <HiExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                            </a>
+                          ) : tx.metadata?.error ? (
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-negative font-semibold">Error:</span>
+                              <span 
+                                className="text-negative truncate" 
+                                title={formatError(tx.metadata.error).full}
+                              >
+                                {formatError(tx.metadata.error).short}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">—</span>
                           )}
-                          {tx.metadata?.error && (
-                            <span className="text-negative">
-                              Error: {String(tx.metadata.error)}
+                          {tx.metadata?.to && !tx.metadata?.error && (
+                            <span className="font-mono truncate text-gray-500" title={`Destino: ${tx.metadata.to as string}`}>
+                              Destino: {tx.metadata.to as string}
                             </span>
                           )}
                         </div>

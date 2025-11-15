@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  HiCheckCircle,
   HiCreditCard,
-  HiCurrencyDollar,
   HiDownload,
-  HiLightningBolt,
+  HiExternalLink,
   HiRefresh,
   HiShieldCheck,
   HiSwitchHorizontal,
-  HiUpload
+  HiClipboard,
+  HiCheckCircle,
+  HiArrowRight
 } from 'react-icons/hi';
 import api, { API_BASE_URL } from '../../../services/api';
 
@@ -115,6 +116,28 @@ const formatDateTime = (value: string) => {
   });
 };
 
+const truncateAddress = (address: string, startChars = 6, endChars = 4): string => {
+  if (!address || address.length <= startChars + endChars) return address;
+  return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
+};
+
+const isEthereumAddress = (str: string): boolean => {
+  return /^0x[a-fA-F0-9]{40}$/.test(str);
+};
+
+const isTransactionHash = (str: string): boolean => {
+  return /^0x[a-fA-F0-9]{64}$/.test(str);
+};
+
+const getEtherscanUrl = (hash: string): string | null => {
+  if (!hash || (!isEthereumAddress(hash) && !isTransactionHash(hash))) return null;
+  // Sepolia testnet
+  if (isTransactionHash(hash)) {
+    return `https://sepolia.etherscan.io/tx/${hash}`;
+  }
+  return `https://sepolia.etherscan.io/address/${hash}`;
+};
+
 export default function CentralWallet() {
   const { status, loading, error, refresh } = useWalletStatus();
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -128,6 +151,11 @@ export default function CentralWallet() {
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
   const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
   const [processingWithdrawal, setProcessingWithdrawal] = useState<number | null>(null);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const [copiedContract, setCopiedContract] = useState(false);
+  
+  const navigate = useNavigate();
+  const ITEMS_PER_PAGE = 5;
 
   const fetchActivity = async () => {
     setMovementsLoading(true);
@@ -248,100 +276,33 @@ export default function CentralWallet() {
     return `${num.toLocaleString('es-GT', { maximumFractionDigits: 4 })} ${symbol}`;
   }, [status?.token?.totalSupply, status?.token?.symbol]);
 
+
   return (
     <div className="space-y-6">
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-red to-primary-red/70 border border-primary-red/40 text-white flex items-center justify-center shadow-lg">
-            <HiCreditCard className="w-6 h-6" />
+      {/* Header */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+              <HiCreditCard className="w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Wallet central</h1>
+              <p className="text-sm text-gray-400">
+                Controla la liquidez del banco central y los movimientos estratégicos.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Wallet central</h1>
-            <p className="text-sm text-gray-400">
-              Controla la liquidez del banco central y los movimientos estratégicos.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 self-end lg:self-auto">
-          <a
-            href={`${API_BASE_URL}/api/admin/reports`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg font-semibold transition-all"
-          >
-            <HiDownload className="w-5 h-5" />
-            Exportar actividad
-          </a>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
+      {/* Estado de la red - Card destacada */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
             <h2 className="text-lg font-semibold text-white">Estado de la red</h2>
-            <HiShieldCheck className="w-5 h-5 text-primary-red" />
+            <p className="text-xs text-gray-500">Información de conexión y configuración</p>
           </div>
-          {loading ? (
-            <div className="space-y-3 text-gray-500">
-              <div className="h-4 bg-dark-bg/60 rounded animate-pulse" />
-              <div className="h-4 bg-dark-bg/60 rounded animate-pulse w-3/4" />
-              <div className="h-4 bg-dark-bg/60 rounded animate-pulse w-1/2" />
-            </div>
-          ) : error ? (
-            <p className="text-sm text-negative">{error}</p>
-          ) : (
-            status && (
-              <div className="space-y-3 text-sm text-gray-400">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Red</span>
-                  <span className="text-white font-semibold capitalize">{status.network}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Chain ID</span>
-                  <span className="text-white font-semibold">{status.chainId}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">Dirección</span>
-                  <span className="text-white font-semibold truncate max-w-[60%]" title={status.address}>
-                    {status.address}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-gray-500">RPC URL</span>
-                  <p className="text-xs text-gray-400 bg-dark-bg border border-dark-border rounded-lg px-3 py-2 break-words">
-                    {status.rpcUrl}
-                  </p>
-                </div>
-                {status.token && (
-                  <div className="space-y-1 border-t border-dark-border pt-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Token</span>
-                      <span className="text-white font-semibold">{status.token.symbol}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Contrato</span>
-                      <span
-                        className="text-white font-semibold truncate max-w-[60%]"
-                        title={status.token.contract}
-                      >
-                        {status.token.contract}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className="border-t border-dark-border pt-3 flex items-center justify-between">
-                  <span className="text-gray-500">Balance disponible</span>
-                  <span className="text-white font-semibold">{balanceFormatted}</span>
-                </div>
-                {totalSupplyFormatted && (
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>Total supply</span>
-                    <span className="text-gray-200 font-semibold">{totalSupplyFormatted}</span>
-                  </div>
-                )}
-              </div>
-            )
-          )}
           <button
             onClick={() => {
               refresh();
@@ -349,63 +310,130 @@ export default function CentralWallet() {
               fetchSettlements();
               fetchWithdrawals();
             }}
-            className="inline-flex items-center gap-2 text-xs text-primary-red hover:text-primary-red/80 transition"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-dark-bg border border-dark-border hover:border-primary-red/50 text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-all"
           >
             <HiRefresh className="w-4 h-4" />
             Refrescar
           </button>
         </div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-20 bg-dark-bg/60 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="bg-negative/10 border border-negative/30 text-negative px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        ) : (
+          status && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Balance destacado - Mitad izquierda */}
+              <div className="bg-gradient-to-br from-primary-red/10 to-primary-red/5 border border-primary-red/20 rounded-xl p-5 flex items-center justify-center">
+                <div className="flex flex-col items-center text-center">
+                  <span className="text-xs uppercase tracking-wider text-gray-500 mb-2">Balance disponible</span>
+                  <span className="text-2xl font-bold text-white mb-2">{balanceFormatted}</span>
+                  {totalSupplyFormatted && (
+                    <div className="text-xs text-gray-400">
+                      Total supply: <span className="text-gray-300 font-semibold">{totalSupplyFormatted}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-        <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-white">Acciones rápidas</h2>
-              <p className="text-xs text-gray-500">
-                Ejecuta movimientos estratégicos controlados por el banco central.
-              </p>
+              {/* Información de red y token - Mitad derecha */}
+              <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4 space-y-3">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Red</span>
+                    <span className="text-sm text-white font-semibold capitalize">{status.network}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Chain ID</span>
+                    <span className="text-sm text-white font-semibold font-mono">{status.chainId}</span>
+                  </div>
+                  <div className="pt-2 border-t border-dark-border space-y-3">
+                    <div>
+                      <span className="text-xs text-gray-500 block mb-1">Dirección</span>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs text-white font-mono break-all flex-1" title={status.address}>
+                          {truncateAddress(status.address)}
+                        </code>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(status.address);
+                              setCopiedAddress(true);
+                              setTimeout(() => setCopiedAddress(false), 2000);
+                            } catch (err) {
+                              console.error('Error copying address', err);
+                            }
+                          }}
+                          className="p-1.5 hover:bg-dark-bg rounded-lg transition-colors flex-shrink-0"
+                          title="Copiar dirección"
+                        >
+                          {copiedAddress ? (
+                            <HiCheckCircle className="w-4 h-4 text-positive" />
+                          ) : (
+                            <HiClipboard className="w-4 h-4 text-gray-400 hover:text-white" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    {status.token && (
+                      <div>
+                        <span className="text-xs text-gray-500 block mb-1">Contrato</span>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-white font-mono break-all flex-1" title={status.token.contract}>
+                            {truncateAddress(status.token.contract)}
+                          </code>
+                          <button
+                            onClick={async () => {
+                              if (!status.token?.contract) return;
+                              try {
+                                await navigator.clipboard.writeText(status.token.contract);
+                                setCopiedContract(true);
+                                setTimeout(() => setCopiedContract(false), 2000);
+                              } catch (err) {
+                                console.error('Error copying contract', err);
+                              }
+                            }}
+                            className="p-1.5 hover:bg-dark-bg rounded-lg transition-colors flex-shrink-0"
+                            title="Copiar contrato"
+                          >
+                            {copiedContract ? (
+                              <HiCheckCircle className="w-4 h-4 text-positive" />
+                            ) : (
+                              <HiClipboard className="w-4 h-4 text-gray-400 hover:text-white" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {status.token && (
+                    <div className="pt-2 border-t border-dark-border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Símbolo</span>
+                        <span className="text-sm text-white font-semibold">{status.token.symbol}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <HiLightningBolt className="w-6 h-6 text-primary-red" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button className="bg-dark-bg border border-dark-border rounded-xl p-4 flex flex-col items-start gap-3 hover:border-primary-red/40 transition">
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-white">
-                <HiUpload className="w-4 h-4 text-primary-red" />
-                Recarga de liquidez
-              </span>
-              <p className="text-xs text-gray-500 text-left">
-                Deposita fondos desde un faucet o wallet autorizada para mantener la disponibilidad.
-              </p>
-            </button>
-            <button className="bg-dark-bg border border-dark-border rounded-xl p-4 flex flex-col items-start gap-3 hover:border-primary-red/40 transition">
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-white">
-                <HiSwitchHorizontal className="w-4 h-4 text-primary-red" />
-                Transferir a comercio
-              </span>
-              <p className="text-xs text-gray-500 text-left">
-                Envía fondos a uno de los equipos o comercios vinculados a eventos.
-              </p>
-            </button>
-            <button className="bg-dark-bg border border-dark-border rounded-xl p-4 flex flex-col items-start gap-3 hover:border-primary-red/40 transition">
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-white">
-                <HiCurrencyDollar className="w-4 h-4 text-primary-red" />
-                Liquidar reservas
-              </span>
-              <p className="text-xs text-gray-500 text-left">
-                Registra una liquidación hacia cuentas bancarias tradicionales para recompensas o premios.
-              </p>
-            </button>
-          </div>
-        </div>
+          )
+        )}
       </div>
 
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Solicitudes de liquidación</h2>
-            <p className="text-xs text-gray-500">
-              Gestiona las solicitudes de equipos que necesitan convertir su saldo a efectivo (100% del balance).
-            </p>
-          </div>
+      {/* Solicitudes de liquidación */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white mb-1">Solicitudes de liquidación</h2>
+          <p className="text-xs text-gray-500">
+            Gestiona las solicitudes de equipos que necesitan convertir su saldo a efectivo (100% del balance).
+          </p>
         </div>
         <div className="overflow-x-auto">
           {settlementsLoading ? (
@@ -416,38 +444,42 @@ export default function CentralWallet() {
           ) : settlementsError ? (
             <div className="py-6 text-center text-sm text-negative">{settlementsError}</div>
           ) : settlements.length === 0 ? (
-            <div className="py-6 text-center text-sm text-gray-400">
-              No hay solicitudes pendientes. Los equipos podrán solicitar liquidación cuando sus eventos finalicen.
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-bg border border-dark-border flex items-center justify-center">
+                <HiCreditCard className="w-8 h-8 text-gray-600" />
+              </div>
+              <p className="text-sm font-semibold text-gray-300 mb-1">No hay solicitudes pendientes</p>
+              <p className="text-xs text-gray-500">
+                Los equipos podrán solicitar liquidación cuando sus eventos finalicen.
+              </p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-dark-bg/60">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Evento
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Equipo / ID
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Monto
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Método
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Fecha solicitud
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Acción
-                  </th>
+            <div className="border border-dark-border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-dark-bg/60">
+                  <tr>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Evento
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Equipo / ID
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Monto
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Método
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Fecha solicitud
+                    </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-dark-border">
-                {settlements.map((settlement) => (
+                {settlements.slice(0, ITEMS_PER_PAGE).map((settlement) => (
                   <tr key={settlement.id} className="hover:bg-dark-bg/30 transition-colors">
                     <td className="px-6 py-4 text-sm text-white font-semibold">
                       {settlement.event_name}
@@ -479,53 +511,56 @@ export default function CentralWallet() {
                         {settlement.status.toUpperCase()}
                       </span>
                       {settlement.token_transfer_hash && (
-                        <div className="text-xs text-gray-500 mt-1 truncate max-w-[160px]" title={settlement.token_transfer_hash}>
-                          {settlement.token_transfer_hash}
+                        <div className="mt-1">
+                          {getEtherscanUrl(settlement.token_transfer_hash) ? (
+                            <a
+                              href={getEtherscanUrl(settlement.token_transfer_hash)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-accent-blue hover:text-primary-red transition-colors"
+                              title={`Ver en Etherscan: ${settlement.token_transfer_hash}`}
+                            >
+                              <span>Ver en Etherscan</span>
+                              <HiExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <div className="text-xs text-gray-500 font-mono" title={settlement.token_transfer_hash}>
+                              {truncateAddress(settlement.token_transfer_hash)}
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">
                       {formatDateTime(settlement.created_at)}
                     </td>
-                    <td className="px-6 py-4">
-                      {settlement.status === 'pendiente' ? (
-                        <button
-                          onClick={() => handleApproveSettlement(settlement.id)}
-                          disabled={processingSettlement === settlement.id}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-xs font-semibold transition disabled:opacity-60"
-                        >
-                          {processingSettlement === settlement.id ? (
-                            <>
-                              <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              Procesando...
-                            </>
-                          ) : (
-                            <>
-                              <HiCheckCircle className="w-4 h-4" />
-                              Aprobar y liquidar
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-500">Sin acciones</span>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
+        {settlements.length >= 1 && settlements.length <= ITEMS_PER_PAGE && (
+          <div className="mt-4">
+            <button
+              onClick={() => navigate('/admin/central-wallet/settlements')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-medium transition-all"
+            >
+              Ver todas
+              <HiArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Solicitudes de retiro de usuarios</h2>
-            <p className="text-xs text-gray-500">
-              Revisa las solicitudes que los usuarios enviaron para llevar HayekCoin a cuentas externas.
-            </p>
-          </div>
+      {/* Solicitudes de retiro */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white mb-1">Solicitudes de retiro de usuarios</h2>
+          <p className="text-xs text-gray-500">
+            Revisa las solicitudes que los usuarios enviaron para llevar HayekCoin a cuentas externas.
+          </p>
         </div>
         <div className="overflow-x-auto">
           {withdrawalsLoading ? (
@@ -536,35 +571,36 @@ export default function CentralWallet() {
           ) : withdrawalsError ? (
             <div className="py-6 text-center text-sm text-negative">{withdrawalsError}</div>
           ) : withdrawals.length === 0 ? (
-            <div className="py-6 text-center text-sm text-gray-400">
-              No hay solicitudes de retiro pendientes.
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-bg border border-dark-border flex items-center justify-center">
+                <HiCreditCard className="w-8 h-8 text-gray-600" />
+              </div>
+              <p className="text-sm font-semibold text-gray-300 mb-1">No hay solicitudes de retiro pendientes</p>
+              <p className="text-xs text-gray-500">
+                Los usuarios podrán solicitar retiros desde su panel de usuario.
+              </p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-dark-bg/60">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Usuario
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Monto
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Notas
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Acción
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-border">
-                {withdrawals.map((withdrawal) => (
+            <div className="border border-dark-border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-dark-bg/60">
+                  <tr>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Usuario
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Monto
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Fecha
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-border">
+                  {withdrawals.slice(0, ITEMS_PER_PAGE).map((withdrawal) => (
                   <tr key={withdrawal.id} className="hover:bg-dark-bg/30 transition-colors">
                     <td className="px-6 py-4 text-sm text-white font-semibold">
                       {withdrawal.user ? (
@@ -599,45 +635,33 @@ export default function CentralWallet() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-300">{formatDateTime(withdrawal.created_at)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{withdrawal.notes || '—'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {withdrawal.status === 'pendiente' ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleApproveWithdrawal(withdrawal.id)}
-                            disabled={processingWithdrawal === withdrawal.id}
-                            className="px-3 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-xs font-semibold transition disabled:opacity-60"
-                          >
-                            {processingWithdrawal === withdrawal.id ? 'Procesando...' : 'Aprobar'}
-                          </button>
-                          <button
-                            onClick={() => handleRejectWithdrawal(withdrawal.id)}
-                            disabled={processingWithdrawal === withdrawal.id}
-                            className="px-3 py-2 bg-dark-bg border border-dark-border hover:border-negative text-negative rounded-lg text-xs font-semibold transition disabled:opacity-60"
-                          >
-                            Rechazar
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-500">Sin acciones</span>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
+        {withdrawals.length >= 1 && withdrawals.length <= ITEMS_PER_PAGE && (
+          <div className="mt-4">
+            <button
+              onClick={() => navigate('/admin/central-wallet/withdrawals')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-medium transition-all"
+            >
+              Ver todas
+              <HiArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Actividad reciente</h2>
-            <p className="text-xs text-gray-500">
-              Seguimiento de movimientos relevantes de la wallet central.
-            </p>
-          </div>
+      {/* Actividad reciente */}
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white mb-1">Actividad reciente</h2>
+          <p className="text-xs text-gray-500">
+            Seguimiento de movimientos relevantes de la wallet central.
+          </p>
         </div>
         <div className="overflow-x-auto">
           {movementsLoading ? (
@@ -648,38 +672,42 @@ export default function CentralWallet() {
           ) : movementsError ? (
             <div className="py-10 text-center text-sm text-negative">{movementsError}</div>
           ) : movements.length === 0 ? (
-            <div className="py-10 text-center text-sm text-gray-400">
-              Aún no hay movimientos registrados con la wallet central.
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-bg border border-dark-border flex items-center justify-center">
+                <HiSwitchHorizontal className="w-8 h-8 text-gray-600" />
+              </div>
+              <p className="text-sm font-semibold text-gray-300 mb-1">Aún no hay movimientos registrados</p>
+              <p className="text-xs text-gray-500">
+                Los movimientos de la wallet central aparecerán aquí cuando se realicen transacciones.
+              </p>
             </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-dark-bg/60">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Movimiento
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Contraparte
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Monto
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    Comentarios
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-dark-border">
-                {movements.map((movement) => (
+            <div className="border border-dark-border rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-dark-bg/60">
+                  <tr>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Movimiento
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Contraparte
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Monto
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Fecha
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-border">
+                  {movements.slice(0, ITEMS_PER_PAGE).map((movement) => (
                   <tr key={movement.id} className="hover:bg-dark-bg/30 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-white font-semibold flex items-center gap-2">
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-white font-semibold flex items-center gap-2 flex-wrap">
                         <span
                           className={`px-2 py-1 rounded-lg text-xs font-medium border ${
                             movement.direction === 'entrante'
@@ -694,11 +722,49 @@ export default function CentralWallet() {
                         </span>
                       </div>
                       {movement.reference && (
-                        <div className="text-xs text-gray-500 mt-1">{movement.reference}</div>
+                        <div className="mt-1.5">
+                          {getEtherscanUrl(movement.reference) ? (
+                            <a
+                              href={getEtherscanUrl(movement.reference)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-accent-blue hover:text-primary-red transition-colors"
+                              title={`Ver en Etherscan: ${movement.reference}`}
+                            >
+                              <span>Ver en Etherscan</span>
+                              <HiExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <div className="text-xs text-gray-500 font-mono" title={movement.reference}>
+                              {truncateAddress(movement.reference)}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {movement.counterparty}
+                    <td className="px-6 py-4 text-sm text-gray-300 max-w-[200px]">
+                      {isEthereumAddress(movement.counterparty) ? (
+                        <div className="flex items-center gap-1.5">
+                          <code className="font-mono text-xs" title={movement.counterparty}>
+                            {truncateAddress(movement.counterparty)}
+                          </code>
+                          {getEtherscanUrl(movement.counterparty) && (
+                            <a
+                              href={getEtherscanUrl(movement.counterparty)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent-blue hover:text-primary-red transition-colors"
+                              title={`Ver wallet en Etherscan: ${movement.counterparty}`}
+                            >
+                              <HiExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="truncate block" title={movement.counterparty}>
+                          {movement.counterparty}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-white font-semibold">
                       {formatAmount(
@@ -722,20 +788,27 @@ export default function CentralWallet() {
                     <td className="px-6 py-4 text-sm text-gray-300">
                       {formatDateTime(movement.created_at)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">
-                      {movement.metadata?.description ||
-                        movement.metadata?.note ||
-                        movement.metadata?.reason ||
-                        '—'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
+        {movements.length >= 1 && (
+          <div className="mt-4">
+            <button
+              onClick={() => navigate('/admin/central-wallet/activity')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-medium transition-all"
+            >
+              Ver todas
+              <HiArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 

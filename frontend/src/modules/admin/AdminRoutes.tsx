@@ -9,6 +9,9 @@ import Settings from './pages/Settings';
 import AuditLogs from './pages/AuditLogs';
 import Reports from './pages/Reports';
 import CentralWallet from './pages/CentralWallet';
+import SettlementRequests from './pages/SettlementRequests';
+import WithdrawalRequests from './pages/WithdrawalRequests';
+import CentralWalletActivity from './pages/CentralWalletActivity';
 
 export default function AdminRoutes() {
   return (
@@ -23,6 +26,9 @@ export default function AdminRoutes() {
         <Route path="/audit" element={<AuditLogs />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/central-wallet" element={<CentralWallet />} />
+        <Route path="/central-wallet/settlements" element={<SettlementRequests />} />
+        <Route path="/central-wallet/withdrawals" element={<WithdrawalRequests />} />
+        <Route path="/central-wallet/activity" element={<CentralWalletActivity />} />
         
         {/* Redirect por defecto */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
