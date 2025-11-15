@@ -98,15 +98,13 @@ export default function SettlementRequests() {
       </button>
 
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0">
-              <HiCreditCard className="w-6 h-6 sm:w-7 sm:h-7" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Solicitudes de liquidación</h1>
-              <p className="text-sm text-gray-400">Todas las solicitudes de liquidación de equipos de eventos</p>
-            </div>
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+            <HiCreditCard className="w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Solicitudes de liquidación</h1>
+            <p className="text-sm text-gray-400">Todas las solicitudes de liquidación de equipos de eventos</p>
           </div>
         </div>
       </div>

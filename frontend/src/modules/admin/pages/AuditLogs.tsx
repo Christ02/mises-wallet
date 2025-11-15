@@ -99,13 +99,13 @@ export default function AuditLogs() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-red to-primary-red/70 border border-primary-red/40 text-white flex items-center justify-center shadow-lg">
-            <HiClipboardList className="w-6 h-6" />
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+            <HiClipboardList className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Logs de auditoría</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Logs de auditoría</h1>
             <p className="text-sm text-gray-400">
               Revisa las acciones administradas realizadas dentro del sistema.
             </p>
@@ -351,79 +351,91 @@ export default function AuditLogs() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Información básica */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Fecha y hora</p>
-                  <p className="text-sm text-white font-semibold">{formatDateTime(selectedLog.created_at)}</p>
-                </div>
-                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Acción</p>
-                  <p className="text-sm text-white font-semibold">{selectedLog.action}</p>
-                </div>
-                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Entidad</p>
-                  <p className="text-sm text-white font-semibold">{selectedLog.entity ?? '—'}</p>
-                </div>
-                {selectedLog.entity_id && (
-                  <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">ID de entidad</p>
-                    <p className="text-sm text-white font-mono">{selectedLog.entity_id}</p>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Información general</h3>
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg divide-y divide-dark-border">
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Fecha y hora</span>
+                    <span className="text-sm text-white font-semibold">{formatDateTime(selectedLog.created_at)}</span>
                   </div>
-                )}
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Acción</span>
+                    <span className="inline-flex items-center gap-2 text-sm text-white font-semibold">
+                      <HiAnnotation className="w-4 h-4 text-primary-red" />
+                      {selectedLog.action}
+                    </span>
+                  </div>
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Entidad</span>
+                    <span className="text-sm text-white font-semibold capitalize">{selectedLog.entity ?? '—'}</span>
+                  </div>
+                  {selectedLog.entity_id && (
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <span className="text-sm text-gray-400">ID de entidad</span>
+                      <span className="text-sm text-white font-mono">{selectedLog.entity_id}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Usuario */}
-              <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Usuario</p>
-                {selectedLog.user ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Nombre completo</span>
-                      <span className="text-sm text-white font-semibold">
-                        {selectedLog.user.nombres} {selectedLog.user.apellidos}
-                      </span>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Usuario</h3>
+                <div className="bg-dark-bg/50 border border-dark-border rounded-lg">
+                  {selectedLog.user ? (
+                    <div className="divide-y divide-dark-border">
+                      <div className="px-4 py-3 flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Nombre completo</span>
+                        <span className="text-sm text-white font-semibold">
+                          {selectedLog.user.nombres} {selectedLog.user.apellidos}
+                        </span>
+                      </div>
+                      <div className="px-4 py-3 flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Carnet universitario</span>
+                        <span className="text-sm text-white font-mono">{selectedLog.user.carnet}</span>
+                      </div>
+                      <div className="px-4 py-3 flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Email</span>
+                        <span className="text-sm text-white">{selectedLog.user.email}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Carnet</span>
-                      <span className="text-sm text-white font-mono">{selectedLog.user.carnet}</span>
+                  ) : (
+                    <div className="px-4 py-3">
+                      <span className="text-sm text-gray-300">Sistema</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Email</span>
-                      <span className="text-sm text-white">{selectedLog.user.email}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-300">Sistema</p>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Descripción */}
               {selectedLog.description && (
-                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Descripción</p>
-                  <p className="text-sm text-white whitespace-pre-wrap">{selectedLog.description}</p>
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Descripción</h3>
+                  <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
+                    <p className="text-sm text-white leading-relaxed">{selectedLog.description}</p>
+                  </div>
                 </div>
               )}
 
               {/* Metadatos */}
               {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
-                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Metadatos</p>
-                  <div className="space-y-2">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Metadatos</h3>
+                  <div className="bg-dark-bg/50 border border-dark-border rounded-lg divide-y divide-dark-border">
                     {Object.entries(selectedLog.metadata).map(([key, value]) => {
-                      // Si el valor es un objeto, mostrarlo formateado
-                      if (typeof value === 'object' && value !== null) {
+                      // Si el valor es un objeto (como oldValues/newValues), mostrarlo en secciones separadas
+                      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
                         return (
-                          <div key={key} className="space-y-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider">{key}</p>
-                            <div className="bg-dark-card border border-dark-border rounded-lg p-3 space-y-1">
+                          <div key={key} className="p-4">
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">{key}</p>
+                            <div className="space-y-2 pl-4 border-l-2 border-primary-red/30">
                               {Object.entries(value).map(([subKey, subValue]) => (
-                                <div key={subKey} className="flex justify-between gap-4 text-xs">
-                                  <span className="text-gray-400">{subKey}:</span>
-                                  <span className="text-gray-300 font-mono text-right break-all">
-                                    {String(subValue)}
+                                <div key={subKey} className="flex items-start justify-between gap-4">
+                                  <span className="text-sm text-gray-400 flex-shrink-0">{subKey}</span>
+                                  <span className="text-sm text-white font-mono text-right break-all">
+                                    {String(subValue) || '—'}
                                   </span>
                                 </div>
                               ))}
@@ -432,9 +444,9 @@ export default function AuditLogs() {
                         );
                       }
                       return (
-                        <div key={key} className="flex justify-between gap-4">
-                          <span className="text-sm text-gray-400">{key}</span>
-                          <span className="text-sm text-white font-mono text-right break-all">
+                        <div key={key} className="px-4 py-3 flex items-center justify-between">
+                          <span className="text-sm text-gray-400 capitalize">{key}</span>
+                          <span className="text-sm text-white font-mono text-right break-all max-w-[60%]">
                             {String(value)}
                           </span>
                         </div>
@@ -446,23 +458,19 @@ export default function AuditLogs() {
 
               {/* Información de conexión */}
               {(selectedLog.ip_address || selectedLog.user_agent) && (
-                <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Información de conexión</p>
-                  <div className="space-y-2">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Información de conexión</h3>
+                  <div className="bg-dark-bg/50 border border-dark-border rounded-lg divide-y divide-dark-border">
                     {selectedLog.ip_address && (
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="px-4 py-3 flex items-center justify-between">
                         <span className="text-sm text-gray-400">Dirección IP</span>
-                        <span className="text-sm text-white font-mono text-right break-all">
-                          {selectedLog.ip_address}
-                        </span>
+                        <span className="text-sm text-white font-mono">{selectedLog.ip_address}</span>
                       </div>
                     )}
                     {selectedLog.user_agent && (
-                      <div className="flex items-start justify-between gap-4">
-                        <span className="text-sm text-gray-400">User Agent</span>
-                        <span className="text-sm text-white text-right break-all">
-                          {selectedLog.user_agent}
-                        </span>
+                      <div className="px-4 py-3">
+                        <span className="text-sm text-gray-400 block mb-2">User Agent</span>
+                        <span className="text-sm text-white break-all">{selectedLog.user_agent}</span>
                       </div>
                     )}
                   </div>

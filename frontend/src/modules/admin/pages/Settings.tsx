@@ -219,17 +219,17 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-red/20 border border-primary-red/30 text-primary-red">
-              <HiCog className="w-5 h-5" />
-            </span>
-            Configuración del sistema
-          </h1>
-          <p className="text-sm text-gray-400 mt-2">
-            Administra las integraciones de correo y las credenciales de la wallet del banco central.
-          </p>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+            <HiCog className="w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Configuración del sistema</h1>
+            <p className="text-sm text-gray-400">
+              Administra las integraciones de correo y las credenciales de la wallet del banco central.
+            </p>
+          </div>
         </div>
       </div>
 

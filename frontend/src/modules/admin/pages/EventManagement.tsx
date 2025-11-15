@@ -330,12 +330,17 @@ export default function EventManagement() {
       )}
 
       <div className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Gestión de eventos</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Crea, publica y gestiona los eventos y sus negocios participantes.
-          </p>
-                </div>
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+            <HiCalendar className="w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Gestión de eventos</h1>
+            <p className="text-sm text-gray-400">
+              Crea, publica y gestiona los eventos y sus negocios participantes.
+            </p>
+          </div>
+        </div>
                 <button 
           onClick={openCreateModal}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all self-start sm:self-auto"

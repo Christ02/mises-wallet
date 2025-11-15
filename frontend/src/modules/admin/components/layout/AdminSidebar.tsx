@@ -37,21 +37,21 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
   return (
     <>
-      {/* Overlay para móviles */}
+      {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-dark-card border-r border-dark-border z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`fixed top-0 left-0 h-full w-80 bg-dark-card border-r border-dark-border z-50 transform transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         } flex flex-col`}
       >
-        {/* Logo y botón cerrar (móvil) */}
+        {/* Logo y botón cerrar */}
         <div className="p-6 border-b border-dark-border flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-lg shadow-lg">
@@ -64,7 +64,8 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="lg:hidden text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors"
+            aria-label="Cerrar sidebar"
           >
             <HiX className="w-6 h-6" />
           </button>

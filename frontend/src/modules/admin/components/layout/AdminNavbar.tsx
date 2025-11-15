@@ -13,9 +13,10 @@ interface User {
 
 interface AdminNavbarProps {
   onMenuClick: () => void;
+  sidebarOpen: boolean;
 }
 
-export default function AdminNavbar({ onMenuClick }: AdminNavbarProps) {
+export default function AdminNavbar({ onMenuClick, sidebarOpen }: AdminNavbarProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -60,13 +61,14 @@ export default function AdminNavbar({ onMenuClick }: AdminNavbarProps) {
   const roleDisplay = user.role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
   return (
-    <nav className="bg-dark-card border-b border-dark-border fixed top-0 right-0 left-0 lg:left-64 z-30 backdrop-blur-sm bg-dark-card/95 h-16 sm:h-20">
-      <div className="px-8 sm:px-10 md:px-12 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 h-full">
-        {/* Left Side - Mobile Menu Button */}
+    <nav className={`bg-dark-card border-b border-dark-border fixed top-0 right-0 z-30 backdrop-blur-sm bg-dark-card/95 h-16 sm:h-20 transition-all duration-300 ${sidebarOpen ? 'left-0 lg:left-80' : 'left-0'}`}>
+      <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 h-full">
+        {/* Left Side - Menu Button (Always visible) */}
         <div className="flex items-center space-x-4">
           <button
             onClick={onMenuClick}
-            className="lg:hidden text-gray-400 hover:text-white transition-colors p-2"
+            className="text-gray-400 hover:text-white transition-colors p-2"
+            aria-label="Toggle sidebar"
           >
             <HiMenu className="w-6 h-6" />
           </button>

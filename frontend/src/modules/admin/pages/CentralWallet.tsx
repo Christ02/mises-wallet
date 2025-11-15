@@ -281,17 +281,15 @@ export default function CentralWallet() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
-              <HiCreditCard className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Wallet central</h1>
-              <p className="text-sm text-gray-400">
-                Controla la liquidez del banco central y los movimientos estratégicos.
-              </p>
-            </div>
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+            <HiCreditCard className="w-7 h-7" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Wallet central</h1>
+            <p className="text-sm text-gray-400">
+              Controla la liquidez del banco central y los movimientos estratégicos.
+            </p>
           </div>
         </div>
       </div>

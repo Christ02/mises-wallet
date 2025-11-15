@@ -261,12 +261,12 @@ export default function TransactionManagement() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-red to-primary-red/70 border border-primary-red/40 text-white flex items-center justify-center shadow-lg">
-            <HiSwitchHorizontal className="w-6 h-6" />
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+            <HiSwitchHorizontal className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Transacciones del sistema</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Transacciones del sistema</h1>
             <p className="text-sm text-gray-400">
               Monitorea las operaciones realizadas por los usuarios y el banco central.
             </p>
