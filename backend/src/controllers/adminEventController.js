@@ -80,8 +80,14 @@ export class AdminEventController {
       
       const coverImageUrl = req.file ? buildEventImageUrl(req.file.filename) : undefined;
       const updates = { ...req.body };
+      const removeCoverImage = updates.remove_cover_image === 'true';
+      delete updates.remove_cover_image;
+
       if (coverImageUrl) {
         updates.cover_image_url = coverImageUrl;
+      } else if (removeCoverImage) {
+        // El admin decidió remover la portada sin subir una nueva
+        updates.cover_image_url = null;
       }
       const event = await AdminEventService.updateEvent(eventIdNum, updates);
       

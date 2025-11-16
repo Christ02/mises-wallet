@@ -25,7 +25,10 @@ export interface CreateEventPayload {
   status?: 'borrador' | 'publicado';
 }
 
-export interface UpdateEventPayload extends Partial<CreateEventPayload> {}
+export interface UpdateEventPayload extends Partial<CreateEventPayload> {
+  // Campo opcional para indicar que se desea eliminar la portada existente
+  remove_cover_image?: string;
+}
 
 export interface AdminBusinessMember {
   id: number | string;

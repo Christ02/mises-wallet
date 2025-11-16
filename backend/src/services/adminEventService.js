@@ -174,7 +174,12 @@ export class AdminEventService {
 
     const updated = await EventRepository.update(id, payload);
 
-    if (payload.cover_image_url && existingEvent.cover_image_url && payload.cover_image_url !== existingEvent.cover_image_url) {
+    if (
+      Object.prototype.hasOwnProperty.call(payload, 'cover_image_url') &&
+      existingEvent.cover_image_url &&
+      payload.cover_image_url !== existingEvent.cover_image_url
+    ) {
+      // Si se cambió o se eliminó la portada, borramos el archivo anterior
       deleteFileIfExists(existingEvent.cover_image_url);
     }
 

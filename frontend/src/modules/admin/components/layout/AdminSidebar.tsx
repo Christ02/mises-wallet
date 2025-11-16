@@ -11,6 +11,7 @@ import {
   HiCurrencyDollar,
   HiUserCircle
 } from 'react-icons/hi';
+import misesLogo from '../../../../assets/images/mises-wallet.svg';
 
 interface MenuItem {
   name: string;
@@ -56,13 +57,8 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         {/* Logo y botón cerrar */}
         <div className="p-6 border-b border-dark-border flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-primary-red to-primary-red/80 rounded-lg shadow-lg">
-              <span className="text-white font-bold text-lg">A</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Admin Panel</h1>
-              <span className="text-xs text-gray-400 font-medium">Sistema de Gestión</span>
-            </div>
+            <img src={misesLogo} alt="Mises Wallet" className="h-8 w-auto" />
+            <span className="text-xl font-bold text-white tracking-tight">Mises Wallet</span>
           </div>
           <button
             onClick={onClose}

@@ -81,27 +81,7 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Security */}
-          <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-4 sm:p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <HiShieldCheck className="w-5 h-5 text-primary-red" />
-              <h2 className="text-lg font-semibold text-white">Seguridad</h2>
-            </div>
-            <div className="space-y-3">
-              <button className="w-full flex items-center justify-between p-3 bg-dark-bg border border-dark-border rounded-lg hover:border-primary-red/30 transition-colors">
-                <div className="flex items-center space-x-3">
-                  <HiLockClosed className="w-5 h-5 text-primary-red" />
-                  <span className="text-sm font-medium text-white">Cambiar Contraseña</span>
-                </div>
-              </button>
-              <button className="w-full flex items-center justify-between p-3 bg-dark-bg border border-dark-border rounded-lg hover:border-primary-red/30 transition-colors">
-                <div className="flex items-center space-x-3">
-                  <HiShieldCheck className="w-5 h-5 text-primary-red" />
-                  <span className="text-sm font-medium text-white">Autenticación de Dos Factores</span>
-                </div>
-              </button>
-            </div>
-          </div>
+          {/* Seguridad: removida a solicitud */}
 
           {/* Preferences */}
           <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-4 sm:p-6">

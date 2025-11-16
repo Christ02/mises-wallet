@@ -41,6 +41,11 @@ export default function Pay() {
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [usdToTokenRate, setUsdToTokenRate] = useState(1);
@@ -77,6 +82,12 @@ export default function Pay() {
     return () => {
       if (searchTimeout.current) {
         clearTimeout(searchTimeout.current);
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
   }, []);
@@ -130,9 +141,179 @@ export default function Pay() {
     }, 300);
   }, [merchantQuery, selectedMerchant]);
 
-  const handleScan = () => {
-    // TODO: Implementar escaneo de QR
-    alert('Funcionalidad de escaneo de QR próximamente');
+  const stopScan = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
+  const parseQrPayload = (raw: string): { groupId?: string; amount?: number } => {
+    const trimmed = raw.trim();
+
+    if (!trimmed) return {};
+
+    // JSON
+    if (trimmed.startsWith('{')) {
+      try {
+        const obj = JSON.parse(trimmed);
+        return {
+          groupId: obj.groupId || obj.group_id || obj.group || undefined,
+          amount: obj.amount ? Number(obj.amount) : undefined
+        };
+      } catch {
+        // ignore
+      }
+    }
+
+    // URL style
+    try {
+      if (trimmed.includes('://')) {
+        const url = new URL(trimmed);
+        const groupId =
+          url.searchParams.get('groupId') ||
+          url.searchParams.get('group_id') ||
+          url.searchParams.get('group');
+        const amountParam = url.searchParams.get('amount');
+        return {
+          groupId: groupId || undefined,
+          amount: amountParam ? Number(amountParam) : undefined
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    // key=value;key2=value2
+    try {
+      const normalized = trimmed.replace(/;/g, '&').replace(/,/g, '&');
+      const params = new URLSearchParams(normalized);
+      const groupId =
+        params.get('groupId') ||
+        params.get('group_id') ||
+        params.get('group') ||
+        params.get('grupo') ||
+        undefined;
+      const amountParam =
+        params.get('amount') || params.get('monto') || params.get('value') || undefined;
+      return {
+        groupId,
+        amount: amountParam ? Number(amountParam) : undefined
+      };
+    } catch {
+      // ignore
+    }
+
+    // plain groupId
+    return { groupId: trimmed };
+  };
+
+  const handleQrDetected = async (rawValue: string) => {
+    setScanError('');
+    const { groupId, amount: qrAmount } = parseQrPayload(rawValue);
+
+    if (!groupId) {
+      setScanError(
+        'No pudimos encontrar un group-id válido en el código QR. Verifica que sea un QR emitido por HayekCoin.'
+      );
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const response = await api.get('/api/wallet/merchants/search', {
+        params: { query: groupId }
+      });
+      const merchants: MerchantOption[] = (response.data?.merchants || []).map((merchant: any) => ({
+        id: merchant.id,
+        name: merchant.name,
+        groupId: merchant.groupId,
+        description: merchant.description,
+        eventName: merchant.eventName,
+        walletAddress: merchant.walletAddress
+      }));
+
+      if (!merchants.length) {
+        setScanError(
+          'No encontramos un comercio asociado a este QR. Verifica que el código sea correcto o intenta de nuevo.'
+        );
+        return;
+      }
+
+      const merchant = merchants[0];
+      setSelectedMerchant(merchant);
+      setMerchantQuery(formatMerchantLabel(merchant));
+      setMerchantResults(merchants);
+      if (qrAmount && !Number.isNaN(qrAmount)) {
+        setAmount(String(qrAmount));
+      }
+      setErrorMessage('');
+      setSuccessMessage(`Comercio cargado desde QR: ${merchant.name}.`);
+      stopScan();
+    } catch (err) {
+      console.error('Error resolving merchant from QR:', err);
+      setScanError('Ocurrió un error al procesar el QR. Intenta nuevamente.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const startScan = async () => {
+    setScanError('');
+
+    if (typeof (window as any).BarcodeDetector === 'undefined') {
+      setScanError(
+        'Tu navegador no soporta escaneo nativo de códigos QR. Intenta con la última versión de Chrome o ingresa los datos manualmente.'
+      );
+      setIsScanning(true);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      streamRef.current = stream;
+      setIsScanning(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+
+      const scanLoop = async () => {
+        if (!videoRef.current || !streamRef.current) {
+          return;
+        }
+
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            await handleQrDetected(barcodes[0].rawValue as string);
+            return;
+          }
+        } catch (err) {
+          console.error('Error on QR detect:', err);
+        }
+
+        animationFrameRef.current = requestAnimationFrame(scanLoop);
+      };
+
+      animationFrameRef.current = requestAnimationFrame(scanLoop);
+    } catch (err) {
+      console.error('Error starting camera for QR scan:', err);
+      setScanError(
+        'No pudimos acceder a tu cámara. Revisa los permisos del navegador o intenta nuevamente.'
+      );
+      setIsScanning(true);
+    }
   };
 
   const handleSelectMerchant = (merchant: MerchantOption) => {
@@ -261,7 +442,7 @@ export default function Pay() {
                 </div>
               </div>
               <button
-                onClick={handleScan}
+              onClick={startScan}
                 className="w-full max-w-md px-6 py-4 sm:py-5 bg-primary-red hover:bg-primary-red/90 text-white rounded-xl sm:rounded-2xl font-semibold text-base sm:text-lg transition-all flex items-center justify-center space-x-2 shadow-lg"
               >
                 <HiQrcode className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -464,6 +645,63 @@ export default function Pay() {
                   </p>
                   <p>
                     Verifica siempre el comercio y la cantidad antes de confirmar. Los pagos no pueden ser revertidos una vez enviados.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* QR Scanner Modal */}
+        {isScanning && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/70 z-50 backdrop-blur-sm"
+              onClick={stopScan}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-5 sm:p-6 lg:p-8 shadow-2xl space-y-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg sm:text-xl font-bold text-white">Escanear código QR</h3>
+                  <button
+                    onClick={stopScan}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+                  >
+                    <HiX className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                </div>
+                <p className="text-xs sm:text-sm text-gray-400">
+                  Apunta la cámara al código QR del comercio para cargar automáticamente el comercio y,
+                  si está incluido, el monto a pagar.
+                </p>
+                <div className="relative w-full rounded-xl overflow-hidden border border-dark-border bg-black">
+                  <video
+                    ref={videoRef}
+                    className="w-full h-64 object-cover"
+                    muted
+                    playsInline
+                  />
+                  <div className="absolute inset-6 border-2 border-primary-red/70 rounded-xl pointer-events-none" />
+                </div>
+                {scanError && (
+                  <div className="bg-negative/10 border border-negative/40 text-negative px-4 py-3 rounded-lg text-xs sm:text-sm flex items-center space-x-2">
+                    <HiExclamationCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span>{scanError}</span>
+                  </div>
+                )}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                  <button
+                    onClick={stopScan}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-xs sm:text-sm text-gray-300 hover:bg-dark-bg/80 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <p className="text-[11px] sm:text-xs text-gray-500 text-right">
+                    Si tu navegador no soporta la cámara o escaneo de QR, puedes ingresar los datos
+                    manualmente en la sección de pago.
                   </p>
                 </div>
               </div>

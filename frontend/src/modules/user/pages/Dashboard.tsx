@@ -10,9 +10,11 @@ import {
   HiQuestionMarkCircle,
   HiX,
   HiLocationMarker,
-  HiClock
+  HiClock,
+  HiChevronLeft,
+  HiChevronRight
 } from 'react-icons/hi';
-import api from '../../../services/api';
+import api, { API_BASE_URL } from '../../../services/api';
 import { fetchUserEvents, UserEvent } from '../services/events';
 import { fetchUserProfile } from '../services/profile';
 
@@ -52,6 +54,7 @@ export default function Dashboard() {
   const [showHelp, setShowHelp] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<DashboardEvent[]>([]);
+  const [currentEventImageIndex, setCurrentEventImageIndex] = useState(0);
 
   const mapTransactions = (rawTransactions: any[]): DashboardTransaction[] => {
     const defaultSymbol = walletBalance?.tokenSymbol || 'HC';
@@ -118,7 +121,10 @@ export default function Dashboard() {
   const fetchEventsData = async () => {
     try {
       const { upcoming } = await fetchUserEvents();
-      setUpcomingEvents(upcoming.slice(0, 3));
+      const visible = (upcoming || []).filter(
+        (event) => (event.status || '').toLowerCase() !== 'borrador'
+      );
+      setUpcomingEvents(visible.slice(0, 3));
     } catch (err) {
       console.error('Error fetching events:', err);
       setUpcomingEvents([]);
@@ -140,6 +146,13 @@ export default function Dashboard() {
     if (num < 0.001) return num.toFixed(6);
     if (num < 1) return num.toFixed(4);
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const convertBalanceToUsd = (balance: string) => {
+    if (!rechargeSummary?.usdToTokenRate) return null;
+    const tokens = parseFloat(balance);
+    if (!tokens || !rechargeSummary.usdToTokenRate) return '0.00';
+    return (tokens / rechargeSummary.usdToTokenRate).toFixed(2);
   };
 
   const formatEventCardDate = (dateString?: string) => {
@@ -165,6 +178,29 @@ export default function Dashboard() {
   };
 
   const recentEvents = useMemo(() => upcomingEvents, [upcomingEvents]);
+
+  const buildCoverImageUrl = (path?: string | null) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE_URL}${path}`;
+  };
+
+  const modalEventImages = useMemo(() => {
+    if (!selectedEvent) return [];
+    const photos = (selectedEvent as any).photos as string[] | undefined;
+    const urls: string[] = [];
+    if (photos && photos.length) {
+      urls.push(...photos);
+    }
+    if (selectedEvent.cover_image_url && !urls.includes(selectedEvent.cover_image_url)) {
+      urls.unshift(selectedEvent.cover_image_url);
+    }
+    return urls;
+  }, [selectedEvent]);
+
+  useEffect(() => {
+    setCurrentEventImageIndex(0);
+  }, [selectedEvent]);
 
   return (
     <>
@@ -215,28 +251,14 @@ export default function Dashboard() {
                     {walletBalance.tokenSymbol || 'HC'}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">{walletBalance.network || 'Red Universitaria'}</p>
+                {rechargeSummary && (
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    ≈ ${convertBalanceToUsd(walletBalance.balance)} USD
+                  </p>
+                )}
               </div>
             )}
-            {rechargeSummary && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 mb-1">Recargas acumuladas</p>
-                  <p className="text-lg sm:text-xl font-semibold text-white">
-                    {rechargeSummary.totalTokens.toFixed(4)} {rechargeSummary.tokenSymbol}
-                  </p>
-                </div>
-                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 mb-1">Estimado en USD</p>
-                  <p className="text-lg sm:text-xl font-semibold text-white">
-                    ${rechargeSummary.totalUsd.toFixed(2)} USD
-                  </p>
-                  <p className="text-[10px] text-gray-500 mt-1">
-                    1 USD = {rechargeSummary.usdToTokenRate.toFixed(2)} {rechargeSummary.tokenSymbol}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Resumen de recargas y estimado en USD removido a solicitud del usuario */}
           </div>
         </div>
 
@@ -370,32 +392,43 @@ export default function Dashboard() {
           ) : (
             <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
               <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
-                {recentEvents.map((eventCard) => (
-                  <div
-                    key={eventCard.id}
-                    onClick={() => setSelectedEvent(eventCard)}
-                    className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-                  >
-                    <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                      <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                    </div>
-                    <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                      <div>
-                        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                          {eventCard.name}
-                        </h3>
-                        <p className="text-sm sm:text-base text-gray-400 font-medium">
-                          {formatEventCardDate(eventCard.event_date)}
-                        </p>
-                        {eventCard.location && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                            {eventCard.location}
-                          </p>
+                {recentEvents.map((eventCard) => {
+                  const coverImage = buildCoverImageUrl(eventCard.cover_image_url);
+                  return (
+                    <div
+                      key={eventCard.id}
+                      onClick={() => setSelectedEvent(eventCard)}
+                      className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
+                    >
+                      <div className="h-32 sm:h-40 lg:h-48 flex-shrink-0 relative overflow-hidden bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80">
+                        {coverImage && (
+                          <img
+                            src={coverImage}
+                            alt={eventCard.name}
+                            className="w-full h-full object-cover"
+                          />
                         )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                        <HiCalendar className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-primary-red relative z-10 mx-4 my-3" />
+                      </div>
+                      <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
+                        <div>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+                            {eventCard.name}
+                          </h3>
+                          <p className="text-sm sm:text-base text-gray-400 font-medium">
+                            {formatEventCardDate(eventCard.event_date)}
+                          </p>
+                          {eventCard.location && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                              {eventCard.location}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -442,13 +475,65 @@ export default function Dashboard() {
             />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div
-                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 lg:p-10 shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-md w-full p-6 sm:p-8 lg:p-10 shadow-2xl max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-6">
-                  <div className="h-40 sm:h-48 bg-gradient-to-br from-primary-red/30 via-primary-red/20 to-primary-red/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-4 sm:mb-6 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-primary-red/5"></div>
-                    <HiCalendar className="w-16 h-16 sm:w-20 sm:h-20 text-primary-red relative z-10" />
+                  <div className="h-48 sm:h-56 bg-gradient-to-br from-primary-red/30 via-primary-red/20 to-primary-red/10 rounded-lg sm:rounded-xl mb-4 sm:mb-6 relative overflow-hidden">
+                    {modalEventImages.length > 0 && buildCoverImageUrl(modalEventImages[currentEventImageIndex]) ? (
+                      <>
+                        <img
+                          src={buildCoverImageUrl(modalEventImages[currentEventImageIndex])!}
+                          alt={selectedEvent.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40" />
+                        {modalEventImages.length > 1 && (
+                          <div className="absolute inset-0 flex items-center justify-between px-2 sm:px-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentEventImageIndex((prev) =>
+                                  prev === 0 ? modalEventImages.length - 1 : prev - 1
+                                )
+                              }
+                              className="p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors"
+                            >
+                              <HiChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentEventImageIndex((prev) =>
+                                  prev === modalEventImages.length - 1 ? 0 : prev + 1
+                                )
+                              }
+                              className="p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors"
+                            >
+                              <HiChevronRight className="w-5 h-5" />
+                            </button>
+                          </div>
+                        )}
+                        {modalEventImages.length > 1 && (
+                          <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5">
+                            {modalEventImages.map((_, index) => (
+                              <button
+                                key={`${selectedEvent.id}-dot-${index}`}
+                                type="button"
+                                onClick={() => setCurrentEventImageIndex(index)}
+                                className={`h-1.5 rounded-full transition-all ${
+                                  index === currentEventImageIndex ? 'w-4 bg-white' : 'w-2 bg-white/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <HiCalendar className="w-16 h-16 sm:w-20 sm:h-20 text-primary-red/90" />
+                      </div>
+                    )}
                   </div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">{selectedEvent.title}</h2>
                   <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-gray-300">

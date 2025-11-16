@@ -5,7 +5,10 @@ import {
   HiCalendar,
   HiCurrencyDollar,
   HiArrowRight,
-  HiSearch
+  HiSearch,
+  HiLightningBolt,
+  HiShieldCheck,
+  HiDocumentReport
 } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
@@ -16,6 +19,16 @@ interface AdminUser {
   id: number;
   status?: string | null;
   created_at: string;
+}
+
+interface WithdrawalSummary {
+  total: number;
+  pending: number;
+}
+
+interface SettlementSummary {
+  total: number;
+  pending: number;
 }
 
 interface WalletStatusResponse {
@@ -32,6 +45,8 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [walletStatus, setWalletStatus] = useState<WalletStatusResponse | null>(null);
+  const [withdrawalsSummary, setWithdrawalsSummary] = useState<WithdrawalSummary | null>(null);
+  const [settlementsSummary, setSettlementsSummary] = useState<SettlementSummary | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,11 +56,13 @@ export default function AdminDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const [usersRes, eventsRes, txRes, walletRes] = await Promise.all([
+        const [usersRes, eventsRes, txRes, walletRes, withdrawalsRes, settlementsRes] = await Promise.all([
           api.get('/api/admin/users'),
           fetchEvents(),
-          fetchTransactions({ limit: 5 }),
-          api.get('/api/admin/central-wallet/status').catch(() => null)
+          fetchTransactions({ limit: 100 }),
+          api.get('/api/admin/central-wallet/status').catch(() => null),
+          api.get('/api/admin/central-wallet/withdrawals').catch(() => null),
+          api.get('/api/admin/central-wallet/settlements').catch(() => null)
         ]);
 
         setUsers(usersRes.data.data || []);
@@ -53,6 +70,24 @@ export default function AdminDashboard() {
         setTransactions(txRes.data || []);
         if (walletRes) {
           setWalletStatus(walletRes.data);
+        }
+
+        if (withdrawalsRes?.data?.withdrawals) {
+          const allWithdrawals = withdrawalsRes.data.withdrawals as {
+            status: string;
+          }[];
+          const total = allWithdrawals.length;
+          const pending = allWithdrawals.filter((w) => w.status === 'pendiente').length;
+          setWithdrawalsSummary({ total, pending });
+        }
+
+        if (settlementsRes?.data?.settlements) {
+          const allSett = settlementsRes.data.settlements as {
+            status: string;
+          }[];
+          const total = allSett.length;
+          const pending = allSett.filter((s) => s.status === 'pendiente').length;
+          setSettlementsSummary({ total, pending });
         }
       } catch (err: any) {
         console.error('Error loading dashboard data', err);
@@ -69,7 +104,69 @@ export default function AdminDashboard() {
   const activeUsers = users.filter((u) => (u.status ?? 'activo') === 'activo').length;
   const inactiveUsers = totalUsers - activeUsers;
 
-  const totalTransactions = useMemo(() => transactions.length, [transactions]);
+  const {
+    totalTransactions,
+    completedTx,
+    failedTx,
+    pendingTx,
+    last7DaysVolume,
+    last7DaysCount
+  } = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    let completed = 0;
+    let failed = 0;
+    let pending = 0;
+    let volume = 0;
+    let count7 = 0;
+
+    transactions.forEach((tx) => {
+      if (tx.status === 'completed') completed += 1;
+      else if (tx.status === 'failed') failed += 1;
+      else pending += 1;
+
+      try {
+        const created = new Date(tx.created_at);
+        if (created >= sevenDaysAgo && created <= now) {
+          count7 += 1;
+          const amountNumeric = Number(tx.amount);
+          if (!Number.isNaN(amountNumeric)) {
+            volume += amountNumeric;
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+    });
+
+    return {
+      totalTransactions: transactions.length,
+      completedTx: completed,
+      failedTx: failed,
+      pendingTx: pending,
+      last7DaysVolume: volume,
+      last7DaysCount: count7
+    };
+  }, [transactions]);
+
+  const { newUsersLast7Days } = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    const newUsers = users.filter((u) => {
+      try {
+        const created = new Date(u.created_at);
+        return created >= sevenDaysAgo && created <= now;
+      } catch {
+        return false;
+      }
+    }).length;
+
+    return { newUsersLast7Days: newUsers };
+  }, [users]);
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
@@ -138,6 +235,18 @@ export default function AdminDashboard() {
   const tokenSymbol = walletStatus?.token?.symbol || 'HC';
   const tokenBalance = walletStatus?.token?.balance || '0';
 
+  const miniBar = (percentage: number, colorClass: string) => {
+    const clamped = Math.max(0, Math.min(100, percentage || 0));
+    return (
+      <div className="mt-3 h-1.5 w-full rounded-full bg-dark-bg/80 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${colorClass}`}
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -166,8 +275,9 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <>
-          {/* Stats Grid */}
+          {/* KPIs principales */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+            {/* Usuarios */}
             <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -182,8 +292,13 @@ export default function AdminDashboard() {
                 Activos: <span className="text-positive font-semibold">{activeUsers}</span> · Inactivos:{' '}
                 <span className="text-negative font-semibold">{inactiveUsers}</span>
               </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Nuevos últimos 7 días:{' '}
+                <span className="text-gray-200 font-semibold">{newUsersLast7Days}</span>
+              </p>
             </div>
 
+            {/* Transacciones */}
             <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -201,8 +316,21 @@ export default function AdminDashboard() {
                 Ver todas las transacciones
                 <HiArrowRight className="w-4 h-4" />
               </button>
+              <p className="mt-2 text-xs text-gray-500">
+                Últimos 7 días: {last7DaysCount} tx ·{' '}
+                {last7DaysVolume.toLocaleString('es-GT', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}{' '}
+                {tokenSymbol}
+              </p>
+              {miniBar(
+                totalTransactions ? (completedTx / totalTransactions) * 100 : 0,
+                'bg-accent-yellow'
+              )}
             </div>
 
+            {/* Próximos eventos */}
             <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -222,6 +350,7 @@ export default function AdminDashboard() {
               </button>
             </div>
 
+            {/* Balance banco central */}
             <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -241,6 +370,162 @@ export default function AdminDashboard() {
                 Ver detalle de wallet central
                 <HiArrowRight className="w-4 h-4" />
               </button>
+            </div>
+          </div>
+
+          {/* Segunda fila: gráficas ligeras + acciones rápidas */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Resumen de estado de transacciones */}
+            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Estado de transacciones</h2>
+                  <p className="text-xs text-gray-500">Distribución de estados en las últimas operaciones.</p>
+                </div>
+                <HiLightningBolt className="w-6 h-6 text-accent-yellow" />
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-xs text-gray-400">
+                <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-3">
+                  <p className="uppercase tracking-wider mb-1">Completadas</p>
+                  <p className="text-xl font-semibold text-positive">{completedTx}</p>
+                  {miniBar(
+                    totalTransactions ? (completedTx / totalTransactions) * 100 : 0,
+                    'bg-positive'
+                  )}
+                </div>
+                <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-3">
+                  <p className="uppercase tracking-wider mb-1">Pendientes</p>
+                  <p className="text-xl font-semibold text-accent-yellow">{pendingTx}</p>
+                  {miniBar(
+                    totalTransactions ? (pendingTx / totalTransactions) * 100 : 0,
+                    'bg-accent-yellow'
+                  )}
+                </div>
+                <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-3">
+                  <p className="uppercase tracking-wider mb-1">Fallidas</p>
+                  <p className="text-xl font-semibold text-negative">{failedTx}</p>
+                  {miniBar(
+                    totalTransactions ? (failedTx / totalTransactions) * 100 : 0,
+                    'bg-negative'
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones rápidas */}
+            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Acciones rápidas</h2>
+                  <p className="text-xs text-gray-500">
+                    Atajos a las tareas operativas más frecuentes del día a día.
+                  </p>
+                </div>
+                <HiLightningBolt className="w-6 h-6 text-primary-red" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <button
+                  onClick={() => navigate('/admin/events/new')}
+                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
+                >
+                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary-red/15 border border-primary-red/30 flex items-center justify-center text-primary-red">
+                    <HiCalendar className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold text-white">Crear evento</p>
+                    <p className="text-xs text-gray-500">Configura un nuevo evento y su wallet.</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => navigate('/admin/withdrawal-requests')}
+                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
+                >
+                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-accent-yellow/10 border border-accent-yellow/30 flex items-center justify-center text-accent-yellow">
+                    <HiCurrencyDollar className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold text-white">Revisar retiros</p>
+                    <p className="text-xs text-gray-500">
+                      Gestiona las solicitudes de retiro de usuarios.
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => navigate('/admin/settlement-requests')}
+                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
+                >
+                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-positive/10 border border-positive/30 flex items-center justify-center text-positive">
+                    <HiCurrencyDollar className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold text-white">Liquidar equipos</p>
+                    <p className="text-xs text-gray-500">
+                      Revisa las solicitudes de liquidación de eventos.
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => navigate('/admin/reports')}
+                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
+                >
+                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary-red/10 border border-primary-red/40 flex items-center justify-center text-primary-red">
+                    <HiDocumentReport className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-semibold text-white">Generar reporte</p>
+                    <p className="text-xs text-gray-500">
+                      Descarga un CSV rápido de actividad reciente.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Cola operativa */}
+            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Operaciones pendientes</h2>
+                  <p className="text-xs text-gray-500">
+                    Retiros y liquidaciones que requieren revisión del equipo admin.
+                  </p>
+                </div>
+                <HiShieldCheck className="w-6 h-6 text-accent-yellow" />
+              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between bg-dark-bg/60 border border-dark-border rounded-lg px-3 py-3">
+                  <div>
+                    <p className="text-xs font-semibold text-white">Retiros pendientes</p>
+                    <p className="text-xs text-gray-500">
+                      Solicitudes de retiro en cola de aprobación.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-accent-yellow">
+                      {withdrawalsSummary?.pending ?? 0}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      de {withdrawalsSummary?.total ?? 0} totales
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between bg-dark-bg/60 border border-dark-border rounded-lg px-3 py-3">
+                  <div>
+                    <p className="text-xs font-semibold text-white">Liquidaciones pendientes</p>
+                    <p className="text-xs text-gray-500">
+                      Solicitudes de liquidación de equipos de eventos.
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-accent-yellow">
+                      {settlementsSummary?.pending ?? 0}
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      de {settlementsSummary?.total ?? 0} totales
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

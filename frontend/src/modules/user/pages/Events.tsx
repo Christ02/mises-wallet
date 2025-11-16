@@ -7,9 +7,12 @@ import {
   HiUsers,
   HiCog,
   HiQuestionMarkCircle,
-  HiX
+  HiX,
+  HiChevronLeft,
+  HiChevronRight
 } from 'react-icons/hi';
 import { fetchUserEvents, UserEvent } from '../services/events';
+import { API_BASE_URL } from '../../../services/api';
 
 export default function Events() {
   const navigate = useNavigate();
@@ -19,6 +22,7 @@ export default function Events() {
   const [organizerEvents, setOrganizerEvents] = useState<UserEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentModalImageIndex, setCurrentModalImageIndex] = useState(0);
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -38,20 +42,57 @@ export default function Events() {
     loadEvents();
   }, []);
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) {
+      return 'Fecha por definir';
+    }
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return 'Fecha por definir';
+    }
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return `${date.getDate()} ${months[date.getMonth()]}, ${date.getFullYear()}`;
   };
 
+  const visibleUpcomingEvents = useMemo(
+    () =>
+      upcomingEvents.filter(
+        (event) => (event.status || '').toLowerCase() !== 'borrador'
+      ),
+    [upcomingEvents]
+  );
+
   const featuredEvent = useMemo(() => {
-    if (upcomingEvents.length === 0) return null;
+    if (visibleUpcomingEvents.length === 0) return null;
     const now = new Date();
-    const upcoming = upcomingEvents
+    const upcoming = visibleUpcomingEvents
       .filter((event) => new Date(event.event_date) >= now)
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
-    return upcoming[0] || upcomingEvents[0];
-  }, [upcomingEvents]);
+    return upcoming[0] || visibleUpcomingEvents[0];
+  }, [visibleUpcomingEvents]);
+
+  const buildCoverImageUrl = (path?: string | null) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE_URL}${path}`;
+  };
+
+  const modalImages = useMemo(() => {
+    if (!selectedEvent) return [];
+    const photos = (selectedEvent as any).photos as string[] | undefined;
+    const urls: string[] = [];
+    if (photos && photos.length) {
+      urls.push(...photos);
+    }
+    if (selectedEvent.cover_image_url && !urls.includes(selectedEvent.cover_image_url)) {
+      urls.unshift(selectedEvent.cover_image_url);
+    }
+    return urls;
+  }, [selectedEvent]);
+
+  useEffect(() => {
+    setCurrentModalImageIndex(0);
+  }, [selectedEvent]);
 
   return (
     <div>
@@ -123,7 +164,7 @@ export default function Events() {
             <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-10 text-center text-sm sm:text-base text-negative">
               {error}
             </div>
-          ) : upcomingEvents.length === 0 ? (
+          ) : visibleUpcomingEvents.length === 0 ? (
             <div className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-8 sm:p-12 text-center">
               <HiCalendar className="w-14 h-14 sm:w-16 sm:h-16 text-gray-500 mx-auto mb-4" />
               <p className="text-base sm:text-lg text-gray-400 mb-2">No hay eventos disponibles por ahora</p>
@@ -132,30 +173,41 @@ export default function Events() {
           ) : (
             <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
               <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
-                {upcomingEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                      <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                    </div>
-                    <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                      <div>
-                        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                          {event.name}
-                        </h3>
-                        <p className="text-sm sm:text-base text-gray-400 font-medium">
-                          {formatDate(event.event_date)}
-                        </p>
-                        {event.location && (
-                          <p className="text-xs text-gray-500 mt-1 line-clamp-1">{event.location}</p>
+                {visibleUpcomingEvents.map((event) => {
+                  const coverImage = buildCoverImageUrl(event.cover_image_url);
+                  return (
+                    <div
+                      key={event.id}
+                      className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      <div className="h-32 sm:h-40 lg:h-48 flex-shrink-0 relative overflow-hidden bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80">
+                        {coverImage && (
+                          <img
+                            src={coverImage}
+                            alt={event.name}
+                            className="w-full h-full object-cover"
+                          />
                         )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                        <HiCalendar className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-primary-red relative z-10 mx-4 my-3" />
+                      </div>
+                      <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
+                        <div>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+                            {event.name}
+                          </h3>
+                          <p className="text-sm sm:text-base text-gray-400 font-medium">
+                            {formatDate(event.event_date)}
+                          </p>
+                          {event.location && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">{event.location}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -181,32 +233,45 @@ export default function Events() {
           ) : (
             <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
               <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
-                {organizerEvents.map((event) => (
-                  <div
-                    key={event.id}
-                  className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="h-32 sm:h-40 lg:h-48 bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                      <HiCalendar className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 text-primary-red relative z-10" />
-                    </div>
-                    <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
-                      <div>
-                        <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
-                          {event.title}
-                        </h3>
-                        <p className="text-sm sm:text-base text-gray-400 font-medium mb-2">{formatDate(event.date)}</p>
-                        <div className="inline-flex items-center space-x-1 bg-transparent border border-primary-red/50 text-primary-red px-2 py-1 rounded-lg text-xs font-semibold mt-2">
-                          <HiCog className="w-3 h-3" />
-                          <span>Organizador</span>
-                        </div>
-                        {event.groupId && (
-                          <p className="text-xs text-gray-500 mt-2">Group ID: {event.groupId}</p>
+                {organizerEvents.map((event) => {
+                  const coverImage = buildCoverImageUrl(event.cover_image_url);
+                  return (
+                    <div
+                      key={event.id}
+                      className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl overflow-hidden flex-shrink-0 shadow-lg hover:border-primary-red/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col w-[calc((100vw-4rem-1rem)/2)] sm:w-72 lg:w-80"
+                      onClick={() => setSelectedEvent(event)}
+                    >
+                      <div className="h-32 sm:h-40 lg:h-48 flex-shrink-0 relative overflow-hidden bg-gradient-to-b from-red-900/80 via-red-700/60 to-red-900/80">
+                        {coverImage && (
+                          <img
+                            src={coverImage}
+                            alt={event.name}
+                            className="w-full h-full object-cover"
+                          />
                         )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                        <HiCalendar className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 text-primary-red relative z-10 mx-4 my-3" />
+                      </div>
+                      <div className="p-5 sm:p-6 lg:p-8 flex-1 flex flex-col justify-between bg-dark-card">
+                        <div>
+                          <h3 className="text-base sm:text-lg lg:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight">
+                            {event.name}
+                          </h3>
+                          <p className="text-sm sm:text-base text-gray-400 font-medium mb-2">
+                            {formatDate((event as any).date || event.event_date)}
+                          </p>
+                          <div className="inline-flex items-center space-x-1 bg-transparent border border-primary-red/50 text-primary-red px-2 py-1 rounded-lg text-xs font-semibold mt-2">
+                            <HiCog className="w-3 h-3" />
+                            <span>Organizador</span>
+                          </div>
+                          {event.groupId && (
+                            <p className="text-xs text-gray-500 mt-2">Group ID: {event.groupId}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -225,11 +290,63 @@ export default function Events() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="mb-6">
-                  <div className="h-40 sm:h-48 bg-gradient-to-br from-primary-red/30 via-primary-red/20 to-primary-red/10 rounded-lg sm:rounded-xl flex items-center justify-center mb-4 sm:mb-6 relative overflow-hidden">
-                    <div className="absolute inset-0 bg-primary-red/5"></div>
-                    <HiCalendar className="w-16 h-16 sm:w-20 sm:h-20 text-primary-red relative z-10" />
+                  <div className="h-48 sm:h-56 bg-gradient-to-br from-primary-red/30 via-primary-red/20 to-primary-red/10 rounded-lg sm:rounded-xl mb-4 sm:mb-6 relative overflow-hidden">
+                    {modalImages.length > 0 && buildCoverImageUrl(modalImages[currentModalImageIndex]) ? (
+                      <>
+                        <img
+                          src={buildCoverImageUrl(modalImages[currentModalImageIndex])!}
+                          alt={selectedEvent.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/40" />
+                        {modalImages.length > 1 && (
+                          <div className="absolute inset-0 flex items-center justify-between px-2 sm:px-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentModalImageIndex((prev) =>
+                                  prev === 0 ? modalImages.length - 1 : prev - 1
+                                )
+                              }
+                              className="p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors"
+                            >
+                              <HiChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentModalImageIndex((prev) =>
+                                  prev === modalImages.length - 1 ? 0 : prev + 1
+                                )
+                              }
+                              className="p-2 rounded-full bg-black/40 text-white hover:bg-black/70 transition-colors"
+                            >
+                              <HiChevronRight className="w-5 h-5" />
+                            </button>
+                          </div>
+                        )}
+                        {modalImages.length > 1 && (
+                          <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-1.5">
+                            {modalImages.map((_, index) => (
+                              <button
+                                key={`${selectedEvent.id}-dot-${index}`}
+                                type="button"
+                                onClick={() => setCurrentModalImageIndex(index)}
+                                className={`h-1.5 rounded-full transition-all ${
+                                  index === currentModalImageIndex ? 'w-4 bg-white' : 'w-2 bg-white/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <HiCalendar className="w-16 h-16 sm:w-20 sm:h-20 text-primary-red/90" />
+                      </div>
+                    )}
                     {organizerEvents.some(e => e.id === selectedEvent.id) && (
-                      <div className="absolute top-3 right-3 bg-primary-red text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1">
+                      <div className="absolute top-3 right-3 bg-primary-red text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 z-10">
                         <HiCog className="w-3 h-3" />
                         <span>Organizador</span>
                       </div>

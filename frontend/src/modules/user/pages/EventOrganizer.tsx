@@ -12,6 +12,7 @@ import {
   HiQuestionMarkCircle,
   HiX
 } from 'react-icons/hi';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   fetchOrganizerEventDetail,
   OrganizerEventDetail,
@@ -85,6 +86,14 @@ export default function EventOrganizer() {
   };
 
   const settlementStatus = detail?.settlement?.status ?? 'sin-solicitud';
+
+  const groupId = detail?.business.groupId || '';
+
+  const qrValue = useMemo(() => {
+    // Para que funcione directo con el escáner de "Pagar", usamos el groupId plano.
+    // El componente de Pay se encarga de buscar el comercio por este identificador.
+    return groupId || '';
+  }, [groupId]);
 
   if (loading) {
     return (
@@ -370,13 +379,35 @@ export default function EventOrganizer() {
                   <HiX className="w-5 h-5" />
                 </button>
               </div>
-              <div className="bg-white rounded-2xl p-6 flex items-center justify-center">
-                <HiQrcode className="w-40 h-40 text-gray-700" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-400">Escanea este código para recibir fondos en la wallet del equipo.</p>
-                <p className="text-xs text-gray-500 font-mono break-all">{detail.wallet.address}</p>
-              </div>
+              {qrValue ? (
+                <>
+                  <div className="bg-white rounded-2xl p-6 flex items-center justify-center">
+                    <QRCodeCanvas
+                      value={qrValue}
+                      size={224}
+                      includeMargin
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-400">
+                      Escanea este código con la opción de &quot;Pagar&quot; para enviar HayekCoin al equipo.
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Group-id del equipo:{' '}
+                      <span className="font-mono break-all">{groupId}</span>
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-300">
+                    Este equipo aún no tiene un <span className="font-semibold">group-id</span> asignado, por lo que no es posible generar un código QR.
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Contacta al administrador del sistema para configurar el identificador del equipo.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </>

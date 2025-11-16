@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import api from '../../services/api';
+import misesLogo from '../../assets/images/mises-wallet.svg';
 
 interface RegisterForm {
   nombres: string;
@@ -108,11 +109,13 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6 lg:p-8 py-8 sm:py-12">
       <div className="w-full max-w-md">
-        {/* Branding Diamonds */}
-        <div className="flex items-center justify-center space-x-2 mb-8">
-          <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
-          <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
-          <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
+        {/* Branding Logo */}
+        <div className="flex items-center justify-center mb-8">
+          <img
+            src={misesLogo}
+            alt="Mises Wallet"
+            className="h-20 sm:h-24 lg:h-28 w-auto"
+          />
         </div>
 
         {/* Título */}

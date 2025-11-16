@@ -69,6 +69,7 @@ export default function EventManagement() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<Array<{ url: string; isExisting: boolean }>>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [removeExistingCover, setRemoveExistingCover] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -96,6 +97,7 @@ export default function EventManagement() {
     setImageFiles([]);
     setImagePreviews([]);
     setExistingImages([]);
+    setRemoveExistingCover(false);
   };
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -139,6 +141,7 @@ export default function EventManagement() {
       if (existingIndex !== -1) {
         setExistingImages((prev) => prev.filter((_, i) => i !== existingIndex));
       }
+      setRemoveExistingCover(true);
     } else {
       // Es una imagen nueva, revocamos el blob URL y la removemos de files
       revokePreview(preview.url);
@@ -211,9 +214,12 @@ export default function EventManagement() {
   };
 
   const openEditModal = (event: AdminEvent) => {
+    // Normalizar fecha al formato YYYY-MM-DD para que el input type="date" la muestre correctamente
+    const isoDate = event.event_date ? new Date(event.event_date).toISOString().slice(0, 10) : '';
+
     setFormState({
       name: event.name,
-      event_date: event.event_date,
+      event_date: isoDate,
       location: event.location,
       start_time: event.start_time,
       end_time: event.end_time,
@@ -222,6 +228,7 @@ export default function EventManagement() {
     });
     setEditingEvent(event);
     resetImageState();
+    setRemoveExistingCover(false);
     
     // Si el evento tiene imágenes existentes, las cargamos
     // Por ahora solo manejamos cover_image_url, pero esto se puede extender
@@ -260,9 +267,18 @@ export default function EventManagement() {
       const hasNewImages = imageFiles.length > 0;
       
       if (editingEvent) {
+        const updatePayload: UpdateEventPayload = {
+          ...formState
+        };
+
+        // Si se eliminó la portada y no se está subiendo una nueva, avisamos al backend
+        if (!hasNewImages && removeExistingCover) {
+          updatePayload.remove_cover_image = 'true';
+        }
+
         const updated = await updateEvent(
           editingEvent.id,
-          formState,
+          updatePayload,
           hasNewImages ? firstImageFile : undefined
         );
         setEvents((prev) => prev.map((evt) => (evt.id === updated.id ? { ...evt, ...updated } : evt)));
@@ -583,7 +599,7 @@ export default function EventManagement() {
                     type="date"
                     value={formState.event_date}
                     onChange={(e) => handleChange('event_date', e.target.value)}
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all [color-scheme:dark]"
                     required
                   />
                 </div>
@@ -607,7 +623,7 @@ export default function EventManagement() {
                     type="time"
                     value={formState.start_time}
                     onChange={(e) => handleChange('start_time', e.target.value)}
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all [color-scheme:dark]"
                     required
                   />
                 </div>
@@ -617,7 +633,7 @@ export default function EventManagement() {
                     type="time"
                     value={formState.end_time}
                     onChange={(e) => handleChange('end_time', e.target.value)}
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all [color-scheme:dark]"
                     required
                   />
                 </div>

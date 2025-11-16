@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { HiChevronDown, HiLogout, HiUserCircle, HiBell, HiSearch, HiMenu } from 'react-icons/hi';
+import misesLogo from '../../../../assets/images/mises-wallet.svg';
+import { fetchNotifications, UserNotification } from '../../services/notifications';
 
 interface User {
   id: number;
@@ -20,6 +22,8 @@ export default function UserNavbar({ onMenuClick }: UserNavbarProps) {
   const [user, setUser] = useState<User | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -31,6 +35,32 @@ export default function UserNavbar({ onMenuClick }: UserNavbarProps) {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const loadNotificationBadge = async () => {
+      try {
+        const notifications: UserNotification[] = await fetchNotifications();
+        if (!notifications.length) {
+          setHasUnreadNotifications(false);
+          return;
+        }
+
+        const latestTimestamp = Math.max(
+          ...notifications.map((n) => new Date(n.date).getTime())
+        );
+
+        const lastSeenRaw = localStorage.getItem('notifications_last_seen_at');
+        const lastSeen = lastSeenRaw ? new Date(lastSeenRaw).getTime() : 0;
+
+        const hasNew = latestTimestamp > lastSeen;
+        setHasUnreadNotifications(hasNew);
+      } catch (error) {
+        console.error('Error loading notifications for navbar:', error);
+      }
+    };
+
+    loadNotificationBadge();
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,12 +94,14 @@ export default function UserNavbar({ onMenuClick }: UserNavbarProps) {
       <div className="px-8 sm:px-10 md:px-12 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 h-full">
         {/* Left Side - Branding */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
-            <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
-            <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
-            <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
-          </div>
-          <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Mises Wallet</h1>
+          <img
+            src={misesLogo}
+            alt="Mises Wallet"
+            className="h-7 sm:h-8 w-auto"
+          />
+          <span className="inline text-lg sm:text-xl font-semibold text-white tracking-tight">
+            Mises Wallet
+          </span>
         </div>
 
         {/* Mobile Menu Button - Oculto en móvil porque usamos bottom nav */}
@@ -100,7 +132,9 @@ export default function UserNavbar({ onMenuClick }: UserNavbarProps) {
             className="relative p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
           >
             <HiBell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary-red rounded-full"></span>
+            {hasUnreadNotifications && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-primary-red rounded-full" />
+            )}
           </Link>
 
           {/* User Menu */}

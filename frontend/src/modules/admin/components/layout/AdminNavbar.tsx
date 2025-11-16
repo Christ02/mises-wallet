@@ -63,7 +63,7 @@ export default function AdminNavbar({ onMenuClick, sidebarOpen }: AdminNavbarPro
   return (
     <nav className={`bg-dark-card border-b border-dark-border fixed top-0 right-0 z-30 backdrop-blur-sm bg-dark-card/95 h-16 sm:h-20 transition-all duration-300 ${sidebarOpen ? 'left-0 lg:left-80' : 'left-0'}`}>
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 h-full">
-        {/* Left Side - Menu Button (Always visible) */}
+        {/* Left Side - Menu Button + Branding */}
         <div className="flex items-center space-x-4">
           <button
             onClick={onMenuClick}
@@ -73,8 +73,7 @@ export default function AdminNavbar({ onMenuClick, sidebarOpen }: AdminNavbarPro
             <HiMenu className="w-6 h-6" />
           </button>
           
-          {/* Admin Badge */}
-          <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-primary-red/10 border border-primary-red/20 rounded-lg">
+          <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 bg-primary-red/10 border border-primary-red/20 rounded-lg">
             <HiShieldCheck className="w-5 h-5 text-primary-red" />
             <span className="text-sm font-semibold text-primary-red">Panel de Administración</span>
           </div>

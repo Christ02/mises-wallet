@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import misesLogo from '../../assets/images/mises-wallet.svg';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -31,16 +32,18 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
-        {/* Branding Diamonds */}
-        <div className="flex items-center justify-center space-x-2 mb-8">
-          <div className="w-2 h-2 bg-accent-red rounded-sm"></div>
-          <div className="w-2 h-2 bg-accent-yellow rounded-sm"></div>
-          <div className="w-2 h-2 bg-accent-blue rounded-sm"></div>
+        {/* Branding Logo */}
+        <div className="flex items-center justify-center mb-8">
+          <img
+            src={misesLogo}
+            alt="Mises Wallet"
+            className="h-20 sm:h-24 lg:h-28 w-auto"
+          />
         </div>
 
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Recuperar Contraseña</h1>
-          <p className="text-sm sm:text-base text-gray-300">Ingresa tu email para recuperar tu cuenta</p>
+          <p className="text-sm sm:text-base text-gray-300">Ingresa tu correo electrónico para recuperar tu cuenta</p>
         </div>
 
         <div className="space-y-5">
@@ -64,7 +67,7 @@ export default function ForgotPassword() {
                 autoComplete="email"
                 required
                 className="w-full px-4 py-3 bg-dark-card border border-dark-border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
-                placeholder="Email @ufm.edu"
+                placeholder="Correo electrónico"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

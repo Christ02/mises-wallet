@@ -24,7 +24,24 @@ export default function Notifications() {
       try {
         setLoading(true);
         const data = await fetchNotifications();
-        setNotifications(data);
+        // Al abrir la pantalla de notificaciones, consideramos todas como leídas en la UI
+        const normalized = data.map((notif) => ({ ...notif, read: true }));
+        setNotifications(normalized);
+
+        if (data.length > 0) {
+          const latestTimestamp = Math.max(
+            ...normalized.map((n) => new Date(n.date).getTime())
+          );
+          localStorage.setItem(
+            'notifications_last_seen_at',
+            new Date(latestTimestamp).toISOString()
+          );
+        } else {
+          localStorage.setItem(
+            'notifications_last_seen_at',
+            new Date().toISOString()
+          );
+        }
       } catch (err: any) {
         console.error('Error cargando notificaciones:', err);
         setError(err.response?.data?.error || 'No se pudieron cargar las notificaciones');

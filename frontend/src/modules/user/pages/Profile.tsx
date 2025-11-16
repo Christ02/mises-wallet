@@ -67,6 +67,13 @@ export default function Profile() {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const convertBalanceToUsd = (balance: string) => {
+    if (!rechargeSummary?.usdToTokenRate) return null;
+    const tokens = parseFloat(balance);
+    if (!tokens || !rechargeSummary.usdToTokenRate) return '0.00';
+    return (tokens / rechargeSummary.usdToTokenRate).toFixed(2);
+  };
+
   if (loading) {
     return (
       
@@ -138,26 +145,14 @@ export default function Profile() {
                     {wallet.tokenSymbol || 'HC'}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">{wallet.network || 'Red Universitaria'}</p>
+                {rechargeSummary && (
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    ≈ ${convertBalanceToUsd(wallet.balance)} USD
+                  </p>
+                )}
               </div>
             )}
-            {rechargeSummary && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 mb-1">Recargas acumuladas</p>
-                  <p className="text-lg font-semibold text-white">
-                    {rechargeSummary.totalTokens.toFixed(4)} {rechargeSummary.tokenSymbol}
-                  </p>
-                </div>
-                <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 mb-1">Equivalente en USD</p>
-                  <p className="text-lg font-semibold text-white">${rechargeSummary.totalUsd.toFixed(2)} USD</p>
-                  <p className="text-[10px] text-gray-500 mt-1">
-                    1 USD = {rechargeSummary.usdToTokenRate.toFixed(2)} {rechargeSummary.tokenSymbol}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Sección de resumen de recargas removida a solicitud del usuario */}
           </div>
         </div>
 
