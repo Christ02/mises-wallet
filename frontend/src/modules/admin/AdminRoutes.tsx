@@ -12,6 +12,7 @@ import CentralWallet from './pages/CentralWallet';
 import SettlementRequests from './pages/SettlementRequests';
 import WithdrawalRequests from './pages/WithdrawalRequests';
 import CentralWalletActivity from './pages/CentralWalletActivity';
+import AdminProfile from './pages/AdminProfile';
 
 export default function AdminRoutes() {
   return (
@@ -29,6 +30,7 @@ export default function AdminRoutes() {
         <Route path="/central-wallet/settlements" element={<SettlementRequests />} />
         <Route path="/central-wallet/withdrawals" element={<WithdrawalRequests />} />
         <Route path="/central-wallet/activity" element={<CentralWalletActivity />} />
+        <Route path="/profile" element={<AdminProfile />} />
         
         {/* Redirect por defecto */}
         <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />

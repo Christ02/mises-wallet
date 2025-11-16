@@ -14,6 +14,7 @@ import {
   HiFilter
 } from 'react-icons/hi';
 import api from '../../../services/api';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 interface AdminUser {
   id: number;
@@ -61,6 +62,8 @@ export default function UserManagement() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+  const [confirmDeleting, setConfirmDeleting] = useState(false);
 
   const statusOptions = [
     { value: 'activo', label: 'Activo' },
@@ -260,17 +263,22 @@ export default function UserManagement() {
   };
 
   const handleDelete = async (user: AdminUser) => {
-    const confirmed = window.confirm(`¿Eliminar a ${user.nombres} ${user.apellidos}?`);
-    if (!confirmed) return;
+    setUserToDelete(user);
+  };
 
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
     try {
-      setDeletingId(user.id);
-      await api.delete(`/api/admin/users/${user.id}`);
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      setConfirmDeleting(true);
+      setDeletingId(userToDelete.id);
+      await api.delete(`/api/admin/users/${userToDelete.id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      setUserToDelete(null);
     } catch (err: any) {
       console.error('Error deleting user', err);
       alert(err.response?.data?.error || 'No se pudo eliminar el usuario');
     } finally {
+      setConfirmDeleting(false);
       setDeletingId(null);
     }
   };
@@ -624,6 +632,21 @@ export default function UserManagement() {
           )}
         </div>
       </div>
+
+      <ConfirmModal
+        open={!!userToDelete}
+        title="Eliminar usuario"
+        description={
+          userToDelete
+            ? `¿Seguro que deseas eliminar a ${userToDelete.nombres} ${userToDelete.apellidos}? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteUser}
+        onClose={() => !confirmDeleting && setUserToDelete(null)}
+        loading={confirmDeleting}
+      />
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

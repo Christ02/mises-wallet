@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   HiChevronDown,
   HiClipboardCheck,
-  HiClipboardList,
   HiDownload,
-  HiMail,
   HiOutlineDocumentText,
   HiRefresh,
-  HiTemplate
+  HiTemplate,
+  HiTrash
 } from 'react-icons/hi';
+import api from '../../../services/api';
+import { fetchTransactions } from '../services/transactions';
+import { fetchEvents, fetchBusinesses } from '../services/events';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 type EntityOption = {
   value: string;
@@ -102,10 +105,29 @@ export default function Reports() {
       created_at: string;
       columns: string[];
       filters: string[];
+      csvContent?: string;
+      filename?: string;
     }[]
   >([]);
 
   const availableColumns = useMemo(() => getColumnsForEntity(selectedEntity.value), [selectedEntity]);
+
+  // Estado para modal de confirmación (eliminar reporte)
+  const [reportToDelete, setReportToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDeleteReport = async () => {
+    if (!reportToDelete) return;
+    setDeleting(true);
+    try {
+      const updatedReports = recentReports.filter(r => r.id !== reportToDelete.id);
+      setRecentReports(updatedReports);
+      localStorage.setItem('recentReports', JSON.stringify(updatedReports));
+      setReportToDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleToggleColumn = (value: string) => {
     setSelectedColumns((prev) =>
@@ -120,9 +142,290 @@ export default function Reports() {
     }));
   };
 
-  const handleGenerateReport = () => {
+  // Función para escapar valores CSV
+  const escapeCSVValue = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    const stringValue = String(value);
+    // Si contiene comas, comillas o saltos de línea, envolver en comillas y escapar comillas
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+
+  // Función para generar CSV
+  const generateCSV = (data: any[], columns: string[]): string => {
+    if (!data || data.length === 0) {
+      return '';
+    }
+
+    // Obtener los headers basados en las columnas seleccionadas
+    const headers = columns.map(col => {
+      const columnDef = availableColumns.find(c => c.value === col);
+      return columnDef ? columnDef.label : col;
+    });
+
+    // Generar las filas
+    const rows = data.map(row => {
+      return columns.map(col => {
+        let value = '';
+        
+        // Manejar diferentes estructuras de datos según la entidad
+        if (selectedEntity.value === 'users') {
+          switch (col) {
+            case 'nombres':
+              value = row.nombres || '';
+              break;
+            case 'apellidos':
+              value = row.apellidos || '';
+              break;
+            case 'email':
+              value = row.email || '';
+              break;
+            case 'carnet':
+              value = row.carnet_universitario || '';
+              break;
+            case 'role':
+              value = row.role || '';
+              break;
+            case 'status':
+              value = row.status || 'activo';
+              break;
+            case 'created_at':
+              value = row.created_at ? new Date(row.created_at).toLocaleDateString('es-GT') : '';
+              break;
+            default:
+              value = row[col] || '';
+          }
+        } else if (selectedEntity.value === 'transactions') {
+          switch (col) {
+            case 'id':
+              value = row.id || '';
+              break;
+            case 'hash':
+              value = row.reference || '';
+              break;
+            case 'user':
+              value = row.user ? `${row.user.nombres} ${row.user.apellidos} (${row.user.email})` : '';
+              break;
+            case 'amount':
+              value = row.amount || '';
+              break;
+            case 'currency':
+              value = row.currency || '';
+              break;
+            case 'status':
+              value = row.status || '';
+              break;
+            case 'direction':
+              value = row.direction || '';
+              break;
+            case 'created_at':
+              value = row.created_at ? new Date(row.created_at).toLocaleDateString('es-GT') : '';
+              break;
+            default:
+              value = row[col] || '';
+          }
+        } else if (selectedEntity.value === 'events') {
+          switch (col) {
+            case 'id':
+              value = row.id || '';
+              break;
+            case 'name':
+              value = row.name || '';
+              break;
+            case 'date':
+              value = row.event_date ? new Date(row.event_date).toLocaleDateString('es-GT') : '';
+              break;
+            case 'location':
+              value = row.location || '';
+              break;
+            case 'organizers':
+              value = row.business_count ? `${row.business_count} negocios` : '0 negocios';
+              break;
+            case 'status':
+              value = row.status || '';
+              break;
+            default:
+              value = row[col] || '';
+          }
+        } else if (selectedEntity.value === 'businesses') {
+          switch (col) {
+            case 'id':
+              value = row.id || '';
+              break;
+            case 'name':
+              value = row.name || '';
+              break;
+            case 'event':
+              value = row.event_name || '';
+              break;
+            case 'lead':
+              value = row.lead_user ? `${row.lead_user.nombres} ${row.lead_user.apellidos} (${row.lead_carnet})` : row.lead_carnet || '';
+              break;
+            case 'wallet':
+              value = row.wallet_address || '';
+              break;
+            case 'members':
+              value = row.members ? row.members.length.toString() : '0';
+              break;
+            default:
+              value = row[col] || '';
+          }
+        } else {
+          value = row[col] || '';
+        }
+        
+        return escapeCSVValue(value);
+      });
+    });
+
+    // Combinar headers y filas
+    const csvContent = [
+      headers.map(escapeCSVValue).join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Agregar BOM para UTF-8 (ayuda con Excel)
+    return '\uFEFF' + csvContent;
+  };
+
+  // Función para descargar CSV
+  const downloadCSV = (csvContent: string, filename: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Función para obtener datos según la entidad
+  const fetchDataForEntity = async () => {
+    const filters: any = {};
+
+    // Aplicar filtros según los que estén activos
+    if (includeFilters.dateRange && filterValues.dateFrom) {
+      filters.dateFrom = filterValues.dateFrom;
+    }
+    if (includeFilters.dateRange && filterValues.dateTo) {
+      filters.dateTo = filterValues.dateTo;
+    }
+    if (includeFilters.status && filterValues.status) {
+      filters.status = filterValues.status;
+    }
+    if (includeFilters.role && filterValues.role) {
+      filters.role = filterValues.role;
+    }
+    if (includeFilters.direction && filterValues.direction) {
+      filters.direction = filterValues.direction;
+    }
+
+    try {
+      switch (selectedEntity.value) {
+        case 'users':
+          const usersResponse = await api.get('/api/admin/users', { params: filters });
+          return usersResponse.data.data || [];
+        
+        case 'transactions':
+          filters.limit = 10000; // Obtener todas las transacciones
+          const transactionsResponse = await fetchTransactions(filters);
+          return transactionsResponse.data || [];
+        
+        case 'events':
+          const eventsResponse = await fetchEvents();
+          // Aplicar filtros manualmente para eventos
+          let filteredEvents = eventsResponse;
+          if (includeFilters.status && filterValues.status) {
+            filteredEvents = filteredEvents.filter((e: any) => e.status === filterValues.status);
+          }
+          if (includeFilters.dateRange && filterValues.dateFrom) {
+            filteredEvents = filteredEvents.filter((e: any) => 
+              new Date(e.event_date) >= new Date(filterValues.dateFrom)
+            );
+          }
+          if (includeFilters.dateRange && filterValues.dateTo) {
+            filteredEvents = filteredEvents.filter((e: any) => 
+              new Date(e.event_date) <= new Date(filterValues.dateTo)
+            );
+          }
+          return filteredEvents;
+        
+        case 'businesses':
+          // Para negocios, necesitamos obtener todos los eventos primero
+          const allEvents = await fetchEvents();
+          const allBusinesses: any[] = [];
+          
+          for (const event of allEvents) {
+            try {
+              const businesses = await fetchBusinesses(event.id);
+              const businessesWithEvent = businesses.map((b: any) => ({
+                ...b,
+                event_name: event.name,
+                event_id: event.id
+              }));
+              allBusinesses.push(...businessesWithEvent);
+            } catch (err) {
+              console.error(`Error fetching businesses for event ${event.id}:`, err);
+            }
+          }
+          
+          // Aplicar filtros manualmente
+          let filteredBusinesses = allBusinesses;
+          if (includeFilters.dateRange && filterValues.dateFrom) {
+            filteredBusinesses = filteredBusinesses.filter((b: any) => 
+              new Date(b.created_at) >= new Date(filterValues.dateFrom)
+            );
+          }
+          if (includeFilters.dateRange && filterValues.dateTo) {
+            filteredBusinesses = filteredBusinesses.filter((b: any) => 
+              new Date(b.created_at) <= new Date(filterValues.dateTo)
+            );
+          }
+          
+          return filteredBusinesses;
+        
+        default:
+          return [];
+      }
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      throw new Error(error.response?.data?.error || 'Error al obtener los datos');
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (selectedColumns.length === 0) {
+      alert('Por favor selecciona al menos una columna para generar el reporte.');
+      return;
+    }
+
     setGenerateLoading(true);
-    setTimeout(() => {
+    try {
+      // Obtener los datos
+      const data = await fetchDataForEntity();
+      
+      if (data.length === 0) {
+        alert('No se encontraron datos con los filtros seleccionados.');
+        setGenerateLoading(false);
+        return;
+      }
+
+      // Generar CSV
+      const csvContent = generateCSV(data, selectedColumns);
+      
+      // Crear nombre de archivo
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `reporte_${selectedEntity.value}_${timestamp}.csv`;
+      
+      // Descargar CSV
+      downloadCSV(csvContent, filename);
+      
+      // Guardar en historial
       const newReport = {
         id: Date.now(),
         name: `Reporte ${selectedEntity.label} - ${new Date().toLocaleDateString()}`,
@@ -131,12 +434,37 @@ export default function Reports() {
         columns: selectedColumns,
         filters: Object.entries(includeFilters)
           .filter(([, enabled]) => enabled)
-          .map(([key]) => key)
+          .map(([key]) => key),
+        csvContent, // Guardar el contenido para re-descargar
+        filename
       };
       setRecentReports((prev) => [newReport, ...prev].slice(0, 6));
+      
+      // Guardar en localStorage para persistencia
+      const savedReports = JSON.parse(localStorage.getItem('recentReports') || '[]');
+      savedReports.unshift(newReport);
+      localStorage.setItem('recentReports', JSON.stringify(savedReports.slice(0, 6)));
+      
+    } catch (error: any) {
+      console.error('Error generating report:', error);
+      alert(error.message || 'Error al generar el reporte. Por favor intenta de nuevo.');
+    } finally {
       setGenerateLoading(false);
-    }, 1200);
+    }
   };
+
+  // Cargar historial desde localStorage al montar
+  useEffect(() => {
+    const savedReports = localStorage.getItem('recentReports');
+    if (savedReports) {
+      try {
+        const parsed = JSON.parse(savedReports);
+        setRecentReports(parsed);
+      } catch (err) {
+        console.error('Error loading saved reports:', err);
+      }
+    }
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -436,6 +764,7 @@ export default function Reports() {
             <button
               onClick={() => {
                 setRecentReports([]);
+                localStorage.removeItem('recentReports');
               }}
               className="text-xs text-gray-500 hover:text-white transition px-3 py-1.5 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-bg/80"
             >
@@ -454,54 +783,110 @@ export default function Reports() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recentReports.map((report) => (
-              <div key={report.id} className="bg-dark-bg border border-dark-border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-white truncate">{report.name}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {new Date(report.created_at).toLocaleDateString('es-GT', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-1.5 text-xs text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <span>Entidad:</span>
-                    <span className="text-gray-300 font-medium">{report.entity}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>Columnas:</span>
-                    <span className="text-gray-300 font-medium">{report.columns.length}</span>
-                  </div>
-                  {report.filters.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span>Filtros:</span>
-                      <span className="text-gray-300 font-medium">{report.filters.length}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 pt-2 border-t border-dark-border">
-                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-red/10 text-primary-red border border-primary-red/20 rounded-lg hover:bg-primary-red/20 transition text-xs flex-1">
-                    <HiDownload className="w-3.5 h-3.5" />
-                    Descargar
-                  </button>
-                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-bg/80 transition text-xs text-gray-300 flex-1">
-                    <HiMail className="w-3.5 h-3.5" />
-                    Enviar
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-dark-border">
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Nombre del reporte
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Entidad
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Columnas
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Filtros
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Fecha de creación
+                  </th>
+                  <th className="text-center py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dark-border">
+                {recentReports.map((report) => (
+                  <tr key={report.id} className="hover:bg-dark-bg/50 transition-colors">
+                    <td className="py-4 px-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white">{report.name}</span>
+                        {report.filename && (
+                          <span className="text-xs text-gray-500 mt-0.5">{report.filename}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-300">{report.entity}</span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-300">{report.columns.length}</span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-300">
+                        {report.filters.length > 0 ? report.filters.length : 'Ninguno'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-300">
+                        {new Date(report.created_at).toLocaleDateString('es-GT', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (report.csvContent && report.filename) {
+                              downloadCSV(report.csvContent, report.filename);
+                            } else {
+                              alert('No se puede descargar este reporte. Por favor genera uno nuevo.');
+                            }
+                          }}
+                          className="p-2 text-primary-red hover:bg-primary-red/10 rounded-lg transition-colors"
+                          title="Descargar reporte"
+                        >
+                          <HiDownload className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setReportToDelete({ id: report.id, name: report.name })}
+                          className="p-2 text-negative hover:bg-negative/10 rounded-lg transition-colors"
+                          title="Eliminar reporte"
+                        >
+                          <HiTrash className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {/* Modal de confirmación para eliminar reporte */}
+      <ConfirmModal
+        open={!!reportToDelete}
+        title="Eliminar reporte"
+        description={
+          reportToDelete
+            ? `¿Seguro que deseas eliminar el reporte "${reportToDelete.name}"? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteReport}
+        onClose={() => !deleting && setReportToDelete(null)}
+        loading={deleting}
+      />
     </div>
   );
 }

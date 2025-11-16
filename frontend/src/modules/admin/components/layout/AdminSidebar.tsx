@@ -8,7 +8,8 @@ import {
   HiCog,
   HiClipboardList,
   HiOutlineDocumentText,
-  HiCurrencyDollar
+  HiCurrencyDollar,
+  HiUserCircle
 } from 'react-icons/hi';
 
 interface MenuItem {
@@ -30,6 +31,7 @@ const menuItems: MenuItem[] = [
   { name: 'Reportes', path: '/admin/reports', icon: HiOutlineDocumentText },
   { name: 'Wallet Central', path: '/admin/central-wallet', icon: HiCurrencyDollar },
   { name: 'Auditoría', path: '/admin/audit', icon: HiClipboardList },
+  { name: 'Mi perfil', path: '/admin/profile', icon: HiUserCircle },
 ];
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {

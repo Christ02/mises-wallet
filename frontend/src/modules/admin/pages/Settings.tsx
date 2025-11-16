@@ -85,6 +85,8 @@ export default function Settings() {
   const [walletSuccess, setWalletSuccess] = useState('');
   const [walletError, setWalletError] = useState('');
   const [walletLoading, setWalletLoading] = useState(true);
+  const [walletTesting, setWalletTesting] = useState(false);
+  const [walletTestMessage, setWalletTestMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
@@ -214,6 +216,40 @@ export default function Settings() {
       setWalletError(message);
     } finally {
       setWalletSaving(false);
+    }
+  };
+
+  const handleTestWallet = async () => {
+    setWalletTesting(true);
+    setWalletTestMessage(null);
+    try {
+      // Probamos la conexión usando el endpoint real de estado
+      const res = await fetch('/api/admin/central-wallet/status', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`
+        }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const balance = data?.tokenBalance ?? data?.balance ?? null;
+      setWalletTestMessage({
+        type: 'ok',
+        text: balance !== null
+          ? `Conexión exitosa. Balance disponible: ${balance} ${data?.tokenSymbol || 'HC'}.`
+          : 'Conexión exitosa.'
+      });
+    } catch (err: any) {
+      setWalletTestMessage({
+        type: 'error',
+        text: err?.message || 'No se pudo conectar con la wallet central.'
+      });
+    } finally {
+      setWalletTesting(false);
+      setTimeout(() => setWalletTestMessage(null), 5000);
     }
   };
 
@@ -622,7 +658,25 @@ export default function Settings() {
           </p>
         </div>
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-3">
+          <button
+            onClick={handleTestWallet}
+            disabled={walletTesting}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-dark-bg border border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg/80 rounded-lg font-medium transition-all disabled:opacity-60"
+            title="Probar conexión con la wallet central"
+          >
+            {walletTesting ? (
+              <>
+                <span className="h-4 w-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+                Probando...
+              </>
+            ) : (
+              <>
+                <HiInformationCircle className="w-5 h-5" />
+                Probar conexión
+              </>
+            )}
+          </button>
           <button
             onClick={handleSaveWallet}
             disabled={walletSaving}
@@ -641,6 +695,22 @@ export default function Settings() {
             )}
           </button>
         </div>
+        {walletTestMessage && (
+          <div
+            className={`mt-4 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border ${
+              walletTestMessage.type === 'ok'
+                ? 'bg-positive/10 text-positive border-positive/30'
+                : 'bg-negative/10 text-negative border-negative/30'
+            }`}
+          >
+            {walletTestMessage.type === 'ok' ? (
+              <HiCheckCircle className="w-5 h-5" />
+            ) : (
+              <HiExclamationCircle className="w-5 h-5" />
+            )}
+            <span>{walletTestMessage.text}</span>
+          </div>
+        )}
       </section>
     </div>
   );
