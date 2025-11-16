@@ -109,7 +109,6 @@ export default function Receive() {
           )}
           <div className="bg-dark-bg rounded-lg p-4 border border-dark-border flex items-center justify-between">
             <p className="text-lg sm:text-xl font-semibold text-white">{carnetLabel}</p>
-            <div className="flex items-center space-x-3">
             <button
                 onClick={handleShare}
                 disabled={loading}
@@ -122,14 +121,6 @@ export default function Receive() {
                 )}
                 <span className="text-sm text-gray-400">Copiar carnet</span>
               </button>
-              <button
-                type="button"
-                className="flex items-center space-x-2 px-3 py-2 bg-primary-red text-white rounded-lg hover:bg-primary-red/90 transition-colors"
-              >
-                <HiArrowDown className="w-4 h-4" />
-                <span className="text-sm font-medium">Compartir QR</span>
-            </button>
-          </div>
           </div>
         </div>
 

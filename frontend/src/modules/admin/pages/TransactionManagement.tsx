@@ -9,6 +9,7 @@ import {
   HiExternalLink
 } from 'react-icons/hi';
 import { fetchTransactions, AdminTransaction } from '../services/transactions';
+import Pagination from '../components/Pagination';
 
 type StatusChip = 'pendiente' | 'en_proceso' | 'completada' | 'fallida';
 
@@ -69,8 +70,8 @@ export default function TransactionManagement() {
   const [directionFilter, setDirectionFilter] = useState<string>('Todos');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [page, setPage] = useState(1);
-  const pageSize = 25;
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [total, setTotal] = useState(0);
@@ -96,10 +97,7 @@ export default function TransactionManagement() {
           type: typeFilter !== 'Todos' ? typeFilter : undefined,
           direction: directionFilter !== 'Todos' ? directionFilter : undefined,
           dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
-          page,
-          limit: pageSize,
-          offset: (page - 1) * pageSize
+          dateTo: dateTo || undefined
         });
         setTransactions(response.data);
         setTotal(response.total);
@@ -113,6 +111,7 @@ export default function TransactionManagement() {
         }
       }
     };
+
     fetchData();
     return () => controller.abort();
   }, [
@@ -122,10 +121,19 @@ export default function TransactionManagement() {
     directionFilter,
     dateFrom,
     dateTo,
-    page,
-    pageSize,
     refreshToken
   ]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, statusFilter, typeFilter, directionFilter, dateFrom, dateTo]);
+
+  // Calculate pagination
+  const totalPages = Math.max(Math.ceil(transactions.length / itemsPerPage), 1);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransactions = transactions.slice(startIndex, endIndex);
 
   const stats = useMemo(() => {
     const totals = {
@@ -142,8 +150,6 @@ export default function TransactionManagement() {
     };
     return totals;
   }, [transactions, total]);
-
-  const totalPages = Math.max(Math.ceil(total / pageSize), 1);
 
   const uniqueTypes = useMemo(() => {
     const set = new Set<string>();
@@ -317,7 +323,7 @@ export default function TransactionManagement() {
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
-                setPage(1);
+                setCurrentPage(1);
               }}
               className="w-full pl-10 pr-4 py-3.5 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
             />
@@ -340,7 +346,7 @@ export default function TransactionManagement() {
                   value={statusFilter}
                   onChange={(e) => {
                     setStatusFilter(e.target.value);
-                    setPage(1);
+                    setCurrentPage(1);
                   }}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
                 >
@@ -360,7 +366,7 @@ export default function TransactionManagement() {
                   value={typeFilter}
                   onChange={(e) => {
                     setTypeFilter(e.target.value);
-                    setPage(1);
+                    setCurrentPage(1);
                   }}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
                 >
@@ -382,7 +388,7 @@ export default function TransactionManagement() {
                   value={directionFilter}
                   onChange={(e) => {
                     setDirectionFilter(e.target.value);
-                    setPage(1);
+                    setCurrentPage(1);
                   }}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
                 >
@@ -400,7 +406,7 @@ export default function TransactionManagement() {
                 value={dateFrom}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
-                  setPage(1);
+                  setCurrentPage(1);
                 }}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
               />
@@ -412,7 +418,7 @@ export default function TransactionManagement() {
                 value={dateTo}
                 onChange={(e) => {
                   setDateTo(e.target.value);
-                  setPage(1);
+                  setCurrentPage(1);
                 }}
                 className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
               />
@@ -438,7 +444,7 @@ export default function TransactionManagement() {
             </p>
           </div>
         ) : (
-          <>
+          <div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-dark-bg/60">
@@ -467,7 +473,7 @@ export default function TransactionManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-border">
-                  {transactions.map((tx) => (
+                  {paginatedTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-dark-bg/30 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm text-accent-blue">{tx.id}</span>
@@ -555,33 +561,23 @@ export default function TransactionManagement() {
               </table>
             </div>
 
-            <div className="px-6 py-4 border-t border-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="px-6 py-4 border-t border-dark-border">
               <span className="text-sm text-gray-400">
-                Mostrando {transactions.length} de {total} transacciones
+                Mostrando {paginatedTransactions.length} de {transactions.length} transacciones
               </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={page === 1}
-                  className="px-3 py-1.5 text-sm bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Anterior
-                </button>
-                <span className="text-sm text-gray-400">
-                  Página {page} de {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={page === totalPages}
-                  className="px-3 py-1.5 text-sm bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Siguiente
-                </button>
-              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
+      {transactions.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={transactions.length}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
     </div>
   );
 }

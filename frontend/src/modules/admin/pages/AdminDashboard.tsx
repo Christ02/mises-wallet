@@ -5,31 +5,73 @@ import {
   HiCalendar,
   HiCurrencyDollar,
   HiArrowRight,
-  HiSearch,
-  HiLightningBolt,
-  HiShieldCheck,
-  HiDocumentReport
+  HiCreditCard,
+  HiUserCircle
 } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartOptions
+} from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import api from '../../../services/api';
 import { fetchEvents, AdminEvent } from '../services/events';
 import { fetchTransactions, AdminTransaction } from '../services/transactions';
 
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
 interface AdminUser {
   id: number;
+  nombres: string;
+  apellidos: string;
+  email: string;
   status?: string | null;
   created_at: string;
 }
 
-interface WithdrawalSummary {
-  total: number;
-  pending: number;
-}
+type WithdrawalRequest = {
+  id: number;
+  user: {
+    id: number;
+    carnet: string;
+    nombres?: string;
+    apellidos?: string;
+  } | null;
+  amount: number;
+  token_symbol: string;
+  status: string;
+  notes?: string | null;
+  created_at: string;
+};
 
-interface SettlementSummary {
-  total: number;
-  pending: number;
-}
+type Settlement = {
+  id: number;
+  event_id: number;
+  event_name: string;
+  business_id: number;
+  business_name: string;
+  group_id: string | null;
+  requested_amount: number;
+  token_symbol: string;
+  status: string;
+  method?: string | null;
+  notes?: string | null;
+  created_at: string;
+  token_transfer_hash?: string | null;
+};
 
 interface WalletStatusResponse {
   token?: {
@@ -45,9 +87,8 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [walletStatus, setWalletStatus] = useState<WalletStatusResponse | null>(null);
-  const [withdrawalsSummary, setWithdrawalsSummary] = useState<WithdrawalSummary | null>(null);
-  const [settlementsSummary, setSettlementsSummary] = useState<SettlementSummary | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +100,7 @@ export default function AdminDashboard() {
         const [usersRes, eventsRes, txRes, walletRes, withdrawalsRes, settlementsRes] = await Promise.all([
           api.get('/api/admin/users'),
           fetchEvents(),
-          fetchTransactions({ limit: 100 }),
+          fetchTransactions({ limit: 1000 }), // Obtener más transacciones para la gráfica
           api.get('/api/admin/central-wallet/status').catch(() => null),
           api.get('/api/admin/central-wallet/withdrawals').catch(() => null),
           api.get('/api/admin/central-wallet/settlements').catch(() => null)
@@ -71,23 +112,11 @@ export default function AdminDashboard() {
         if (walletRes) {
           setWalletStatus(walletRes.data);
         }
-
         if (withdrawalsRes?.data?.withdrawals) {
-          const allWithdrawals = withdrawalsRes.data.withdrawals as {
-            status: string;
-          }[];
-          const total = allWithdrawals.length;
-          const pending = allWithdrawals.filter((w) => w.status === 'pendiente').length;
-          setWithdrawalsSummary({ total, pending });
+          setWithdrawals(withdrawalsRes.data.withdrawals || []);
         }
-
         if (settlementsRes?.data?.settlements) {
-          const allSett = settlementsRes.data.settlements as {
-            status: string;
-          }[];
-          const total = allSett.length;
-          const pending = allSett.filter((s) => s.status === 'pendiente').length;
-          setSettlementsSummary({ total, pending });
+          setSettlements(settlementsRes.data.settlements || []);
         }
       } catch (err: any) {
         console.error('Error loading dashboard data', err);
@@ -102,52 +131,20 @@ export default function AdminDashboard() {
 
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => (u.status ?? 'activo') === 'activo').length;
-  const inactiveUsers = totalUsers - activeUsers;
 
   const {
     totalTransactions,
-    completedTx,
-    failedTx,
-    pendingTx,
-    last7DaysVolume,
-    last7DaysCount
+    completedTx
   } = useMemo(() => {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(now.getDate() - 7);
-
     let completed = 0;
-    let failed = 0;
-    let pending = 0;
-    let volume = 0;
-    let count7 = 0;
 
     transactions.forEach((tx) => {
-      if (tx.status === 'completed') completed += 1;
-      else if (tx.status === 'failed') failed += 1;
-      else pending += 1;
-
-      try {
-        const created = new Date(tx.created_at);
-        if (created >= sevenDaysAgo && created <= now) {
-          count7 += 1;
-          const amountNumeric = Number(tx.amount);
-          if (!Number.isNaN(amountNumeric)) {
-            volume += amountNumeric;
-          }
-        }
-      } catch {
-        // ignore parse errors
-      }
+      if (tx.status === 'completada' || tx.status === 'completed') completed += 1;
     });
 
     return {
       totalTransactions: transactions.length,
-      completedTx: completed,
-      failedTx: failed,
-      pendingTx: pending,
-      last7DaysVolume: volume,
-      last7DaysCount: count7
+      completedTx: completed
     };
   }, [transactions]);
 
@@ -177,25 +174,98 @@ export default function AdminDashboard() {
           const d = new Date(e.event_date);
           return d >= now;
         } catch {
-          return true;
+          return false;
         }
       })
-      .slice(0, 3);
+      .sort((a, b) => {
+        try {
+          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+        } catch {
+          return 0;
+        }
+      });
   }, [events]);
 
-  const filteredTransactions = useMemo(() => {
-    if (!searchTerm.trim()) return transactions;
-    const term = searchTerm.toLowerCase();
-    return transactions.filter((tx) => {
-      const userName = tx.user ? `${tx.user.nombres} ${tx.user.apellidos}`.toLowerCase() : '';
-      return (
-        tx.id.toString().includes(term) ||
-        (tx.user?.email || '').toLowerCase().includes(term) ||
-        userName.includes(term) ||
-        (tx.description || '').toLowerCase().includes(term)
-      );
+  const nextEvent = upcomingEvents[0];
+  const next5Events = upcomingEvents.slice(0, 5);
+
+  const recentTransactions = useMemo(() => {
+    return transactions
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5);
+  }, [transactions]);
+
+  const recentWithdrawals = useMemo(() => {
+    return withdrawals
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5);
+  }, [withdrawals]);
+
+  const recentSettlements = useMemo(() => {
+    return settlements
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5);
+  }, [settlements]);
+
+  // Datos para la gráfica de compras de HC por mes
+  const purchaseChartData = useMemo(() => {
+    const monthNames = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+
+    // Inicializar todos los meses del año actual con 0
+    const currentYear = new Date().getFullYear();
+    const monthlyData: { [key: string]: number } = {};
+    
+    monthNames.forEach((month, index) => {
+      monthlyData[`${currentYear}-${String(index + 1).padStart(2, '0')}`] = 0;
     });
-  }, [transactions, searchTerm]);
+
+    // Filtrar transacciones de tipo "recarga" y agrupar por mes
+    const rechargeTransactions = transactions.filter(
+      (tx) => tx.type === 'recarga' && (tx.status === 'completada' || tx.status === 'completed')
+    );
+
+    rechargeTransactions.forEach((tx) => {
+      try {
+        const date = new Date(tx.created_at);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const key = `${year}-${month}`;
+
+        // Solo contar transacciones del año actual
+        if (year === currentYear && monthlyData[key] !== undefined) {
+          const amount = Number(tx.amount);
+          if (!Number.isNaN(amount) && amount > 0) {
+            monthlyData[key] += amount;
+          }
+        }
+      } catch {
+        // Ignorar errores de fecha
+      }
+    });
+
+    // Convertir a arrays para la gráfica
+    const labels = monthNames;
+    const data = monthNames.map((_, index) => {
+      const key = `${currentYear}-${String(index + 1).padStart(2, '0')}`;
+      return monthlyData[key] || 0;
+    });
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'HC Comprados',
+          data,
+          backgroundColor: 'rgba(239, 68, 68, 0.8)', // primary-red con opacidad
+          borderColor: 'rgba(239, 68, 68, 1)',
+          borderWidth: 1
+        }
+      ]
+    };
+  }, [transactions]);
 
   const formatDate = (date: string) => {
     try {
@@ -212,7 +282,6 @@ export default function AdminDashboard() {
   const formatDateTime = (date: string) => {
     try {
       return new Date(date).toLocaleString('es-GT', {
-        year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -223,453 +292,442 @@ export default function AdminDashboard() {
     }
   };
 
-  const formatAmount = (amount: string, symbol: string) => {
-    const numeric = Number(amount);
+  const formatAmount = (amount: string | number, symbol: string) => {
+    const numeric = typeof amount === 'string' ? Number(amount) : amount;
     if (Number.isNaN(numeric)) return `${amount} ${symbol}`;
     return `${numeric.toLocaleString('es-GT', {
-      minimumFractionDigits: 3,
-      maximumFractionDigits: 6
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     })} ${symbol}`;
   };
 
   const tokenSymbol = walletStatus?.token?.symbol || 'HC';
   const tokenBalance = walletStatus?.token?.balance || '0';
 
-  const miniBar = (percentage: number, colorClass: string) => {
-    const clamped = Math.max(0, Math.min(100, percentage || 0));
+  if (loading) {
     return (
-      <div className="mt-3 h-1.5 w-full rounded-full bg-dark-bg/80 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${colorClass}`}
-          style={{ width: `${clamped}%` }}
-        />
+      <div className="bg-dark-card border border-dark-border rounded-xl py-12 flex flex-col items-center justify-center text-gray-400 gap-3">
+        <span className="h-8 w-8 border-2 border-primary-red border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm">Cargando información del panel...</p>
       </div>
     );
-  };
+  }
+
+  if (error) {
+    return (
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6 text-negative text-sm">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
-            <HiRefresh className="w-7 h-7" />
-          </div>
+      <div className="bg-dark-card border border-dark-border rounded-xl p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Panel de administración</h1>
-            <p className="text-sm text-gray-400">
-              Resumen rápido de usuarios, eventos, transacciones y balance del banco central.
-            </p>
+            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+            <p className="text-sm text-gray-400 mt-1">Resumen general del sistema</p>
           </div>
+          <button
+            onClick={() => navigate('/admin/profile')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all"
+          >
+            <HiUserCircle className="w-5 h-5" />
+            <span>Mi perfil</span>
+          </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-dark-card border border-dark-border rounded-xl py-12 flex flex-col items-center justify-center text-gray-400 gap-3">
-          <span className="h-8 w-8 border-2 border-primary-red border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm">Cargando información del panel...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-dark-card border border-dark-border rounded-xl p-6 text-negative text-sm">
-          {error}
-        </div>
-      ) : (
-        <>
-          {/* KPIs principales */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
-            {/* Usuarios */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-gray-500">Usuarios totales</p>
-                  <p className="text-3xl font-bold text-white mt-2">{totalUsers}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-primary-red/15 border border-primary-red/30 flex items-center justify-center">
-                  <HiUsers className="w-6 h-6 text-primary-red" />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                Activos: <span className="text-positive font-semibold">{activeUsers}</span> · Inactivos:{' '}
-                <span className="text-negative font-semibold">{inactiveUsers}</span>
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                Nuevos últimos 7 días:{' '}
-                <span className="text-gray-200 font-semibold">{newUsersLast7Days}</span>
-              </p>
-            </div>
-
-            {/* Transacciones */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-gray-500">Transacciones recientes</p>
-                  <p className="text-3xl font-bold text-white mt-2">{totalTransactions}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-accent-yellow/10 border border-accent-yellow/30 flex items-center justify-center">
-                  <HiRefresh className="w-6 h-6 text-accent-yellow" />
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/admin/transactions')}
-                className="mt-1 inline-flex items-center gap-1.5 text-xs text-accent-yellow hover:text-accent-yellow/80"
-              >
-                Ver todas las transacciones
-                <HiArrowRight className="w-4 h-4" />
-              </button>
-              <p className="mt-2 text-xs text-gray-500">
-                Últimos 7 días: {last7DaysCount} tx ·{' '}
-                {last7DaysVolume.toLocaleString('es-GT', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}{' '}
-                {tokenSymbol}
-              </p>
-              {miniBar(
-                totalTransactions ? (completedTx / totalTransactions) * 100 : 0,
-                'bg-accent-yellow'
-              )}
-            </div>
-
-            {/* Próximos eventos */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-gray-500">Próximos eventos</p>
-                  <p className="text-3xl font-bold text-white mt-2">{upcomingEvents.length}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-positive/10 border border-positive/30 flex items-center justify-center">
-                  <HiCalendar className="w-6 h-6 text-positive" />
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/admin/events')}
-                className="mt-1 inline-flex items-center gap-1.5 text-xs text-positive hover:text-positive/80"
-              >
-                Ir a gestión de eventos
-                <HiArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Balance banco central */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-5 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-gray-500">Balance banco central</p>
-                  <p className="text-2xl font-bold text-white mt-2">
-                    {formatAmount(tokenBalance, tokenSymbol)}
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-primary-red/10 border border-primary-red/30 flex items-center justify-center">
-                  <HiCurrencyDollar className="w-6 h-6 text-primary-red" />
-                </div>
-              </div>
-              <button
-                onClick={() => navigate('/admin/central-wallet')}
-                className="mt-1 inline-flex items-center gap-1.5 text-xs text-primary-red hover:text-primary-red/80"
-              >
-                Ver detalle de wallet central
-                <HiArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+      {/* 4 Tarjetas informativas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-dark-card border border-dark-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Usuarios</p>
+            <HiUsers className="w-5 h-5 text-primary-red" />
           </div>
+          <p className="text-2xl font-bold text-white">{totalUsers}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {activeUsers} activos · +{newUsersLast7Days} últimos 7 días
+          </p>
+        </div>
 
-          {/* Segunda fila: gráficas ligeras + acciones rápidas */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Resumen de estado de transacciones */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Estado de transacciones</h2>
-                  <p className="text-xs text-gray-500">Distribución de estados en las últimas operaciones.</p>
-                </div>
-                <HiLightningBolt className="w-6 h-6 text-accent-yellow" />
-              </div>
-              <div className="grid grid-cols-3 gap-3 text-xs text-gray-400">
-                <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-3">
-                  <p className="uppercase tracking-wider mb-1">Completadas</p>
-                  <p className="text-xl font-semibold text-positive">{completedTx}</p>
-                  {miniBar(
-                    totalTransactions ? (completedTx / totalTransactions) * 100 : 0,
-                    'bg-positive'
-                  )}
-                </div>
-                <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-3">
-                  <p className="uppercase tracking-wider mb-1">Pendientes</p>
-                  <p className="text-xl font-semibold text-accent-yellow">{pendingTx}</p>
-                  {miniBar(
-                    totalTransactions ? (pendingTx / totalTransactions) * 100 : 0,
-                    'bg-accent-yellow'
-                  )}
-                </div>
-                <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-3">
-                  <p className="uppercase tracking-wider mb-1">Fallidas</p>
-                  <p className="text-xl font-semibold text-negative">{failedTx}</p>
-                  {miniBar(
-                    totalTransactions ? (failedTx / totalTransactions) * 100 : 0,
-                    'bg-negative'
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Acciones rápidas */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Acciones rápidas</h2>
-                  <p className="text-xs text-gray-500">
-                    Atajos a las tareas operativas más frecuentes del día a día.
-                  </p>
-                </div>
-                <HiLightningBolt className="w-6 h-6 text-primary-red" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                <button
-                  onClick={() => navigate('/admin/events/new')}
-                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
-                >
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary-red/15 border border-primary-red/30 flex items-center justify-center text-primary-red">
-                    <HiCalendar className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-white">Crear evento</p>
-                    <p className="text-xs text-gray-500">Configura un nuevo evento y su wallet.</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => navigate('/admin/withdrawal-requests')}
-                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
-                >
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-accent-yellow/10 border border-accent-yellow/30 flex items-center justify-center text-accent-yellow">
-                    <HiCurrencyDollar className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-white">Revisar retiros</p>
-                    <p className="text-xs text-gray-500">
-                      Gestiona las solicitudes de retiro de usuarios.
-                    </p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => navigate('/admin/settlement-requests')}
-                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
-                >
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-positive/10 border border-positive/30 flex items-center justify-center text-positive">
-                    <HiCurrencyDollar className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-white">Liquidar equipos</p>
-                    <p className="text-xs text-gray-500">
-                      Revisa las solicitudes de liquidación de eventos.
-                    </p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => navigate('/admin/reports')}
-                  className="bg-dark-bg border border-dark-border rounded-lg px-3 py-3 flex items-start gap-3 hover:border-primary-red/60 hover:bg-dark-bg/80 transition"
-                >
-                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary-red/10 border border-primary-red/40 flex items-center justify-center text-primary-red">
-                    <HiDocumentReport className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-semibold text-white">Generar reporte</p>
-                    <p className="text-xs text-gray-500">
-                      Descarga un CSV rápido de actividad reciente.
-                    </p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Cola operativa */}
-            <div className="bg-dark-card rounded-xl border border-dark-border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Operaciones pendientes</h2>
-                  <p className="text-xs text-gray-500">
-                    Retiros y liquidaciones que requieren revisión del equipo admin.
-                  </p>
-                </div>
-                <HiShieldCheck className="w-6 h-6 text-accent-yellow" />
-              </div>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between bg-dark-bg/60 border border-dark-border rounded-lg px-3 py-3">
-                  <div>
-                    <p className="text-xs font-semibold text-white">Retiros pendientes</p>
-                    <p className="text-xs text-gray-500">
-                      Solicitudes de retiro en cola de aprobación.
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-accent-yellow">
-                      {withdrawalsSummary?.pending ?? 0}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      de {withdrawalsSummary?.total ?? 0} totales
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between bg-dark-bg/60 border border-dark-border rounded-lg px-3 py-3">
-                  <div>
-                    <p className="text-xs font-semibold text-white">Liquidaciones pendientes</p>
-                    <p className="text-xs text-gray-500">
-                      Solicitudes de liquidación de equipos de eventos.
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-accent-yellow">
-                      {settlementsSummary?.pending ?? 0}
-                    </p>
-                    <p className="text-[11px] text-gray-500">
-                      de {settlementsSummary?.total ?? 0} totales
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="bg-dark-card border border-dark-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Transacciones</p>
+            <HiRefresh className="w-5 h-5 text-accent-yellow" />
           </div>
+          <p className="text-2xl font-bold text-white">{totalTransactions}</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {completedTx} completadas
+          </p>
+        </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Últimas transacciones */}
-            <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-              <div className="p-6 border-b border-dark-border flex flex-col gap-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-white">Últimas transacciones</h2>
-                    <p className="text-xs text-gray-500">
-                      Actividad reciente en HayekCoin procesada por el banco central.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => navigate('/admin/transactions')}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition"
-                  >
-                    Ver todas
-                    <HiArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="relative">
-                  <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Buscar por usuario, correo o descripción..."
-                    className="w-full pl-9 pr-3 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all"
-                  />
-                </div>
-              </div>
-              {filteredTransactions.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">No hay transacciones recientes.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-dark-bg/40">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Usuario
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Monto
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Estado
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Fecha
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-dark-border">
-                      {filteredTransactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-dark-bg/30 transition-colors">
-                          <td className="px-6 py-3">
-                            <div className="flex flex-col">
-                              <span className="text-white font-medium">
-                                {tx.user ? `${tx.user.nombres} ${tx.user.apellidos}` : 'Desconocido'}
-                              </span>
-                              {tx.user?.email && (
-                                <span className="text-xs text-gray-500">{tx.user.email}</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-3 text-gray-100">
-                            {formatAmount(tx.amount, tx.currency || tokenSymbol)}
-                          </td>
-                          <td className="px-6 py-3">
-                            <span
-                              className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                                tx.status === 'completed'
-                                  ? 'bg-positive/10 text-positive border-positive/30'
-                                  : tx.status === 'failed'
-                                  ? 'bg-negative/10 text-negative border-negative/30'
-                                  : 'bg-accent-yellow/10 text-accent-yellow border-accent-yellow/30'
-                              }`}
-                            >
-                              {tx.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-3 text-gray-400">
-                            {formatDateTime(tx.created_at)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+        <div className="bg-dark-card border border-dark-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Eventos</p>
+            <HiCalendar className="w-5 h-5 text-positive" />
+          </div>
+          <p className="text-2xl font-bold text-white">{upcomingEvents.length}</p>
+          <p className="text-xs text-gray-500 mt-1">Próximos publicados</p>
+        </div>
+
+        <div className="bg-dark-card border border-dark-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Wallet Central</p>
+            <HiCurrencyDollar className="w-5 h-5 text-primary-red" />
+          </div>
+          <p className="text-xl font-bold text-white truncate">
+            {formatAmount(tokenBalance, tokenSymbol)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Balance disponible</p>
+        </div>
+      </div>
+
+      {/* Últimas transacciones y Próximos eventos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Últimas 5 transacciones */}
+        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-dark-border flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Últimas transacciones</h2>
+              <p className="text-xs text-gray-500 mt-0.5">5 transacciones más recientes</p>
             </div>
-
-            {/* Próximos eventos */}
-            <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
-              <div className="p-6 border-b border-dark-border flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">Próximos eventos</h2>
-                  <p className="text-xs text-gray-500">
-                    Eventos publicados y próximos en el calendario.
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigate('/admin/events')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition"
-                >
-                  Ver todos
-                  <HiArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {upcomingEvents.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-500">
-                  No hay eventos próximos publicados.
-                </div>
-              ) : (
-                <div className="divide-y divide-dark-border">
-                  {upcomingEvents.map((event) => (
-                    <div key={event.id} className="p-5 flex items-center justify-between gap-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-white">{event.name}</span>
-                        <span className="text-xs text-gray-500">
-                          {formatDate(event.event_date)} · {event.location}
+            <button
+              onClick={() => navigate('/admin/transactions')}
+              className="text-xs text-primary-red hover:text-primary-red/80 flex items-center gap-1"
+            >
+              Ver todas
+              <HiArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          {recentTransactions.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No hay transacciones</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-dark-bg/40">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Usuario</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Monto</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Estado</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-border">
+                  {recentTransactions.map((tx) => (
+                    <tr
+                      key={tx.id}
+                      className="hover:bg-dark-bg/30 transition-colors cursor-pointer"
+                      onClick={() => navigate('/admin/transactions')}
+                    >
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white font-medium">
+                            {tx.user ? `${tx.user.nombres} ${tx.user.apellidos}` : 'Sistema'}
+                          </span>
+                          {tx.user?.email && (
+                            <span className="text-xs text-gray-500">{tx.user.email}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-100">
+                        {formatAmount(tx.amount, tx.currency || tokenSymbol)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${
+                            tx.status === 'completada' || tx.status === 'completed'
+                              ? 'bg-positive/10 text-positive border border-positive/30'
+                              : tx.status === 'fallida' || tx.status === 'failed'
+                              ? 'bg-negative/10 text-negative border border-negative/30'
+                              : 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/30'
+                          }`}
+                        >
+                          {tx.status === 'completada' || tx.status === 'completed' ? 'Completada' : 
+                           tx.status === 'fallida' || tx.status === 'failed' ? 'Fallida' : 'Pendiente'}
                         </span>
-                      </div>
-                      <button
-                        onClick={() => navigate(`/admin/events/${event.id}`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition"
-                      >
-                        Gestionar
-                        <HiArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-gray-400">
+                        {formatDateTime(tx.created_at)}
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              )}
+                </tbody>
+              </table>
             </div>
+          )}
+        </div>
+
+        {/* Próximos eventos */}
+        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-dark-border flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Próximos eventos</h2>
+              <p className="text-xs text-gray-500 mt-0.5">5 eventos próximos publicados</p>
+            </div>
+            <button
+              onClick={() => navigate('/admin/events')}
+              className="text-xs text-primary-red hover:text-primary-red/80 flex items-center gap-1"
+            >
+              Ver todos
+              <HiArrowRight className="w-3 h-3" />
+            </button>
           </div>
-        </>
-      )}
+          {next5Events.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No hay eventos próximos</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-dark-bg/40">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Evento</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Fecha</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Ubicación</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Acción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-border">
+                  {next5Events.map((event) => (
+                    <tr
+                      key={event.id}
+                      className="hover:bg-dark-bg/30 transition-colors cursor-pointer"
+                      onClick={() => navigate('/admin/events')}
+                    >
+                      <td className="px-4 py-2.5">
+                        <span className="text-sm font-semibold text-white">{event.name}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-300">
+                        {formatDate(event.event_date)}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-300">
+                        {event.location}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/admin/events/${event.id}`);
+                          }}
+                          className="text-xs text-primary-red hover:text-primary-red/80 flex items-center gap-1"
+                        >
+                          Gestionar
+                          <HiArrowRight className="w-3 h-3" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Gráfica de compras de HC por mes - Ancho completo */}
+      <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-dark-border">
+          <h2 className="text-base font-semibold text-white">Compras de HC por mes</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Cantidad de HayekCoin comprados por mes del año</p>
+        </div>
+        <div className="p-4">
+          <Bar
+            data={purchaseChartData}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                  titleColor: '#fff',
+                  bodyColor: '#fff',
+                  borderColor: 'rgba(239, 68, 68, 0.5)',
+                  borderWidth: 1,
+                  callbacks: {
+                    label: function(context) {
+                      const value = context.parsed.y;
+                      return `${value.toLocaleString('es-GT', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })} HC`;
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  ticks: {
+                    color: '#9CA3AF'
+                  },
+                  grid: {
+                    color: 'rgba(55, 65, 81, 0.3)'
+                  }
+                },
+                y: {
+                  ticks: {
+                    color: '#9CA3AF',
+                    callback: function(value) {
+                      return Number(value).toLocaleString('es-GT', {
+                        maximumFractionDigits: 0
+                      });
+                    }
+                  },
+                  grid: {
+                    color: 'rgba(55, 65, 81, 0.3)'
+                  }
+                }
+              }
+            } as ChartOptions<'bar'>}
+            style={{ height: '200px' }}
+          />
+        </div>
+      </div>
+
+      {/* Solicitudes de liquidación y retiro */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 5 Solicitudes de liquidación */}
+        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-dark-border flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Solicitudes de liquidación</h2>
+              <p className="text-xs text-gray-500 mt-0.5">5 solicitudes más recientes</p>
+            </div>
+            <button
+              onClick={() => navigate('/admin/central-wallet/settlements')}
+              className="text-xs text-primary-red hover:text-primary-red/80 flex items-center gap-1"
+            >
+              Ver todas
+              <HiArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          {recentSettlements.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No hay solicitudes de liquidación</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-dark-bg/40">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Evento</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Equipo</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Monto</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-border">
+                  {recentSettlements.map((settlement) => (
+                    <tr
+                      key={settlement.id}
+                      className="hover:bg-dark-bg/30 transition-colors cursor-pointer"
+                      onClick={() => navigate('/admin/central-wallet/settlements')}
+                    >
+                      <td className="px-4 py-2.5">
+                        <span className="text-sm text-white font-medium">{settlement.event_name}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="text-sm text-gray-300">{settlement.business_name}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-100">
+                        {formatAmount(settlement.requested_amount, settlement.token_symbol)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${
+                            settlement.status === 'pendiente'
+                              ? 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/30'
+                              : settlement.status === 'pagado'
+                              ? 'bg-positive/10 text-positive border border-positive/30'
+                              : 'bg-negative/10 text-negative border border-negative/30'
+                          }`}
+                        >
+                          {settlement.status.toUpperCase()}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* 5 Solicitudes de retiro */}
+        <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-dark-border flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Solicitudes de retiro</h2>
+              <p className="text-xs text-gray-500 mt-0.5">5 solicitudes más recientes</p>
+            </div>
+            <button
+              onClick={() => navigate('/admin/central-wallet/withdrawals')}
+              className="text-xs text-primary-red hover:text-primary-red/80 flex items-center gap-1"
+            >
+              Ver todas
+              <HiArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+          {recentWithdrawals.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-500">No hay solicitudes de retiro</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-dark-bg/40">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Usuario</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Monto</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Estado</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-border">
+                  {recentWithdrawals.map((withdrawal) => (
+                    <tr
+                      key={withdrawal.id}
+                      className="hover:bg-dark-bg/30 transition-colors cursor-pointer"
+                      onClick={() => navigate('/admin/central-wallet/withdrawals')}
+                    >
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white font-medium">
+                            {withdrawal.user
+                              ? `${withdrawal.user.nombres || ''} ${withdrawal.user.apellidos || ''}`.trim() || withdrawal.user.carnet
+                              : 'Usuario desconocido'}
+                          </span>
+                          {withdrawal.user && (
+                            <span className="text-xs text-gray-500">Carnet: {withdrawal.user.carnet}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-100">
+                        {formatAmount(withdrawal.amount, withdrawal.token_symbol)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${
+                            withdrawal.status === 'pendiente'
+                              ? 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/30'
+                              : withdrawal.status === 'aprobado' || withdrawal.status === 'completado'
+                              ? 'bg-positive/10 text-positive border border-positive/30'
+                              : 'bg-negative/10 text-negative border border-negative/30'
+                          }`}
+                        >
+                          {withdrawal.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-gray-400">
+                        {formatDateTime(withdrawal.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-
-

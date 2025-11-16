@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { HiChevronDown, HiLogout, HiUserCircle, HiBell, HiMenu, HiShieldCheck } from 'react-icons/hi';
+import { HiChevronDown, HiLogout, HiUserCircle, HiMenu, HiShieldCheck } from 'react-icons/hi';
 
 interface User {
   id: number;
@@ -81,15 +81,6 @@ export default function AdminNavbar({ onMenuClick, sidebarOpen }: AdminNavbarPro
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Notifications */}
-          <Link
-            to="/admin/notifications"
-            className="relative p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
-          >
-            <HiBell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary-red rounded-full"></span>
-          </Link>
-
           {/* User Menu */}
           <div className="relative" ref={dropdownRef}>
             <button

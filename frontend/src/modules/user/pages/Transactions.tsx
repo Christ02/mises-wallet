@@ -42,9 +42,13 @@ export default function Transactions() {
   const [filter, setFilter] = useState<'all' | 'entrante' | 'saliente'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showHelp, setShowHelp] = useState(false);
   const [usdToTokenRate, setUsdToTokenRate] = useState(1);
   const [tokenSymbol, setTokenSymbol] = useState('HC');
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -164,16 +168,52 @@ export default function Transactions() {
     return 'bg-gray-500/10 text-gray-400 border border-gray-500/20';
   };
 
-  const filteredTransactions = transactions.filter((tx) => {
-    const matchesFilter = filter === 'all' || tx.direction === filter;
-    const matchesSearch =
-      searchQuery === '' ||
-      (tx.reference && tx.reference.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      tx.counterparty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.amount.toString().includes(searchQuery);
-    return matchesFilter && matchesSearch;
-  });
+  const filteredTransactions = transactions
+    .filter((tx) => {
+      const matchesFilter = filter === 'all' || tx.direction === filter;
+      const matchesSearch =
+        searchQuery === '' ||
+        (tx.reference && tx.reference.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        tx.counterparty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.amount.toString().includes(searchQuery);
+      return matchesFilter && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      } else {
+        // sortBy === 'amount'
+        return sortOrder === 'asc' ? a.amount - b.amount : b.amount - a.amount;
+      }
+    });
+
+  const handleTransactionClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setDetailsModalOpen(true);
+  };
+
+  const formatFullDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, '0');
+    const time = `${displayHours}:${displayMinutes} ${ampm}`;
+    
+    return `${dayName}, ${day} de ${month} de ${year} a las ${time}`;
+  };
 
   return (
     <div>
@@ -314,7 +354,8 @@ export default function Transactions() {
                 {filteredTransactions.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 hover:border-primary-red/30 transition-all"
+                    onClick={() => handleTransactionClick(transaction)}
+                    className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 hover:border-primary-red/30 transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
@@ -389,7 +430,7 @@ export default function Transactions() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl sm:text-2xl font-bold text-white">Filtrar Transacciones</h3>
+                  <h3 className="text-xl sm:text-2xl font-bold text-white">Filtrar y Ordenar</h3>
                   <button
                     onClick={() => setFilterModalOpen(false)}
                     className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
@@ -398,45 +439,118 @@ export default function Transactions() {
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-6">
+                  {/* Filter Section */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Filtrar por tipo</h4>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => {
+                          setFilter('all');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          filter === 'all'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Todas las transacciones
+                      </button>
+                      <button
+                        onClick={() => {
+                          setFilter('saliente');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          filter === 'saliente'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Enviadas
+                      </button>
+                      <button
+                        onClick={() => {
+                          setFilter('entrante');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          filter === 'entrante'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Recibidas
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sort By Section */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Ordenar por</h4>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => {
+                          setSortBy('date');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          sortBy === 'date'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Fecha
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSortBy('amount');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          sortBy === 'amount'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Monto
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sort Order Section */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Orden</h4>
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => {
+                          setSortOrder('desc');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          sortOrder === 'desc'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Descendente (Más reciente/Mayor primero)
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSortOrder('asc');
+                        }}
+                        className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
+                          sortOrder === 'asc'
+                            ? 'bg-primary-red text-white'
+                            : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
+                        }`}
+                      >
+                        Ascendente (Más antiguo/Menor primero)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Apply Button */}
                   <button
-                    onClick={() => {
-                      setFilter('all');
-                      setFilterModalOpen(false);
-                    }}
-                    className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
-                      filter === 'all'
-                        ? 'bg-primary-red text-white'
-                        : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
-                    }`}
+                    onClick={() => setFilterModalOpen(false)}
+                    className="w-full px-4 sm:px-6 py-3 sm:py-4 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg sm:rounded-xl transition-all"
                   >
-                    Todas las transacciones
-                  </button>
-                  <button
-                    onClick={() => {
-                      setFilter('saliente');
-                      setFilterModalOpen(false);
-                    }}
-                    className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
-                      filter === 'saliente'
-                        ? 'bg-primary-red text-white'
-                        : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
-                    }`}
-                  >
-                    Enviadas
-                  </button>
-                  <button
-                    onClick={() => {
-                      setFilter('entrante');
-                      setFilterModalOpen(false);
-                    }}
-                    className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all text-left ${
-                      filter === 'entrante'
-                        ? 'bg-primary-red text-white'
-                        : 'bg-dark-bg border border-dark-border text-gray-400 hover:text-white hover:border-primary-red/50'
-                    }`}
-                  >
-                    Recibidas
+                    Aplicar
                   </button>
                 </div>
               </div>
@@ -472,6 +586,137 @@ export default function Transactions() {
                   <p>
                     Usa los botones de acción para enviar, recibir, pagar o recargar fondos en tu wallet.
                   </p>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Transaction Details Modal */}
+        {detailsModalOpen && selectedTransaction && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+              onClick={() => {
+                setDetailsModalOpen(false);
+                setSelectedTransaction(null);
+              }}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div
+                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-sm sm:max-w-md lg:max-w-2xl w-full p-4 sm:p-6 lg:p-8 shadow-2xl my-4 sm:my-8"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-dark-border">
+                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                    <div
+                      className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        selectedTransaction.direction === 'entrante'
+                          ? 'bg-positive/10'
+                          : 'bg-primary-red/10'
+                      }`}
+                    >
+                      {selectedTransaction.direction === 'entrante' ? (
+                        <HiArrowDown className="w-6 h-6 sm:w-8 sm:h-8 text-positive" />
+                      ) : (
+                        <HiArrowUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary-red" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate">
+                        Detalles de Transacción
+                      </h3>
+                      <p className="text-xs sm:text-sm text-gray-400 mt-0.5 truncate">
+                        {selectedTransaction.description}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setDetailsModalOpen(false);
+                      setSelectedTransaction(null);
+                    }}
+                    className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all flex-shrink-0"
+                  >
+                    <HiX className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                </div>
+
+                {/* Amount Section */}
+                <div className="mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-dark-border">
+                  <div className="text-center">
+                    <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Monto</p>
+                    <p
+                      className={`text-2xl sm:text-3xl lg:text-4xl font-bold ${
+                        selectedTransaction.direction === 'entrante'
+                          ? 'text-positive'
+                          : 'text-primary-red'
+                      }`}
+                    >
+                      {selectedTransaction.direction === 'entrante' ? '+' : '-'}
+                      {selectedTransaction.amount.toFixed(4)} {selectedTransaction.currency}
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">
+                      ≈ ${convertTokenToUsd(selectedTransaction.amount.toString())} USD
+                    </p>
+                  </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="space-y-2 sm:space-y-4 mb-4 sm:mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+                    {/* Status */}
+                    <div className="bg-dark-bg border border-dark-border rounded-lg p-3 sm:p-4">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2">Estado</p>
+                      <span
+                        className={`inline-flex px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold ${toStatusColor(
+                          selectedTransaction.status
+                        )}`}
+                      >
+                        {selectedTransaction.status.charAt(0).toUpperCase() + selectedTransaction.status.slice(1)}
+                      </span>
+                    </div>
+
+                    {/* Type */}
+                    <div className="bg-dark-bg border border-dark-border rounded-lg p-3 sm:p-4">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2">Tipo</p>
+                      <p className="text-sm sm:text-base font-semibold text-white">
+                        {selectedTransaction.direction === 'entrante' ? 'Entrante' : 'Saliente'}
+                      </p>
+                    </div>
+
+                    {/* Date */}
+                    <div className="bg-dark-bg border border-dark-border rounded-lg p-3 sm:p-4 sm:col-span-2">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2">Fecha y Hora</p>
+                      <p className="text-xs sm:text-sm lg:text-base font-semibold text-white">
+                        {formatFullDate(selectedTransaction.created_at)}
+                      </p>
+                    </div>
+
+                    {/* Counterparty */}
+                    <div className="bg-dark-bg border border-dark-border rounded-lg p-3 sm:p-4 sm:col-span-2">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1.5 sm:mb-2">
+                        {selectedTransaction.direction === 'entrante' ? 'Remitente' : 'Destinatario'}
+                      </p>
+                      <p className="text-xs sm:text-sm lg:text-base font-semibold text-white break-all">
+                        {selectedTransaction.counterparty}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end pt-3 sm:pt-4 border-t border-dark-border">
+                  <button
+                    onClick={() => {
+                      setDetailsModalOpen(false);
+                      setSelectedTransaction(null);
+                    }}
+                    className="px-4 sm:px-6 py-2 sm:py-2.5 bg-primary-red hover:bg-primary-red/90 text-white text-sm sm:text-base font-semibold rounded-lg transition-all"
+                  >
+                    Cerrar
+                  </button>
                 </div>
               </div>
             </div>

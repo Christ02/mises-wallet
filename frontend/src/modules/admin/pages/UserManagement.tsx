@@ -15,6 +15,7 @@ import {
 } from 'react-icons/hi';
 import api from '../../../services/api';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import Pagination from '../components/Pagination';
 
 interface AdminUser {
   id: number;
@@ -64,6 +65,8 @@ export default function UserManagement() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [confirmDeleting, setConfirmDeleting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const statusOptions = [
     { value: 'activo', label: 'Activo' },
@@ -136,6 +139,17 @@ export default function UserManagement() {
       );
     });
   }, [users, searchTerm]);
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
   const analytics = useMemo(() => {
     const total = users.length;
@@ -559,7 +573,7 @@ export default function UserManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-dark-border">
-                  {filteredUsers.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr
                       key={user.id}
                       className="hover:bg-dark-bg/40 transition-colors"
@@ -632,6 +646,15 @@ export default function UserManagement() {
           )}
         </div>
       </div>
+      {filteredUsers.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredUsers.length}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
 
       <ConfirmModal
         open={!!userToDelete}

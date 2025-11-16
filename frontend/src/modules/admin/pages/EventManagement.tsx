@@ -23,6 +23,7 @@ import {
   CreateEventPayload
 } from '../services/events';
 import { API_BASE_URL } from '../../../services/api';
+import Pagination from '../components/Pagination';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -75,6 +76,8 @@ export default function EventManagement() {
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterDateFrom, setFilterDateFrom] = useState<string>('');
   const [filterDateTo, setFilterDateTo] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const buildCoverImageUrl = (path?: string | null) => {
     if (!path) return null;
@@ -187,6 +190,17 @@ export default function EventManagement() {
 
     return filtered.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
   }, [events, searchTerm, filterStatus, filterDateFrom, filterDateTo]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterDateFrom, filterDateTo]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
 
   useEffect(() => {
     const load = async () => {
@@ -494,7 +508,7 @@ export default function EventManagement() {
               </button>
             </div>
           ) : (
-            filteredEvents.map((event) => {
+            paginatedEvents.map((event) => {
             const coverImage = buildCoverImageUrl(event.cover_image_url);
 
             return (
@@ -564,6 +578,15 @@ export default function EventManagement() {
           )}
             </div>
           )}
+      {filteredEvents.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredEvents.length}
+          itemsPerPage={itemsPerPage}
+        />
+      )}
 
       {isCreateOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
