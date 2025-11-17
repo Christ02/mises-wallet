@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   HiCheckCircle,
   HiCog,
@@ -15,52 +15,26 @@ import {
   CentralWalletConfig
 } from '../services/centralWallet';
 
-type EmailMode = 'smtp' | 'api';
+type EmailProvider = 'resend' | 'mailtrap';
 
-interface SmtpSettings {
-  host: string;
-  port: string;
-  username: string;
-  password: string;
-  secure: boolean;
-  fromName: string;
-  fromEmail: string;
-}
-
-interface ApiSettings {
-  provider: string;
-  apiKey: string;
-  baseUrl: string;
-  fromName: string;
-  fromEmail: string;
-}
-
-interface EmailSettings {
-  mode: EmailMode;
-  smtp: SmtpSettings;
-  api: ApiSettings;
+interface ResendSettings {
+  provider: EmailProvider;
+  resendApiKey: string;
+  resendFromEmail: string;
+  mailtrapApiToken: string;
+  mailtrapFromEmail: string;
+  mailtrapFromName: string;
 }
 
 const EMAIL_STORAGE_KEY = 'admin-email-settings';
 
-const defaultEmailSettings: EmailSettings = {
-  mode: 'smtp',
-  smtp: {
-    host: '',
-    port: '587',
-    username: '',
-    password: '',
-    secure: true,
-    fromName: 'Banco Central',
-    fromEmail: 'no-reply@ufm.edu'
-  },
-  api: {
-    provider: '',
-    apiKey: '',
-    baseUrl: '',
-    fromName: 'Banco Central',
-    fromEmail: 'no-reply@ufm.edu'
-  }
+const defaultEmailSettings: ResendSettings = {
+  provider: 'resend',
+  resendApiKey: '',
+  resendFromEmail: 'noreply@mises-wallet.com',
+  mailtrapApiToken: '',
+  mailtrapFromEmail: 'noreply@mises-wallet.com',
+  mailtrapFromName: 'Mises Wallet'
 };
 
 const defaultWalletSettings: CentralWalletConfig = {
@@ -76,7 +50,7 @@ const defaultWalletSettings: CentralWalletConfig = {
 };
 
 export default function Settings() {
-  const [emailSettings, setEmailSettings] = useState<EmailSettings>(defaultEmailSettings);
+  const [emailSettings, setEmailSettings] = useState<ResendSettings>(defaultEmailSettings);
   const [walletSettings, setWalletSettings] = useState<CentralWalletConfig>(defaultWalletSettings);
 
   const [emailSaving, setEmailSaving] = useState(false);
@@ -88,7 +62,8 @@ export default function Settings() {
   const [walletTesting, setWalletTesting] = useState(false);
   const [walletTestMessage, setWalletTestMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
-  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [showResendApiKey, setShowResendApiKey] = useState(false);
+  const [showMailtrapApiToken, setShowMailtrapApiToken] = useState(false);
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [showSecretApiKey, setShowSecretApiKey] = useState(false);
 
@@ -139,34 +114,17 @@ export default function Settings() {
     return () => clearTimeout(timeout);
   }, [walletSuccess]);
 
-  const currentEmailConfig = useMemo(() => {
-    return emailSettings.mode === 'smtp' ? emailSettings.smtp : emailSettings.api;
-  }, [emailSettings]);
-
-  const handleEmailChange = (field: keyof SmtpSettings | keyof ApiSettings, value: string | boolean) => {
-    if (emailSettings.mode === 'smtp') {
-      setEmailSettings((prev) => ({
-        ...prev,
-        smtp: {
-          ...prev.smtp,
-          [field]: value
-        }
-      }));
-    } else {
-      setEmailSettings((prev) => ({
-        ...prev,
-        api: {
-          ...prev.api,
-          [field]: value
-        }
-      }));
-    }
-  };
-
-  const handleEmailModeChange = (mode: EmailMode) => {
+  const handleEmailChange = (field: keyof ResendSettings, value: string) => {
     setEmailSettings((prev) => ({
       ...prev,
-      mode
+      [field]: value
+    }));
+  };
+
+  const handleProviderChange = (provider: EmailProvider) => {
+    setEmailSettings((prev) => ({
+      ...prev,
+      provider
     }));
   };
 
@@ -272,31 +230,31 @@ export default function Settings() {
       <section className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-white">Servidor de correos</h2>
-            <p className="text-sm text-gray-400">
-              Define cómo se envían las notificaciones del sistema. Elige entre SMTP tradicional o proveedores vía API.
+            <h2 className="text-xl font-semibold text-white">Configuración de correo electrónico</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Elige entre Resend (producción) o Mailtrap (pruebas) para enviar correos
             </p>
           </div>
           <div className="bg-dark-bg border border-dark-border rounded-full p-1 inline-flex">
             <button
-              onClick={() => handleEmailModeChange('smtp')}
+              onClick={() => handleProviderChange('resend')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                emailSettings.mode === 'smtp'
+                emailSettings.provider === 'resend'
                   ? 'bg-primary-red text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              SMTP
+              Resend
             </button>
             <button
-              onClick={() => handleEmailModeChange('api')}
+              onClick={() => handleProviderChange('mailtrap')}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                emailSettings.mode === 'api'
+                emailSettings.provider === 'mailtrap'
                   ? 'bg-primary-red text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              API Key
+              Mailtrap
             </button>
           </div>
         </div>
@@ -308,168 +266,129 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {emailSettings.mode === 'smtp' ? (
-            <>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Host *</label>
+        {emailSettings.provider === 'resend' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Resend API Key *</label>
+                <div className="relative">
                   <input
-                    type="text"
-                    value={emailSettings.smtp.host}
-                    onChange={(e) => handleEmailChange('host', e.target.value)}
-                    placeholder="smtp.mailgun.org"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                    type={showResendApiKey ? 'text' : 'password'}
+                    value={emailSettings.resendApiKey}
+                    onChange={(e) => handleEmailChange('resendApiKey', e.target.value)}
+                    placeholder="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowResendApiKey((prev) => !prev)}
+                    className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
+                  >
+                    {showResendApiKey ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Puerto *</label>
-                    <input
-                      type="number"
-                      value={emailSettings.smtp.port}
-                      onChange={(e) => handleEmailChange('port', e.target.value)}
-                      className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 pt-7">
-                    <input
-                      id="smtp-secure"
-                      type="checkbox"
-                      checked={emailSettings.smtp.secure}
-                      onChange={(e) => handleEmailChange('secure', e.target.checked)}
-                      className="h-4 w-4 rounded border-dark-border bg-dark-bg text-primary-red focus:ring-primary-red"
-                    />
-                    <label htmlFor="smtp-secure" className="text-sm text-gray-300">
-                      Usar TLS/SSL
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Usuario *</label>
-                  <input
-                    type="text"
-                    value={emailSettings.smtp.username}
-                    onChange={(e) => handleEmailChange('username', e.target.value)}
-                    placeholder="postmaster@midominio.com"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Contraseña *</label>
-                  <div className="relative">
-                    <input
-                      type={showSmtpPassword ? 'text' : 'password'}
-                      value={emailSettings.smtp.password}
-                      onChange={(e) => handleEmailChange('password', e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSmtpPassword((prev) => !prev)}
-                      className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
-                    >
-                      {showSmtpPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Tu API key de Resend. Obtén tu key en{' '}
+                  <a
+                    href="https://resend.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-red hover:text-primary-red/80 underline"
+                  >
+                    resend.com/api-keys
+                  </a>
+                </p>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Nombre remitente *</label>
-                  <input
-                    type="text"
-                    value={emailSettings.smtp.fromName}
-                    onChange={(e) => handleEmailChange('fromName', e.target.value)}
-                    placeholder="Banco Central UFM"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Correo remitente *</label>
-                  <input
-                    type="email"
-                    value={emailSettings.smtp.fromEmail}
-                    onChange={(e) => handleEmailChange('fromEmail', e.target.value)}
-                    placeholder="no-reply@ufm.edu"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
-                <div className="bg-dark-bg/60 border border-dark-border rounded-xl p-4 text-sm text-gray-400 flex items-start gap-3">
-                  <HiInformationCircle className="w-5 h-5 text-primary-red flex-shrink-0" />
-                  <p>
-                    Asegúrate de que el proveedor SMTP permita enviar correos desde el dominio configurado y que las
-                    credenciales estén vigentes.
-                  </p>
-                </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Correo remitente *</label>
+                <input
+                  type="email"
+                  value={emailSettings.resendFromEmail}
+                  onChange={(e) => handleEmailChange('resendFromEmail', e.target.value)}
+                  placeholder="noreply@tudominio.com"
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  El dominio del correo debe estar verificado en tu cuenta de Resend.
+                </p>
               </div>
-            </>
-          ) : (
-            <>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Proveedor *</label>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Mailtrap API Token *</label>
+                <div className="relative">
                   <input
-                    type="text"
-                    value={emailSettings.api.provider}
-                    onChange={(e) => handleEmailChange('provider', e.target.value)}
-                    placeholder="Mailgun, SendGrid..."
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                    type={showMailtrapApiToken ? 'text' : 'password'}
+                    value={emailSettings.mailtrapApiToken}
+                    onChange={(e) => handleEmailChange('mailtrapApiToken', e.target.value)}
+                    placeholder="2667f58c9d749883c67770c58a18c192"
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowMailtrapApiToken((prev) => !prev)}
+                    className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
+                  >
+                    {showMailtrapApiToken ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">API Key *</label>
-                  <input
-                    type="text"
-                    value={emailSettings.api.apiKey}
-                    onChange={(e) => handleEmailChange('apiKey', e.target.value)}
-                    placeholder="key-xxxxxxxxxxxxxxxx"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Endpoint base *</label>
-                  <input
-                    type="url"
-                    value={emailSettings.api.baseUrl}
-                    onChange={(e) => handleEmailChange('baseUrl', e.target.value)}
-                    placeholder="https://api.mailgun.net/v3/tu-dominio"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Tu API token de Mailtrap. Obtén tu token en{' '}
+                  <a
+                    href="https://mailtrap.io/api-tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-red hover:text-primary-red/80 underline"
+                  >
+                    mailtrap.io/api-tokens
+                  </a>
+                </p>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Nombre remitente *</label>
-                  <input
-                    type="text"
-                    value={emailSettings.api.fromName}
-                    onChange={(e) => handleEmailChange('fromName', e.target.value)}
-                    placeholder="Banco Central UFM"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Correo remitente *</label>
-                  <input
-                    type="email"
-                    value={emailSettings.api.fromEmail}
-                    onChange={(e) => handleEmailChange('fromEmail', e.target.value)}
-                    placeholder="no-reply@ufm.edu"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                  />
-                </div>
-                <div className="bg-dark-bg/60 border border-dark-border rounded-xl p-4 text-sm text-gray-400 flex items-start gap-3">
-                  <HiInformationCircle className="w-5 h-5 text-primary-red flex-shrink-0" />
-                  <p>
-                    Verifica los límites de envío y dominios autorizados del proveedor. Algunos servicios requieren
-                    verificación adicional del remitente.
-                  </p>
-                </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Correo remitente *</label>
+                <input
+                  type="email"
+                  value={emailSettings.mailtrapFromEmail}
+                  onChange={(e) => handleEmailChange('mailtrapFromEmail', e.target.value)}
+                  placeholder="noreply@tudominio.com"
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                />
               </div>
-            </>
-          )}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Nombre remitente</label>
+                <input
+                  type="text"
+                  value={emailSettings.mailtrapFromName}
+                  onChange={(e) => handleEmailChange('mailtrapFromName', e.target.value)}
+                  placeholder="Mises Wallet"
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-dark-bg/60 border border-dark-border rounded-xl p-4 text-sm text-gray-400 flex items-start gap-3">
+          <HiInformationCircle className="w-5 h-5 text-primary-red flex-shrink-0" />
+          <p>
+            {emailSettings.provider === 'resend' ? (
+              <>
+                <strong>Resend</strong> es un servicio moderno de envío de correos para producción. Asegúrate de verificar tu dominio en Resend antes de enviar correos.
+              </>
+            ) : (
+              <>
+                <strong>Mailtrap</strong> es ideal para pruebas y desarrollo. Los correos no se envían realmente, sino que se capturan en tu inbox de Mailtrap para revisión.
+              </>
+            )}
+            {' '}Si no configuras estas opciones, los correos se loguearán en consola en modo desarrollo.
+          </p>
         </div>
 
         <div className="flex items-center justify-end">
@@ -553,8 +472,6 @@ export default function Settings() {
                 className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono"
               />
             </div>
-          </div>
-          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Private Key *</label>
               <div className="relative">
@@ -582,6 +499,8 @@ export default function Settings() {
                 </div>
               )}
             </div>
+          </div>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">API Key pública</label>

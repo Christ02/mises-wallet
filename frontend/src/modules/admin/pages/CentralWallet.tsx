@@ -6,7 +6,6 @@ import {
   HiExternalLink,
   HiRefresh,
   HiShieldCheck,
-  HiSwitchHorizontal,
   HiClipboard,
   HiCheckCircle,
   HiArrowRight
@@ -26,19 +25,6 @@ interface WalletStatusResponse {
     totalSupply?: string;
   };
 }
-
-type Movement = {
-  id: string | number;
-  type: string;
-  direction: 'entrante' | 'saliente';
-  amount: number;
-  currency: string;
-  counterparty: string;
-  status: string;
-  created_at: string;
-  reference?: string | null;
-  metadata?: Record<string, any>;
-};
 
 type Settlement = {
   id: number;
@@ -140,9 +126,6 @@ const getEtherscanUrl = (hash: string): string | null => {
 
 export default function CentralWallet() {
   const { status, loading, error, refresh } = useWalletStatus();
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const [movementsLoading, setMovementsLoading] = useState(true);
-  const [movementsError, setMovementsError] = useState<string | null>(null);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [settlementsError, setSettlementsError] = useState<string | null>(null);
@@ -156,24 +139,6 @@ export default function CentralWallet() {
   
   const navigate = useNavigate();
   const ITEMS_PER_PAGE = 5;
-
-  const fetchActivity = async () => {
-    setMovementsLoading(true);
-    setMovementsError(null);
-    try {
-      const response = await api.get('/api/admin/central-wallet/activity');
-      setMovements(response.data?.movements || []);
-    } catch (err: any) {
-      console.error('Error fetching central wallet activity', err);
-      setMovementsError(err.response?.data?.error || 'No se pudo obtener la actividad de la wallet central');
-    } finally {
-      setMovementsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchActivity();
-  }, []);
 
   const fetchSettlements = async () => {
     setSettlementsLoading(true);
@@ -216,7 +181,7 @@ export default function CentralWallet() {
       setProcessingSettlement(settlementId);
       await api.post(`/api/admin/central-wallet/settlements/${settlementId}/approve`);
       await fetchSettlements();
-      await Promise.all([refresh(), fetchActivity()]);
+      await refresh();
     } catch (err: any) {
       console.error('Error approving settlement', err);
       setSettlementsError(err.response?.data?.error || 'No se pudo aprobar la liquidación');
@@ -229,7 +194,7 @@ export default function CentralWallet() {
     try {
       setProcessingWithdrawal(withdrawalId);
       await api.post(`/api/admin/central-wallet/withdrawals/${withdrawalId}/approve`);
-      await Promise.all([fetchWithdrawals(), fetchActivity(), refresh()]);
+      await Promise.all([fetchWithdrawals(), refresh()]);
     } catch (err: any) {
       console.error('Error approving withdrawal', err);
       setWithdrawalsError(err.response?.data?.error || 'No se pudo aprobar la solicitud de retiro');
@@ -243,7 +208,7 @@ export default function CentralWallet() {
     try {
       setProcessingWithdrawal(withdrawalId);
       await api.post(`/api/admin/central-wallet/withdrawals/${withdrawalId}/reject`, { notes });
-      await Promise.all([fetchWithdrawals(), fetchActivity(), refresh()]);
+      await Promise.all([fetchWithdrawals(), refresh()]);
     } catch (err: any) {
       console.error('Error rejecting withdrawal', err);
       setWithdrawalsError(err.response?.data?.error || 'No se pudo rechazar la solicitud de retiro');
@@ -304,7 +269,6 @@ export default function CentralWallet() {
           <button
             onClick={() => {
               refresh();
-              fetchActivity();
               fetchSettlements();
               fetchWithdrawals();
             }}
@@ -640,163 +604,10 @@ export default function CentralWallet() {
             </div>
           )}
         </div>
-        {withdrawals.length >= 1 && withdrawals.length <= ITEMS_PER_PAGE && (
+        {withdrawals.length > 0 && (
           <div className="mt-4">
             <button
               onClick={() => navigate('/admin/central-wallet/withdrawals')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-medium transition-all"
-            >
-              Ver todas
-              <HiArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Actividad reciente */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-white mb-1">Actividad reciente</h2>
-          <p className="text-xs text-gray-500">
-            Seguimiento de movimientos relevantes de la wallet central.
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          {movementsLoading ? (
-            <div className="py-10 text-center text-sm text-gray-500">
-              <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin inline-block mr-3" />
-              Cargando actividad...
-            </div>
-          ) : movementsError ? (
-            <div className="py-10 text-center text-sm text-negative">{movementsError}</div>
-          ) : movements.length === 0 ? (
-            <div className="py-12 text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-bg border border-dark-border flex items-center justify-center">
-                <HiSwitchHorizontal className="w-8 h-8 text-gray-600" />
-              </div>
-              <p className="text-sm font-semibold text-gray-300 mb-1">Aún no hay movimientos registrados</p>
-              <p className="text-xs text-gray-500">
-                Los movimientos de la wallet central aparecerán aquí cuando se realicen transacciones.
-              </p>
-            </div>
-          ) : (
-            <div className="border border-dark-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-dark-bg/60">
-                  <tr>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Movimiento
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Contraparte
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Monto
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-dark-border">
-                  {movements.slice(0, ITEMS_PER_PAGE).map((movement) => (
-                  <tr key={movement.id} className="hover:bg-dark-bg/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-white font-semibold flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`px-2 py-1 rounded-lg text-xs font-medium border ${
-                            movement.direction === 'entrante'
-                              ? 'bg-positive/10 text-positive border-positive/20'
-                              : 'bg-negative/10 text-negative border-negative/20'
-                          }`}
-                        >
-                          {movement.direction === 'entrante' ? 'Entrada' : 'Salida'}
-                        </span>
-                        <span className="text-gray-300 capitalize">
-                          {movement.type || 'operación'}
-                        </span>
-                      </div>
-                      {movement.reference && (
-                        <div className="mt-1.5">
-                          {getEtherscanUrl(movement.reference) ? (
-                            <a
-                              href={getEtherscanUrl(movement.reference)!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-accent-blue hover:text-primary-red transition-colors"
-                              title={`Ver en Etherscan: ${movement.reference}`}
-                            >
-                              <span>Ver en Etherscan</span>
-                              <HiExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <div className="text-xs text-gray-500 font-mono" title={movement.reference}>
-                              {truncateAddress(movement.reference)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-300 max-w-[200px]">
-                      {isEthereumAddress(movement.counterparty) ? (
-                        <div className="flex items-center gap-1.5">
-                          <code className="font-mono text-xs" title={movement.counterparty}>
-                            {truncateAddress(movement.counterparty)}
-                          </code>
-                          {getEtherscanUrl(movement.counterparty) && (
-                            <a
-                              href={getEtherscanUrl(movement.counterparty)!}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-accent-blue hover:text-primary-red transition-colors"
-                              title={`Ver wallet en Etherscan: ${movement.counterparty}`}
-                            >
-                              <HiExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="truncate block" title={movement.counterparty}>
-                          {movement.counterparty}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-white font-semibold">
-                      {formatAmount(
-                        movement.amount,
-                        movement.currency || status?.token?.symbol || 'HC'
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${
-                          movement.status === 'completada'
-                            ? 'bg-positive/10 text-positive border border-positive/20'
-                            : movement.status === 'pendiente'
-                            ? 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/20'
-                            : 'bg-negative/10 text-negative border border-negative/20'
-                        }`}
-                      >
-                        {movement.status.charAt(0).toUpperCase() + movement.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {formatDateTime(movement.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-        {movements.length >= 1 && (
-          <div className="mt-4">
-            <button
-              onClick={() => navigate('/admin/central-wallet/activity')}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-medium transition-all"
             >
               Ver todas

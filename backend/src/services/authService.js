@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config/config.js';
 import { UserRepository } from '../repositories/userRepository.js';
 import crypto from 'crypto';
+import EmailService from './emailService.js';
 
 export class AuthService {
   static async register(userData) {
@@ -55,6 +56,25 @@ export class AuthService {
 
     // Generar token JWT
     const token = this.generateToken(user.id, user.role_name || 'usuario');
+
+    // Enviar correo de bienvenida
+    try {
+      const userName = `${user.nombres} ${user.apellidos}`;
+      const welcomeHtml = EmailService.generateWelcomeEmail({
+        userName,
+        email: user.email,
+        date: user.created_at || new Date()
+      });
+
+      await EmailService.sendEmail({
+        to: user.email,
+        subject: '¡Bienvenido/a a Mises Wallet!',
+        html: welcomeHtml
+      });
+    } catch (emailError) {
+      // No fallar el registro si el correo falla, solo loguear
+      console.error('Error enviando correo de bienvenida:', emailError);
+    }
 
     return {
       user: {
@@ -117,10 +137,37 @@ export class AuthService {
 
     await UserRepository.updateResetToken(user.email, resetToken, resetExpires);
 
-    // Retornar el token (en producción, esto se enviaría por email)
+    // Enviar correo de recuperación de contraseña
+    try {
+      const userName = `${user.nombres} ${user.apellidos}`;
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5174';
+      const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+      
+      const resetHtml = EmailService.generatePasswordResetEmail({
+        userName,
+        resetLink,
+        expiresIn: '1 hora'
+      });
+
+      await EmailService.sendEmail({
+        to: user.email,
+        subject: 'Recuperación de Contraseña - Mises Wallet',
+        html: resetHtml
+      });
+    } catch (emailError) {
+      // No fallar si el correo falla, solo loguear
+      console.error('Error enviando correo de recuperación de contraseña:', emailError);
+      // En desarrollo, aún retornamos el token en la respuesta
+      if (process.env.NODE_ENV === 'development') {
+        return {
+          message: 'Si el email existe, recibirás un correo con instrucciones',
+          resetToken // Solo para desarrollo
+        };
+      }
+    }
+
     return {
-      message: 'Si el email existe, recibirás un correo con instrucciones',
-      resetToken // Solo para desarrollo, eliminar en producción
+      message: 'Si el email existe, recibirás un correo con instrucciones'
     };
   }
 

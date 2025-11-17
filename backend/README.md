@@ -69,6 +69,21 @@ CENTRAL_WALLET_PRIVATE_KEY=61684035ee18f109f136b4f480b9563a45983ace85f50fc37dbb9
 CENTRAL_WALLET_TOKEN_ADDRESS=0x72dD0e8c853dbD72BD53d29167857dC035aDF36f
 CENTRAL_TOKEN_SYMBOL=HC
 CENTRAL_TOKEN_DECIMALS=18
+
+# Configuración de Email - Opcional
+# Elige el proveedor: 'resend' (producción) o 'mailtrap' (pruebas)
+EMAIL_PROVIDER=resend
+
+# Resend (Producción)
+# Obtén tu API key en: https://resend.com/api-keys
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+RESEND_FROM_EMAIL=noreply@tudominio.com
+
+# Mailtrap (Pruebas)
+# Obtén tu API token en: https://mailtrap.io/api-tokens
+MAILTRAP_API_TOKEN=2667f58c9d749883c67770c58a18c192
+MAILTRAP_FROM_EMAIL=noreply@tudominio.com
+MAILTRAP_FROM_NAME=Mises Wallet
 ```
 
 ## Scripts Disponibles

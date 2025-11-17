@@ -16,6 +16,7 @@ import {
 import api from '../../../services/api';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import Pagination from '../components/Pagination';
+import { useModal } from '../../../hooks/useModal';
 
 interface AdminUser {
   id: number;
@@ -48,7 +49,11 @@ export default function UserManagement() {
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
+
   const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // Prevenir scroll del body cuando algún modal está abierto
+  useModal(showModal || showDetailModal);
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',

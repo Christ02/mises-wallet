@@ -30,6 +30,7 @@ import {
   HiUserCircle,
   HiCreditCard
 } from 'react-icons/hi';
+import { useModal } from '../../../hooks/useModal';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -96,6 +97,9 @@ export default function EventBusinesses() {
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
   const [businessForm, setBusinessForm] = useState<BusinessFormState>(initialBusinessForm);
   const [editingBusiness, setEditingBusiness] = useState<AdminBusiness | null>(null);
+
+  // Prevenir scroll del body cuando el modal está abierto
+  useModal(isBusinessModalOpen);
   const [savingBusiness, setSavingBusiness] = useState(false);
   const [leadSearchResults, setLeadSearchResults] = useState<AdminUserSummary[]>([]);
   const [leadSearchLoading, setLeadSearchLoading] = useState(false);

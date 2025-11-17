@@ -1,6 +1,8 @@
 import { WithdrawalRequestRepository } from '../repositories/withdrawalRequestRepository.js';
 import { WalletService } from './walletService.js';
 import { CentralWalletService } from './centralWalletService.js';
+import { UserRepository } from '../repositories/userRepository.js';
+import EmailService from './emailService.js';
 
 export class UserWithdrawalService {
   static async requestWithdrawal(userId, { amount, notes }) {
@@ -83,6 +85,30 @@ export class UserWithdrawalService {
       tx_hash: transactionHash
     });
 
+    // Enviar correo de recibo digital al usuario
+    try {
+      const user = await UserRepository.findById(request.user_id);
+      if (user && user.email) {
+        const userName = `${user.nombres} ${user.apellidos}`;
+        const receiptHtml = EmailService.generateWithdrawalReceipt({
+          userName,
+          amount: request.amount,
+          tokenSymbol: request.token_symbol,
+          txHash: transactionHash,
+          date: updated.updated_at || updated.created_at
+        });
+
+        await EmailService.sendEmail({
+          to: user.email,
+          subject: 'Recibo Digital - Retiro Aprobado - Mises Wallet',
+          html: receiptHtml
+        });
+      }
+    } catch (emailError) {
+      // No fallar la aprobación si el correo falla, solo loguear
+      console.error('Error enviando correo de recibo de retiro:', emailError);
+    }
+
     return updated;
   }
 
@@ -95,11 +121,37 @@ export class UserWithdrawalService {
       throw new Error('La solicitud ya fue procesada');
     }
 
-    return WithdrawalRequestRepository.updateStatus(requestId, {
+    const updated = await WithdrawalRequestRepository.updateStatus(requestId, {
       status: 'rechazado',
       processed_by: adminId,
       notes
     });
+
+    // Enviar correo de notificación de rechazo al usuario
+    try {
+      const user = await UserRepository.findById(request.user_id);
+      if (user && user.email) {
+        const userName = `${user.nombres} ${user.apellidos}`;
+        const rejectionHtml = EmailService.generateWithdrawalRejection({
+          userName,
+          amount: request.amount,
+          tokenSymbol: request.token_symbol,
+          notes: notes || null,
+          date: updated.updated_at || updated.created_at
+        });
+
+        await EmailService.sendEmail({
+          to: user.email,
+          subject: 'Notificación - Solicitud de Retiro Rechazada - Mises Wallet',
+          html: rejectionHtml
+        });
+      }
+    } catch (emailError) {
+      // No fallar el rechazo si el correo falla, solo loguear
+      console.error('Error enviando correo de rechazo de retiro:', emailError);
+    }
+
+    return updated;
   }
 }
 

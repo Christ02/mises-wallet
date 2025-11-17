@@ -2,6 +2,8 @@ import { ethers } from 'ethers';
 import { EncryptionService } from './encryptionService.js';
 import { CentralWalletService } from './centralWalletService.js';
 import { config } from '../config/config.js';
+import { UserRepository } from '../repositories/userRepository.js';
+import EmailService from './emailService.js';
 
 export class WalletService {
   static getProvider() {
@@ -199,7 +201,32 @@ export class WalletService {
         metadata: { ...metadataPayload, hash: tx.hash }
       });
 
-      const receipt = await tx.wait();
+      // Esperar el receipt con timeout de 5 minutos (300 segundos)
+      let receipt;
+      try {
+        receipt = await Promise.race([
+          tx.wait(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout esperando confirmación de transacción')), 300000)
+          )
+        ]);
+      } catch (waitError) {
+        // Si hay timeout o error, verificar el estado de la transacción en la blockchain
+        console.warn(`Timeout o error esperando receipt para tx ${tx.hash}, verificando estado...`);
+        const txStatus = await this.verifyTransactionStatus(tx.hash);
+        if (txStatus) {
+          receipt = txStatus;
+        } else {
+          // Si no se puede verificar, dejar en 'en_proceso' para verificación posterior
+          console.warn(`No se pudo verificar el estado de la transacción ${tx.hash}, quedará en 'en_proceso'`);
+          return {
+            transactionHash: tx.hash,
+            status: 'pending',
+            transactionId: txRecord.id
+          };
+        }
+      }
+
       const finalStatus = receipt.status === 1 ? 'completada' : 'fallida';
 
       await TransactionRepository.updateById(txRecord.id, {
@@ -215,6 +242,97 @@ export class WalletService {
           token_contract: CentralWalletService.getTokenAddress()
         }
       });
+
+      // Enviar correo de notificación de envío al remitente y recepción al destinatario
+      if (finalStatus === 'completada') {
+        // Obtener información del remitente
+        let sender = null;
+        try {
+          sender = await UserRepository.findById(userId);
+        } catch (error) {
+          console.error('Error obteniendo información del remitente:', error);
+        }
+
+        // Enviar correo de notificación de envío al remitente
+        if (sender && sender.email) {
+          try {
+            const senderName = `${sender.nombres} ${sender.apellidos}`;
+            const toName = metadataPayload?.recipient_name || metadataPayload?.merchant_name || null;
+            const sendHtml = EmailService.generateSendNotification({
+              userName: senderName,
+              amount: numericAmount.toFixed(4),
+              tokenSymbol,
+              toName,
+              txHash: tx.hash,
+              date: new Date()
+            });
+
+            await EmailService.sendEmail({
+              to: sender.email,
+              subject: 'Notificación - Transferencia Enviada - Mises Wallet',
+              html: sendHtml
+            });
+          } catch (emailError) {
+            console.error('Error enviando correo de notificación de envío:', emailError);
+          }
+        }
+
+        // Verificar si el destinatario es un usuario del sistema y enviar notificación de recepción
+        try {
+          const { WalletRepository } = await import('../repositories/walletRepository.js');
+          const recipientWallet = await WalletRepository.findByAddress(toAddress.toLowerCase());
+          if (recipientWallet && recipientWallet.user_id) {
+            const recipient = await UserRepository.findById(recipientWallet.user_id);
+            if (recipient && recipient.email) {
+              // Crear transacción entrante para el receptor
+              const recipientTx = await TransactionRepository.create({
+                user_id: recipientWallet.user_id,
+                type: metadataPayload?.type === 'merchant_payment' ? 'pago' : 'transferencia',
+                status: 'completada',
+                direction: 'entrante',
+                amount: numericAmount.toFixed(4),
+                currency: tokenSymbol,
+                description: metadataPayload?.recipient_name 
+                  ? `Transferencia de ${metadataPayload.recipient_name}`
+                  : `Transferencia recibida`,
+                reference: tx.hash,
+                metadata: {
+                  ...metadataPayload,
+                  hash: tx.hash,
+                  block_number: receipt.blockNumber,
+                  from_address: walletRecord.address,
+                  sender_name: sender ? `${sender.nombres} ${sender.apellidos}` : null,
+                  token_symbol: tokenSymbol,
+                  token_decimals: decimals,
+                  token_contract: CentralWalletService.getTokenAddress()
+                },
+                completed_at: new Date()
+              });
+
+              // Enviar correo de notificación de recepción
+              const recipientName = `${recipient.nombres} ${recipient.apellidos}`;
+              const fromName = sender ? `${sender.nombres} ${sender.apellidos}` : null;
+              const receiveHtml = EmailService.generateReceiveNotification({
+                userName: recipientName,
+                amount: numericAmount.toFixed(4),
+                tokenSymbol,
+                fromName,
+                txHash: tx.hash,
+                date: new Date()
+              });
+
+              await EmailService.sendEmail({
+                to: recipient.email,
+                subject: 'Notificación - Transferencia Recibida - Mises Wallet',
+                html: receiveHtml
+              });
+            }
+          }
+        } catch (receiveError) {
+          // No fallar si no se puede notificar al receptor
+          console.error('Error notificando receptor de transferencia:', receiveError);
+        }
+      }
 
       return {
         transactionHash: tx.hash,
@@ -240,6 +358,102 @@ export class WalletService {
   static async getTransactions(userId, options = {}) {
     const { TransactionRepository } = await import('../repositories/transactionRepository.js');
     return TransactionRepository.findByUserId(userId, options);
+  }
+
+  /**
+   * Verifica el estado de una transacción en la blockchain
+   * @param {string} txHash - Hash de la transacción
+   * @returns {Promise<object|null>} - Receipt de la transacción o null si no se encuentra
+   */
+  static async verifyTransactionStatus(txHash) {
+    try {
+      const provider = this.getProvider();
+      const receipt = await provider.getTransactionReceipt(txHash);
+      return receipt;
+    } catch (error) {
+      console.error(`Error verificando transacción ${txHash}:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Verifica y actualiza transacciones que están en estado 'en_proceso'
+   * Este método puede ser llamado periódicamente por un cron job
+   * @param {number} maxAgeMinutes - Máximo tiempo en minutos para considerar una transacción como fallida si no se confirma
+   * @returns {Promise<{checked: number, updated: number, failed: number}>}
+   */
+  static async checkPendingTransactions(maxAgeMinutes = 30) {
+    const { TransactionRepository } = await import('../repositories/transactionRepository.js');
+    
+    try {
+      // Obtener todas las transacciones en estado 'en_proceso' con hash
+      const pendingTxs = await TransactionRepository.findByStatus('en_proceso');
+      
+      const maxAge = new Date();
+      maxAge.setMinutes(maxAge.getMinutes() - maxAgeMinutes);
+      
+      let checked = 0;
+      let updated = 0;
+      let failed = 0;
+
+      for (const tx of pendingTxs) {
+        if (!tx.reference) {
+          // Si no tiene hash, marcar como fallida si es muy antigua
+          if (new Date(tx.created_at) < maxAge) {
+            await TransactionRepository.updateById(tx.id, {
+              status: 'fallida',
+              completed_at: new Date(),
+              metadata: {
+                ...(tx.metadata || {}),
+                error: 'Transacción sin hash y sin confirmar después del tiempo límite'
+              }
+            });
+            failed++;
+          }
+          continue;
+        }
+
+        checked++;
+        const receipt = await this.verifyTransactionStatus(tx.reference);
+        
+        if (receipt) {
+          // Transacción confirmada
+          const finalStatus = receipt.status === 1 ? 'completada' : 'fallida';
+          await TransactionRepository.updateById(tx.id, {
+            status: finalStatus,
+            completed_at: new Date(),
+            metadata: {
+              ...(tx.metadata || {}),
+              hash: tx.reference,
+              block_number: receipt.blockNumber,
+              gas_used: receipt.gasUsed?.toString(),
+              verified_at: new Date().toISOString()
+            }
+          });
+          updated++;
+        } else {
+          // Si no se encuentra el receipt y la transacción es muy antigua, marcar como fallida
+          const txDate = new Date(tx.created_at);
+          if (txDate < maxAge) {
+            await TransactionRepository.updateById(tx.id, {
+              status: 'fallida',
+              completed_at: new Date(),
+              metadata: {
+                ...(tx.metadata || {}),
+                error: 'Transacción no confirmada después del tiempo límite',
+                verified_at: new Date().toISOString()
+              }
+            });
+            failed++;
+          }
+        }
+      }
+
+      return { checked, updated, failed };
+    } catch (error) {
+      console.error('Error verificando transacciones pendientes:', error);
+      throw error;
+    }
   }
 }
 

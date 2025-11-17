@@ -1,5 +1,8 @@
 import { EventBusinessRepository } from '../repositories/eventBusinessRepository.js';
 import { UserWalletService } from './userWalletService.js';
+import { UserRepository } from '../repositories/userRepository.js';
+import { CentralWalletService } from './centralWalletService.js';
+import EmailService from './emailService.js';
 
 export class UserPaymentService {
   static async searchMerchants(query, limit) {
@@ -59,8 +62,41 @@ export class UserPaymentService {
       userId,
       merchant.wallet_address,
       numericAmount,
-      metadata
+      metadata,
+      {
+        transactionType: 'pago',
+        description: `Pago a ${merchant.name}`
+      }
     );
+
+    // Enviar correo de recibo de pago
+    try {
+      const user = await UserRepository.findById(userId);
+      if (user && user.email) {
+        await CentralWalletService.ensureSettingsLoaded();
+        const tokenSymbol = CentralWalletService.getTokenSymbol();
+        
+        const userName = `${user.nombres} ${user.apellidos}`;
+        const receiptHtml = EmailService.generatePaymentReceipt({
+          userName,
+          amount: numericAmount.toFixed(4),
+          tokenSymbol,
+          merchantName: merchant.name,
+          eventName: merchant.event_name,
+          txHash: result.transactionHash,
+          date: new Date()
+        });
+
+        await EmailService.sendEmail({
+          to: user.email,
+          subject: 'Recibo Digital - Pago Procesado - Mises Wallet',
+          html: receiptHtml
+        });
+      }
+    } catch (emailError) {
+      // No fallar el pago si el correo falla, solo loguear
+      console.error('Error enviando correo de recibo de pago:', emailError);
+    }
 
     return {
       transaction: result,

@@ -2,6 +2,8 @@ import { TransactionRepository } from '../repositories/transactionRepository.js'
 import { CurrencyService } from './currencyService.js';
 import { WalletService } from './walletService.js';
 import { CentralWalletService } from './centralWalletService.js';
+import { UserRepository } from '../repositories/userRepository.js';
+import EmailService from './emailService.js';
 
 const determineCardBrand = (cardNumber) => {
   const sanitized = (cardNumber || '').replace(/\D/g, '');
@@ -80,6 +82,31 @@ export class UserRechargeService {
         usd_to_token_rate: tokenRate
       }
     });
+
+    // Enviar correo de recibo de recarga
+    try {
+      const user = await UserRepository.findById(userId);
+      if (user && user.email) {
+        const userName = `${user.nombres} ${user.apellidos}`;
+        const receiptHtml = EmailService.generateRechargeReceipt({
+          userName,
+          amount: tokenAmount.toFixed(4),
+          tokenSymbol,
+          usdAmount: usdAmount ? usdAmount.toFixed(2) : null,
+          txHash: transferResult.hash,
+          date: transaction.created_at || new Date()
+        });
+
+        await EmailService.sendEmail({
+          to: user.email,
+          subject: 'Recibo Digital - Recarga de HayekCoins - Mises Wallet',
+          html: receiptHtml
+        });
+      }
+    } catch (emailError) {
+      // No fallar la recarga si el correo falla, solo loguear
+      console.error('Error enviando correo de recibo de recarga:', emailError);
+    }
 
     return {
       transaction,

@@ -38,10 +38,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="flex min-h-screen bg-dark-bg">
       <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className={`flex-1 w-full transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''}`}>
+      <div className={`flex-1 w-full transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''}`} style={{ width: '100%', maxWidth: '100%' }}>
         <AdminNavbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} sidebarOpen={sidebarOpen} />
-        <main className="mt-16 sm:mt-20 lg:mt-20 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-4 sm:pt-6 lg:pt-8 pb-8 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] lg:h-[calc(100vh-5rem)] overflow-y-auto">
-          <div className="w-full">
+        <main className="mt-16 sm:mt-20 lg:mt-20 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-4 sm:pt-6 lg:pt-8 pb-8 h-[calc(100vh-4rem)] sm:h-[calc(100vh-5rem)] lg:h-[calc(100vh-5rem)] overflow-y-auto" style={{ width: '100%', maxWidth: '100%', scrollbarGutter: 'stable' }}>
+          <div className="w-full max-w-full">
             {children}
           </div>
         </main>

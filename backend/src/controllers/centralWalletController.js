@@ -119,6 +119,23 @@ export class CentralWalletController {
     }
   }
 
+  static async rejectSettlement(req, res) {
+    try {
+      const adminId = req.user.id;
+      const { settlementId } = req.params;
+      const { notes } = req.body || {};
+      const result = await SettlementService.rejectSettlement({
+        settlementId: Number(settlementId),
+        adminId,
+        notes
+      });
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('Error rejecting settlement', error);
+      res.status(400).json({ error: error.message || 'Error al rechazar la liquidación' });
+    }
+  }
+
   static async listWithdrawals(req, res) {
     try {
       const limit = Number.isNaN(Number(req.query.limit)) ? 25 : Math.min(Number(req.query.limit), 100);

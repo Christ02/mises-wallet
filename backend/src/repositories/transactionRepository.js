@@ -306,5 +306,22 @@ export class TransactionRepository {
     const total = result.rows[0]?.total ?? 0;
     return parseFloat(total);
   }
+
+  static async findByStatus(status) {
+    const query = `
+      SELECT
+        t.*,
+        u.nombres,
+        u.apellidos,
+        u.email,
+        u.carnet_universitario
+      FROM transactions t
+      LEFT JOIN users u ON u.id = t.user_id
+      WHERE t.status = $1
+      ORDER BY t.created_at ASC
+    `;
+    const result = await pool.query(query, [status]);
+    return result.rows.map(mapRow);
+  }
 }
 

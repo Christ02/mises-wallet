@@ -48,6 +48,7 @@ router.delete('/events/:eventId/businesses/:businessId/members/:memberId', Admin
 
 // Transacciones
 router.get('/transactions', AdminTransactionController.list);
+router.post('/transactions/check-pending', AdminTransactionController.checkPendingTransactions);
 
 // Auditoría
 router.get('/audit/logs', AdminAuditController.list);
@@ -65,6 +66,7 @@ router.get('/central-wallet/withdrawals', CentralWalletController.listWithdrawal
 router.post('/central-wallet/withdrawals/:withdrawalId/approve', CentralWalletController.approveWithdrawal);
 router.post('/central-wallet/withdrawals/:withdrawalId/reject', CentralWalletController.rejectWithdrawal);
 router.post('/central-wallet/settlements/:settlementId/approve', CentralWalletController.approveSettlement);
+router.post('/central-wallet/settlements/:settlementId/reject', CentralWalletController.rejectSettlement);
 
 export default router;
 

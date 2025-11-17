@@ -10,6 +10,7 @@ import {
 } from 'react-icons/hi';
 import { fetchAuditLogs, AuditLog } from '../services/auditLogs';
 import Pagination from '../components/Pagination';
+import { useModal } from '../../../hooks/useModal';
 
 const formatDateTime = (value: string) => {
   if (!value) return '—';
@@ -41,6 +42,9 @@ export default function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  // Prevenir scroll del body cuando el modal está abierto
+  useModal(selectedLog !== null);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);

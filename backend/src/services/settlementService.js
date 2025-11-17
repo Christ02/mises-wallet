@@ -6,6 +6,7 @@ import { BusinessWalletService } from './businessWalletService.js';
 import { CentralWalletService } from './centralWalletService.js';
 import { UserRepository } from '../repositories/userRepository.js';
 import { TransactionRepository } from '../repositories/transactionRepository.js';
+import EmailService from './emailService.js';
 
 const ALLOWED_STATUSES = ['pendiente', 'pagado', 'rechazado'];
 
@@ -161,10 +162,94 @@ export class SettlementService {
       }
     });
 
+    // Enviar correo de recibo digital al responsable del equipo
+    try {
+      const business = await EventBusinessRepository.findById(settlement.business_id);
+      const event = await EventRepository.findById(settlement.event_id);
+      
+      if (business && business.lead_carnet) {
+        const leadUser = await UserRepository.findByCarnet(business.lead_carnet);
+        if (leadUser && leadUser.email) {
+          const userName = `${leadUser.nombres} ${leadUser.apellidos}`;
+          const receiptHtml = EmailService.generateSettlementReceipt({
+            userName,
+            businessName: business.name,
+            eventName: event?.name || 'Evento',
+            amount: settlement.requested_amount,
+            tokenSymbol: transfer.token_symbol,
+            txHash: transfer.hash,
+            method: settlement.method || 'efectivo',
+            date: new Date().toISOString()
+          });
+
+          await EmailService.sendEmail({
+            to: leadUser.email,
+            subject: 'Recibo Digital - Liquidación Aprobada - Mises Wallet',
+            html: receiptHtml
+          });
+        }
+      }
+    } catch (emailError) {
+      // No fallar la aprobación si el correo falla, solo loguear
+      console.error('Error enviando correo de recibo de liquidación:', emailError);
+    }
+
     return {
       id: settlement.id,
       hash: transfer.hash,
       status: 'pagado'
+    };
+  }
+
+  static async rejectSettlement({ settlementId, adminId, notes }) {
+    const settlement = await SettlementRequestRepository.findById(settlementId);
+    if (!settlement) {
+      throw new Error('Solicitud de liquidación no encontrada');
+    }
+
+    if (settlement.status !== 'pendiente') {
+      throw new Error('La solicitud ya fue procesada');
+    }
+
+    const updated = await SettlementRequestRepository.updateStatus(settlement.id, {
+      status: 'rechazado',
+      approved_by: adminId
+    });
+
+    // Enviar correo de notificación de rechazo al responsable del equipo
+    try {
+      const business = await EventBusinessRepository.findById(settlement.business_id);
+      const event = await EventRepository.findById(settlement.event_id);
+      
+      if (business && business.lead_carnet) {
+        const leadUser = await UserRepository.findByCarnet(business.lead_carnet);
+        if (leadUser && leadUser.email) {
+          const userName = `${leadUser.nombres} ${leadUser.apellidos}`;
+          const rejectionHtml = EmailService.generateSettlementRejection({
+            userName,
+            businessName: business.name,
+            eventName: event?.name || 'Evento',
+            amount: settlement.requested_amount,
+            tokenSymbol: settlement.token_symbol,
+            notes: notes || null,
+            date: updated.updated_at || updated.created_at
+          });
+
+          await EmailService.sendEmail({
+            to: leadUser.email,
+            subject: 'Notificación - Solicitud de Liquidación Rechazada - Mises Wallet',
+            html: rejectionHtml
+          });
+        }
+      }
+    } catch (emailError) {
+      // No fallar el rechazo si el correo falla, solo loguear
+      console.error('Error enviando correo de rechazo de liquidación:', emailError);
+    }
+
+    return {
+      id: settlement.id,
+      status: 'rechazado'
     };
   }
 }

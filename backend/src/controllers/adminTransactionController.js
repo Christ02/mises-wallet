@@ -1,4 +1,5 @@
 import { AdminTransactionService } from '../services/adminTransactionService.js';
+import { WalletService } from '../services/walletService.js';
 
 export class AdminTransactionController {
   static async list(req, res) {
@@ -29,6 +30,24 @@ export class AdminTransactionController {
       res.status(200).json(response);
     } catch (error) {
       res.status(500).json({ error: error.message || 'Error al obtener transacciones' });
+    }
+  }
+
+  static async checkPendingTransactions(req, res) {
+    try {
+      const { maxAgeMinutes } = req.query;
+      const maxAge = maxAgeMinutes ? parseInt(maxAgeMinutes, 10) : 30;
+      
+      const result = await WalletService.checkPendingTransactions(maxAge);
+      
+      res.status(200).json({
+        message: 'Verificación de transacciones pendientes completada',
+        ...result
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        error: error.message || 'Error al verificar transacciones pendientes' 
+      });
     }
   }
 }

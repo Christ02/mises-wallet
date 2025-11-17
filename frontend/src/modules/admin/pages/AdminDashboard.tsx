@@ -6,7 +6,8 @@ import {
   HiCurrencyDollar,
   HiArrowRight,
   HiCreditCard,
-  HiUserCircle
+  HiUserCircle,
+  HiViewGrid
 } from 'react-icons/hi';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -322,13 +323,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
       {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-            <p className="text-sm text-gray-400 mt-1">Resumen general del sistema</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
+              <HiViewGrid className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+              <p className="text-sm text-gray-400 mt-1">Resumen general del sistema</p>
+            </div>
           </div>
           <button
             onClick={() => navigate('/admin/profile')}
@@ -496,12 +502,16 @@ export default function AdminDashboard() {
                       onClick={() => navigate('/admin/events')}
                     >
                       <td className="px-4 py-2.5">
-                        <span className="text-sm font-semibold text-white">{event.name}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-white font-medium">
+                            {event.name}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-4 py-2.5 text-sm text-gray-300">
+                      <td className="px-4 py-2.5 text-sm text-gray-100">
                         {formatDate(event.event_date)}
                       </td>
-                      <td className="px-4 py-2.5 text-sm text-gray-300">
+                      <td className="px-4 py-2.5 text-sm text-gray-100">
                         {event.location}
                       </td>
                       <td className="px-4 py-2.5">

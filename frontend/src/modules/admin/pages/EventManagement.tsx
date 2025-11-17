@@ -24,6 +24,7 @@ import {
 } from '../services/events';
 import { API_BASE_URL } from '../../../services/api';
 import Pagination from '../components/Pagination';
+import { useModal } from '../../../hooks/useModal';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -78,6 +79,9 @@ export default function EventManagement() {
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Prevenir scroll del body cuando el modal está abierto
+  useModal(isCreateOpen);
 
   const buildCoverImageUrl = (path?: string | null) => {
     if (!path) return null;

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiChevronLeft, HiChevronRight, HiCreditCard } from 'react-icons/hi';
+import { HiArrowLeft, HiChevronLeft, HiChevronRight, HiCreditCard, HiCheckCircle, HiXCircle } from 'react-icons/hi';
 import api from '../../../services/api';
+import { useModal } from '../../../hooks/useModal';
 
 type WithdrawalRequest = {
   id: number;
@@ -26,6 +27,14 @@ export default function WithdrawalRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
+  const [rejectNotes, setRejectNotes] = useState('');
+
+  // Prevenir scroll del body cuando hay modales abiertos
+  useModal(rejectModalOpen || approveModalOpen);
 
   useEffect(() => {
     fetchWithdrawals();
@@ -75,6 +84,54 @@ export default function WithdrawalRequests() {
   }, [withdrawals, currentPage]);
 
   const totalPages = Math.ceil(withdrawals.length / ITEMS_PER_PAGE);
+
+  const handleApprove = async (withdrawal: WithdrawalRequest) => {
+    setSelectedWithdrawal(withdrawal);
+    setApproveModalOpen(true);
+  };
+
+  const confirmApprove = async () => {
+    if (!selectedWithdrawal) return;
+
+    setProcessingId(selectedWithdrawal.id);
+    try {
+      await api.post(`/api/admin/central-wallet/withdrawals/${selectedWithdrawal.id}/approve`);
+      await fetchWithdrawals();
+      setApproveModalOpen(false);
+      setSelectedWithdrawal(null);
+    } catch (err: any) {
+      console.error('Error approving withdrawal', err);
+      alert(err.response?.data?.error || 'No se pudo aprobar la solicitud de retiro');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = (withdrawal: WithdrawalRequest) => {
+    setSelectedWithdrawal(withdrawal);
+    setRejectNotes('');
+    setRejectModalOpen(true);
+  };
+
+  const confirmReject = async () => {
+    if (!selectedWithdrawal) return;
+
+    setProcessingId(selectedWithdrawal.id);
+    try {
+      await api.post(`/api/admin/central-wallet/withdrawals/${selectedWithdrawal.id}/reject`, {
+        notes: rejectNotes || null
+      });
+      await fetchWithdrawals();
+      setRejectModalOpen(false);
+      setSelectedWithdrawal(null);
+      setRejectNotes('');
+    } catch (err: any) {
+      console.error('Error rejecting withdrawal', err);
+      alert(err.response?.data?.error || 'No se pudo rechazar la solicitud de retiro');
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -190,6 +247,9 @@ export default function WithdrawalRequests() {
                       <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Fecha
                       </th>
+                      <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-border">
@@ -228,6 +288,30 @@ export default function WithdrawalRequests() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-300">{formatDateTime(withdrawal.created_at)}</td>
+                        <td className="px-6 py-4">
+                          {withdrawal.status === 'pendiente' ? (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleApprove(withdrawal)}
+                                disabled={processingId === withdrawal.id}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-positive/10 hover:bg-positive/20 text-positive border border-positive/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                              >
+                                <HiCheckCircle className="w-4 h-4" />
+                                Aprobar
+                              </button>
+                              <button
+                                onClick={() => handleReject(withdrawal)}
+                                disabled={processingId === withdrawal.id}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-negative/10 hover:bg-negative/20 text-negative border border-negative/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                              >
+                                <HiXCircle className="w-4 h-4" />
+                                Rechazar
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">—</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -265,6 +349,183 @@ export default function WithdrawalRequests() {
           </>
         )}
       </div>
+
+      {/* Modal de confirmación para aprobar */}
+      {approveModalOpen && selectedWithdrawal && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            onClick={() => {
+              setApproveModalOpen(false);
+              setSelectedWithdrawal(null);
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-dark-card border border-dark-border rounded-xl max-w-md w-full p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-lg bg-positive/10 border border-positive/30 flex items-center justify-center">
+                  <HiCheckCircle className="w-6 h-6 text-positive" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Aprobar solicitud de retiro</h3>
+                  <p className="text-sm text-gray-400">¿Estás seguro de aprobar esta solicitud?</p>
+                </div>
+              </div>
+
+              <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-4 mb-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Usuario:</span>
+                    <span className="text-white font-medium">
+                      {selectedWithdrawal.user
+                        ? `${selectedWithdrawal.user.nombres || ''} ${selectedWithdrawal.user.apellidos || ''}`.trim() || selectedWithdrawal.user.carnet
+                        : 'Usuario desconocido'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Monto:</span>
+                    <span className="text-white font-medium">
+                      {selectedWithdrawal.amount.toLocaleString('es-ES', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}{' '}
+                      {selectedWithdrawal.token_symbol}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setApproveModalOpen(false);
+                    setSelectedWithdrawal(null);
+                  }}
+                  className="px-4 py-2 bg-dark-bg border border-dark-border text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmApprove}
+                  disabled={processingId === selectedWithdrawal.id}
+                  className="px-4 py-2 bg-positive hover:bg-positive/90 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {processingId === selectedWithdrawal.id ? (
+                    <>
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <HiCheckCircle className="w-4 h-4" />
+                      Aprobar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal de confirmación para rechazar */}
+      {rejectModalOpen && selectedWithdrawal && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+            onClick={() => {
+              setRejectModalOpen(false);
+              setSelectedWithdrawal(null);
+              setRejectNotes('');
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-dark-card border border-dark-border rounded-xl max-w-md w-full p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-lg bg-negative/10 border border-negative/30 flex items-center justify-center">
+                  <HiXCircle className="w-6 h-6 text-negative" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Rechazar solicitud de retiro</h3>
+                  <p className="text-sm text-gray-400">¿Estás seguro de rechazar esta solicitud?</p>
+                </div>
+              </div>
+
+              <div className="bg-dark-bg/60 border border-dark-border rounded-lg p-4 mb-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Usuario:</span>
+                    <span className="text-white font-medium">
+                      {selectedWithdrawal.user
+                        ? `${selectedWithdrawal.user.nombres || ''} ${selectedWithdrawal.user.apellidos || ''}`.trim() || selectedWithdrawal.user.carnet
+                        : 'Usuario desconocido'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Monto:</span>
+                    <span className="text-white font-medium">
+                      {selectedWithdrawal.amount.toLocaleString('es-ES', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}{' '}
+                      {selectedWithdrawal.token_symbol}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Motivo del rechazo (opcional)
+                </label>
+                <textarea
+                  value={rejectNotes}
+                  onChange={(e) => setRejectNotes(e.target.value)}
+                  placeholder="Ingresa el motivo del rechazo..."
+                  rows={3}
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setRejectModalOpen(false);
+                    setSelectedWithdrawal(null);
+                    setRejectNotes('');
+                  }}
+                  className="px-4 py-2 bg-dark-bg border border-dark-border text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmReject}
+                  disabled={processingId === selectedWithdrawal.id}
+                  className="px-4 py-2 bg-negative hover:bg-negative/90 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {processingId === selectedWithdrawal.id ? (
+                    <>
+                      <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <HiXCircle className="w-4 h-4" />
+                      Rechazar
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
