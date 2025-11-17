@@ -36,9 +36,9 @@ export class AuthController {
   }
 
   static async login(req, res) {
+    const { email, password } = req.body;
+    
     try {
-      const { email, password } = req.body;
-      
       const result = await AuthService.login(email, password);
 
       // Log de login exitoso
@@ -50,7 +50,7 @@ export class AuthController {
       });
     } catch (error) {
       // Log de login fallido
-      await AuditService.logLogin(null, email, false, req);
+      await AuditService.logLogin(null, email || 'unknown', false, req);
 
       res.status(401).json({
         error: error.message

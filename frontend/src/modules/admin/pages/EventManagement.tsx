@@ -12,7 +12,8 @@ import {
   HiPhotograph,
   HiSearch,
   HiFilter,
-  HiChevronDown
+  HiChevronDown,
+  HiEye
 } from 'react-icons/hi';
 import {
   AdminEvent,
@@ -340,20 +341,100 @@ export default function EventManagement() {
   };
 
   const formatDate = (value: string) => {
-    return new Date(value).toLocaleDateString('es-ES', {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-gray-400">Cargando eventos...</p>
-      </div>
-    );
-  }
+  const formatDateTime = (value: string) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const analytics = useMemo(() => {
+    const total = events.length;
+    const published = events.filter((evt) => evt.status === 'publicado').length;
+    const finished = events.filter((evt) => evt.status === 'finalizado').length;
+    const draft = events.filter((evt) => evt.status === 'borrador').length;
+
+    const now = new Date();
+    const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const previousEvents = events.filter((event) => {
+      const createdAt = new Date(event.created_at);
+      return createdAt.getTime() <= endOfPreviousMonth.getTime();
+    });
+
+    const previousTotal = previousEvents.length;
+    const previousPublished = previousEvents.filter((evt) => evt.status === 'publicado').length;
+    const previousFinished = previousEvents.filter((evt) => evt.status === 'finalizado').length;
+    const previousDraft = previousEvents.filter((evt) => evt.status === 'borrador').length;
+
+    return {
+      total,
+      published,
+      finished,
+      draft,
+      previous: {
+        total: previousTotal,
+        published: previousPublished,
+        finished: previousFinished,
+        draft: previousDraft
+      }
+    };
+  }, [events]);
+
+  const getTrendInfo = (current: number, previous: number) => {
+    if (current === previous) {
+      return { message: '→ Se mantiene vs mes anterior', tone: 'neutral' as const };
+    }
+    if (previous === 0) {
+      if (current === 0) {
+        return { message: '→ Se mantiene vs mes anterior', tone: 'neutral' as const };
+      }
+      return { message: `▲ +${current} vs mes anterior`, tone: 'up' as const };
+    }
+    const diff = current - previous;
+    if (diff > 0) {
+      return { message: `▲ +${diff} vs mes anterior`, tone: 'up' as const };
+    }
+    return { message: `▼ -${Math.abs(diff)} vs mes anterior`, tone: 'down' as const };
+  };
+
+  const trendColors: Record<'up' | 'down' | 'neutral', string> = {
+    up: 'text-positive',
+    down: 'text-negative',
+    neutral: 'text-gray-500'
+  };
+
+  const totalTrend = useMemo(
+    () => getTrendInfo(analytics.total, analytics.previous.total),
+    [analytics]
+  );
+  const publishedTrend = useMemo(
+    () => getTrendInfo(analytics.published, analytics.previous.published),
+    [analytics]
+  );
+  const finishedTrend = useMemo(
+    () => getTrendInfo(analytics.finished, analytics.previous.finished),
+    [analytics]
+  );
+  const draftTrend = useMemo(
+    () => getTrendInfo(analytics.draft, analytics.previous.draft),
+    [analytics]
+  );
 
   return (
       <div className="space-y-6">
@@ -384,40 +465,50 @@ export default function EventManagement() {
                 </button>
             </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
-                    <div>
+          <div>
             <p className="text-xs uppercase tracking-wider text-gray-500">Eventos totales</p>
-            <p className="text-3xl font-bold text-white mt-2">{events.length}</p>
-                      </div>
+            <p className="text-3xl font-bold text-white mt-2">{analytics.total}</p>
+            <p className={`text-xs mt-3 ${trendColors[totalTrend.tone]}`}>{totalTrend.message}</p>
+          </div>
           <div className="w-12 h-12 rounded-xl bg-primary-red/20 border border-primary-red/30 flex items-center justify-center">
             <HiCalendar className="w-6 h-6 text-primary-red" />
-                      </div>
-                  </div>
+          </div>
+        </div>
 
         <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wider text-gray-500">Eventos publicados</p>
-            <p className="text-3xl font-bold text-white mt-2">
-              {events.filter((evt) => evt.status === 'publicado').length}
-            </p>
-                    </div>
+            <p className="text-xs uppercase tracking-wider text-gray-500">Publicados</p>
+            <p className="text-2xl font-bold text-white mt-2">{analytics.published}</p>
+            <p className={`text-xs mt-3 ${trendColors[publishedTrend.tone]}`}>{publishedTrend.message}</p>
+          </div>
           <div className="w-12 h-12 rounded-xl bg-positive/10 border border-positive/30 flex items-center justify-center">
             <HiClock className="w-6 h-6 text-positive" />
-                    </div>
-                  </div>
+          </div>
+        </div>
 
         <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wider text-gray-500">Eventos finalizados</p>
-            <p className="text-3xl font-bold text-white mt-2">
-              {events.filter((evt) => evt.status === 'finalizado').length}
-            </p>
+            <p className="text-xs uppercase tracking-wider text-gray-500">Finalizados</p>
+            <p className="text-2xl font-bold text-white mt-2">{analytics.finished}</p>
+            <p className={`text-xs mt-3 ${trendColors[finishedTrend.tone]}`}>{finishedTrend.message}</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-gray-500/10 border border-gray-500/30 flex items-center justify-center">
             <HiShoppingBag className="w-6 h-6 text-gray-400" />
-                  </div>
-            </div>
+          </div>
+        </div>
+
+        <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-gray-500">Borradores</p>
+            <p className="text-2xl font-bold text-white mt-2">{analytics.draft}</p>
+            <p className={`text-xs mt-3 ${trendColors[draftTrend.tone]}`}>{draftTrend.message}</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-accent-yellow/10 border border-accent-yellow/30 flex items-center justify-center">
+            <HiPhotograph className="w-6 h-6 text-accent-yellow" />
+          </div>
+        </div>
       </div>
 
       <div className="bg-dark-card rounded-xl border border-dark-border p-6">
@@ -434,10 +525,24 @@ export default function EventManagement() {
           </div>
           <button
             onClick={() => setFilterOpen((prev) => !prev)}
-            className="flex items-center justify-center w-12 h-12 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:border-primary-red/50 transition-all"
+            className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
             title="Mostrar filtros avanzados"
           >
             <HiFilter className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setFilterStatus('');
+              setFilterDateFrom('');
+              setFilterDateTo('');
+              setCurrentPage(1);
+            }}
+            disabled={!searchTerm && !filterStatus && !filterDateFrom && !filterDateTo}
+            className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Limpiar filtros"
+          >
+            <HiX className="w-5 h-5" />
           </button>
         </div>
 
@@ -481,107 +586,134 @@ export default function EventManagement() {
         )}
       </div>
 
-      {events.length === 0 ? (
-        <div className="bg-dark-card border border-dark-border rounded-xl p-12 text-center">
-          <HiShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-300 mb-2">Aún no hay eventos</h2>
-          <p className="text-gray-500 mb-6">Crea tu primer evento para comenzar a gestionarlo.</p>
-              <button
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all"
-              >
-                <HiPlus className="w-5 h-5" />
-            Crear evento
-              </button>
-            </div>
-      ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {filteredEvents.length === 0 ? (
-            <div className="col-span-3 bg-dark-card border border-dark-border rounded-xl p-12 text-center">
-              <HiShoppingBag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-300 mb-2">No se encontraron eventos</h2>
-              <p className="text-gray-500 mb-6">
-                No hay eventos que coincidan con los filtros actuales. Intenta con otros términos o crea un nuevo evento.
-              </p>
+      <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center text-gray-400 space-y-3">
+            <div className="animate-spin h-10 w-10 border-2 border-primary-red border-t-transparent rounded-full" />
+            <p className="text-sm">Cargando eventos...</p>
+          </div>
+        ) : error ? (
+          <div className="py-16 flex flex-col items-center justify-center text-negative space-y-3">
+            <p className="text-sm">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 text-sm bg-primary-red/20 border border-primary-red/40 text-primary-red rounded-lg hover:bg-primary-red/30 transition-all"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : filteredEvents.length === 0 ? (
+          <div className="py-16 flex flex-col items-center justify-center text-gray-400 space-y-3">
+            <p className="text-base font-semibold">Sin eventos</p>
+            <p className="text-sm text-gray-500 text-center max-w-sm">
+              {events.length === 0
+                ? 'Aún no hay eventos. Crea tu primer evento para comenzar a gestionarlo.'
+                : 'No encontramos resultados con los filtros actuales. Intenta con otro término o crea un nuevo evento.'}
+            </p>
+            {events.length === 0 && (
               <button
                 onClick={openCreateModal}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all mt-2"
               >
                 <HiPlus className="w-5 h-5" />
                 Crear evento
               </button>
-            </div>
-          ) : (
-            paginatedEvents.map((event) => {
-            const coverImage = buildCoverImageUrl(event.cover_image_url);
-
-            return (
-              <div
-                key={event.id}
-                className="bg-dark-card border border-dark-border rounded-xl p-6 hover:border-primary-red/30 transition-all flex flex-col h-full"
-              >
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-white mb-2">{event.name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
-                        <HiCalendar className="w-4 h-4" />
-                        <span>{formatDate(event.event_date)}</span>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-dark-bg/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Evento
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Fecha
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Hora
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Ubicación
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Negocios
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dark-border">
+                {paginatedEvents.map((event) => (
+                  <tr
+                    key={event.id}
+                    className="hover:bg-dark-bg/40 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-white font-semibold">{event.name}</span>
+                        {event.description && (
+                          <span className="text-xs text-gray-400 mt-1 line-clamp-1">{event.description}</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <HiClock className="w-4 h-4" />
-                        <span>
-                          {event.start_time.substring(0, 5)} - {event.end_time.substring(0, 5)}
-                        </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                      {formatDate(event.event_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                      {event.start_time.substring(0, 5)} - {event.end_time.substring(0, 5)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                      <div className="flex items-center gap-1">
+                        <HiLocationMarker className="w-4 h-4 text-gray-400" />
+                        <span>{event.location}</span>
                       </div>
-                    </div>
-                    <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
-                      {STATUS_LABELS[event.status]}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3 mb-5">
-                    {event.description && (
-                      <p className="text-sm text-gray-300 leading-relaxed">{event.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <HiLocationMarker className="w-4 h-4" />
-                      <span>{event.location}</span>
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Negocios registrados: <span className="text-white font-semibold">{event.business_count}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 mt-auto border-t border-dark-border">
-                  <button
-                    onClick={() => handleManageBusinesses(event)}
-                    className="flex-1 px-4 py-2 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg text-sm font-semibold transition-all"
-                  >
-                    Administrar negocios
-                  </button>
-                  <button
-                    onClick={() => openEditModal(event)}
-                    className="px-4 py-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
-                    title="Editar"
-                  >
-                    <HiPencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(event)}
-                    className="px-4 py-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
-                    title="Eliminar"
-                  >
-                    <HiTrash className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-            })
-          )}
-            </div>
-          )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
+                        {STATUS_LABELS[event.status]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-300">
+                      {event.business_count || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleManageBusinesses(event)}
+                          className="p-2 text-gray-400 hover:text-primary-red hover:bg-primary-red/10 rounded-lg transition-all"
+                          title="Administrar negocios"
+                        >
+                          <HiShoppingBag className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => openEditModal(event)}
+                          className="p-2 text-gray-400 hover:text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all"
+                          title="Editar"
+                        >
+                          <HiPencil className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(event)}
+                          className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <HiTrash className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
       {filteredEvents.length > 0 && (
         <Pagination
           currentPage={currentPage}

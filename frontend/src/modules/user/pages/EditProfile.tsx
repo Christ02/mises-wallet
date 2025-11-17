@@ -64,9 +64,8 @@ export default function EditProfile() {
         const updatedUser = {
           ...parsed,
           nombres: form.nombres,
-          apellidos: form.apellidos,
-          email: form.email,
-          carnet_universitario: form.carnet
+          apellidos: form.apellidos
+          // email y carnet_universitario no se modifican
         };
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
@@ -153,12 +152,11 @@ export default function EditProfile() {
             <input
               type="email"
               value={form.email}
-              onChange={handleChange('email')}
-              required
-              className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+              disabled
+              className="w-full px-4 py-3 bg-dark-bg/50 border border-dark-border rounded-lg text-gray-400 cursor-not-allowed"
             />
             <p className="text-xs text-gray-500 mt-2">
-              Usaremos este correo para enviarte notificaciones importantes.
+              El correo electrónico no se puede modificar.
             </p>
           </div>
 
@@ -167,10 +165,12 @@ export default function EditProfile() {
             <input
               type="text"
               value={form.carnet}
-              onChange={handleChange('carnet')}
-              required
-              className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all"
+              disabled
+              className="w-full px-4 py-3 bg-dark-bg/50 border border-dark-border rounded-lg text-gray-400 cursor-not-allowed"
             />
+            <p className="text-xs text-gray-500 mt-2">
+              El carnet universitario no se puede modificar.
+            </p>
           </div>
 
           <button

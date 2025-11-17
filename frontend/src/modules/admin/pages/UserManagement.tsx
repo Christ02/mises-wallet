@@ -51,9 +51,6 @@ export default function UserManagement() {
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
 
   const [showDetailModal, setShowDetailModal] = useState(false);
-
-  // Prevenir scroll del body cuando algún modal está abierto
-  useModal(showModal || showDetailModal);
   const [formData, setFormData] = useState({
     nombres: '',
     apellidos: '',
@@ -70,8 +67,13 @@ export default function UserManagement() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [confirmDeleting, setConfirmDeleting] = useState(false);
+  const [userToToggleStatus, setUserToToggleStatus] = useState<AdminUser | null>(null);
+  const [confirmTogglingStatus, setConfirmTogglingStatus] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Prevenir scroll del body cuando algún modal está abierto
+  useModal(showModal || showDetailModal);
 
   const statusOptions = [
     { value: 'activo', label: 'Activo' },
@@ -253,30 +255,31 @@ export default function UserManagement() {
     setDetailUser(null);
   };
 
-  const handleToggleStatus = async (user: AdminUser) => {
-    const currentStatus = user.status ?? 'activo';
+  const handleToggleStatus = (user: AdminUser) => {
+    setUserToToggleStatus(user);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!userToToggleStatus) return;
+
+    const currentStatus = userToToggleStatus.status ?? 'activo';
     const nextStatus = currentStatus === 'activo' ? 'inactivo' : 'activo';
 
-    const confirmMsg =
-      nextStatus === 'inactivo'
-        ? `¿Seguro que deseas marcar a ${user.nombres} ${user.apellidos} como inactivo? No podrá iniciar sesión.`
-        : `¿Reactivar a ${user.nombres} ${user.apellidos}?`;
-
-    const confirmed = window.confirm(confirmMsg);
-    if (!confirmed) return;
-
     try {
-      setStatusUpdatingId(user.id);
-      const response = await api.put(`/api/admin/users/${user.id}`, { status: nextStatus });
+      setConfirmTogglingStatus(true);
+      setStatusUpdatingId(userToToggleStatus.id);
+      const response = await api.put(`/api/admin/users/${userToToggleStatus.id}`, { status: nextStatus });
       const updatedUser: AdminUser = response.data.user;
       setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
       if (detailUser && detailUser.id === updatedUser.id) {
         setDetailUser(updatedUser);
       }
+      setUserToToggleStatus(null);
     } catch (err: any) {
       console.error('Error updating status', err);
       alert(err.response?.data?.error || 'No se pudo actualizar el estado del usuario');
     } finally {
+      setConfirmTogglingStatus(false);
       setStatusUpdatingId(null);
     }
   };
@@ -474,10 +477,21 @@ export default function UserManagement() {
             </div>
             <button
               onClick={() => setFilterOpen((prev) => !prev)}
-              className="flex items-center justify-center w-12 h-12 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:border-primary-red/50 transition-all"
+              className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
               title="Mostrar filtros avanzados"
             >
               <HiFilter className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setCurrentPage(1);
+              }}
+              disabled={!searchTerm}
+              className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Limpiar filtros"
+            >
+              <HiX className="w-5 h-5" />
             </button>
           </div>
 
@@ -674,6 +688,35 @@ export default function UserManagement() {
         onConfirm={confirmDeleteUser}
         onClose={() => !confirmDeleting && setUserToDelete(null)}
         loading={confirmDeleting}
+      />
+
+      <ConfirmModal
+        open={!!userToToggleStatus}
+        title={
+          userToToggleStatus
+            ? (userToToggleStatus.status ?? 'activo') === 'activo'
+              ? 'Marcar como inactivo'
+              : 'Reactivar usuario'
+            : ''
+        }
+        description={
+          userToToggleStatus
+            ? (userToToggleStatus.status ?? 'activo') === 'activo'
+              ? `¿Seguro que deseas marcar a ${userToToggleStatus.nombres} ${userToToggleStatus.apellidos} como inactivo? No podrá iniciar sesión.`
+              : `¿Reactivar a ${userToToggleStatus.nombres} ${userToToggleStatus.apellidos}?`
+            : ''
+        }
+        confirmText={
+          userToToggleStatus
+            ? (userToToggleStatus.status ?? 'activo') === 'activo'
+              ? 'Marcar como inactivo'
+              : 'Reactivar'
+            : ''
+        }
+        cancelText="Cancelar"
+        onConfirm={confirmToggleStatus}
+        onClose={() => !confirmTogglingStatus && setUserToToggleStatus(null)}
+        loading={confirmTogglingStatus}
       />
 
       {showModal && (

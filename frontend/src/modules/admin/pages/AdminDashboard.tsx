@@ -168,12 +168,19 @@ export default function AdminDashboard() {
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
+    // Normalizar la fecha actual a medianoche para comparar solo días
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thirtyDaysFromNow = new Date(today);
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    
     return events
       .filter((e) => (e.status || '').toLowerCase() === 'publicado')
       .filter((e) => {
         try {
-          const d = new Date(e.event_date);
-          return d >= now;
+          const eventDate = new Date(e.event_date);
+          // Normalizar la fecha del evento a medianoche para comparar solo días
+          const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+          return eventDay >= today && eventDay <= thirtyDaysFromNow;
         } catch {
           return false;
         }

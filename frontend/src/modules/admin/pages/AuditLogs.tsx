@@ -42,9 +42,31 @@ export default function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [allEntities, setAllEntities] = useState<string[]>([]);
+  const [allActions, setAllActions] = useState<string[]>([]);
 
   // Prevenir scroll del body cuando el modal está abierto
   useModal(selectedLog !== null);
+
+  // Cargar todas las entidades y acciones disponibles una vez al inicio
+  useEffect(() => {
+    const loadAllOptions = async () => {
+      try {
+        const response = await fetchAuditLogs({ limit: 1000 }); // Obtener muchos logs para tener todas las opciones
+        const entitiesSet = new Set<string>();
+        const actionsSet = new Set<string>();
+        response.data.forEach((log) => {
+          if (log.entity) entitiesSet.add(log.entity);
+          if (log.action) actionsSet.add(log.action);
+        });
+        setAllEntities(Array.from(entitiesSet).sort());
+        setAllActions(Array.from(actionsSet).sort());
+      } catch (err) {
+        console.error('Error loading all options:', err);
+      }
+    };
+    loadAllOptions();
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
@@ -91,21 +113,21 @@ export default function AuditLogs() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedLogs = logs.slice(startIndex, endIndex);
 
-  const uniqueActions = useMemo(() => {
-    const set = new Set<string>();
-    logs.forEach((log) => {
-      if (log.action) set.add(log.action);
-    });
-    return Array.from(set);
-  }, [logs]);
+  // Usar las opciones cargadas al inicio en lugar de calcularlas de los logs filtrados
+  const uniqueActions = allActions;
+  const uniqueEntities = allEntities;
 
-  const uniqueEntities = useMemo(() => {
-    const set = new Set<string>();
-    logs.forEach((log) => {
-      if (log.entity) set.add(log.entity);
-    });
-    return Array.from(set);
-  }, [logs]);
+  const clearFilters = () => {
+    setSearchInput('');
+    setDebouncedSearch('');
+    setActionFilter('Todos');
+    setEntityFilter('Todos');
+    setDateFrom('');
+    setDateTo('');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = searchInput || actionFilter !== 'Todos' || entityFilter !== 'Todos' || dateFrom || dateTo;
 
   return (
     <div className="space-y-6">
@@ -140,13 +162,22 @@ export default function AuditLogs() {
               className="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
             />
           </div>
-          <button
-            onClick={() => setShowFilters((prev) => !prev)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all self-start md:self-auto"
-          >
-            <HiFilter className="w-5 h-5" />
-            <span>Filtrar</span>
-          </button>
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={() => setShowFilters((prev) => !prev)}
+              className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
+            >
+              <HiFilter className="w-5 h-5" />
+            </button>
+            <button
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+              className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Limpiar filtros"
+            >
+              <HiX className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {showFilters && (
@@ -416,43 +447,6 @@ export default function AuditLogs() {
                   <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Descripción</h3>
                   <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4">
                     <p className="text-sm text-white leading-relaxed">{selectedLog.description}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Metadatos */}
-              {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Metadatos</h3>
-                  <div className="bg-dark-bg/50 border border-dark-border rounded-lg divide-y divide-dark-border">
-                    {Object.entries(selectedLog.metadata).map(([key, value]) => {
-                      // Si el valor es un objeto (como oldValues/newValues), mostrarlo en secciones separadas
-                      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                        return (
-                          <div key={key} className="p-4">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">{key}</p>
-                            <div className="space-y-2 pl-4 border-l-2 border-primary-red/30">
-                              {Object.entries(value).map(([subKey, subValue]) => (
-                                <div key={subKey} className="flex items-start justify-between gap-4">
-                                  <span className="text-sm text-gray-400 flex-shrink-0">{subKey}</span>
-                                  <span className="text-sm text-white font-mono text-right break-all">
-                                    {String(subValue) || '—'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={key} className="px-4 py-3 flex items-center justify-between">
-                          <span className="text-sm text-gray-400 capitalize">{key}</span>
-                          <span className="text-sm text-white font-mono text-right break-all max-w-[60%]">
-                            {String(value)}
-                          </span>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
               )}

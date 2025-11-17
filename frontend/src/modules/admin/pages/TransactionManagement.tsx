@@ -6,7 +6,8 @@ import {
   HiSwitchHorizontal,
   HiTrendingDown,
   HiTrendingUp,
-  HiExternalLink
+  HiExternalLink,
+  HiX
 } from 'react-icons/hi';
 import { fetchTransactions, AdminTransaction } from '../services/transactions';
 import Pagination from '../components/Pagination';
@@ -79,6 +80,26 @@ export default function TransactionManagement() {
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [allTypes, setAllTypes] = useState<string[]>([]);
+
+  // Cargar todos los tipos disponibles al montar el componente
+  useEffect(() => {
+    const loadAllTypes = async () => {
+      try {
+        const response = await fetchTransactions({ limit: 1000 });
+        const typesSet = new Set<string>();
+        response.data.forEach((tx) => {
+          if (tx.type) typesSet.add(tx.type);
+        });
+        setAllTypes(Array.from(typesSet));
+      } catch (err) {
+        console.error('Error loading transaction types', err);
+        // Si falla, usar tipos por defecto
+        setAllTypes(['transferencia']);
+      }
+    };
+    loadAllTypes();
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
@@ -152,12 +173,8 @@ export default function TransactionManagement() {
   }, [transactions, total]);
 
   const uniqueTypes = useMemo(() => {
-    const set = new Set<string>();
-    transactions.forEach((tx) => {
-      if (tx.type) set.add(tx.type);
-    });
-    return Array.from(set);
-  }, [transactions]);
+    return allTypes.length > 0 ? allTypes : ['transferencia'];
+  }, [allTypes]);
 
   const getEtherscanUrl = (txHash: string | null | undefined) => {
     if (!txHash) return null;
@@ -330,10 +347,26 @@ export default function TransactionManagement() {
           </div>
           <button
             onClick={() => setShowFilters((prev) => !prev)}
-            className="flex items-center justify-center w-12 h-12 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:border-primary-red/50 transition-all"
+            className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
             title="Mostrar filtros avanzados"
           >
             <HiFilter className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setSearchInput('');
+              setStatusFilter('Todos');
+              setTypeFilter('Todos');
+              setDirectionFilter('Todos');
+              setDateFrom('');
+              setDateTo('');
+              setCurrentPage(1);
+            }}
+            disabled={!searchInput && statusFilter === 'Todos' && typeFilter === 'Todos' && directionFilter === 'Todos' && !dateFrom && !dateTo}
+            className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Limpiar filtros"
+          >
+            <HiX className="w-5 h-5" />
           </button>
         </div>
 
