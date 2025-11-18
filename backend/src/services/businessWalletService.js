@@ -59,13 +59,14 @@ export class BusinessWalletService {
 
     await CentralWalletService.ensureSettingsLoaded();
 
-    const privateKey = EncryptionService.decrypt(walletRecord.private_key_encrypted);
+    const privateKey = EncryptionService.decrypt(walletRecord.private_key_encrypted)?.trim();
     if (!privateKey) {
       throw new Error('No se pudo recuperar la clave privada del negocio');
     }
 
     const provider = CentralWalletService.getProvider();
-    const signer = new ethers.Wallet(privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`, provider);
+    const cleanedKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+    const signer = new ethers.Wallet(cleanedKey, provider);
 
     await CentralWalletService.ensureGasBalance(signer.address);
 
