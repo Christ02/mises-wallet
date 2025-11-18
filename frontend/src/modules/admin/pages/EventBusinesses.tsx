@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AdminBusiness,
@@ -32,6 +33,7 @@ import {
 } from 'react-icons/hi';
 import { useModal } from '../../../hooks/useModal';
 import { usePermissions } from '../../../hooks/usePermissions';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -120,6 +122,8 @@ export default function EventBusinesses() {
   const [memberRole, setMemberRole] = useState('');
   const [addingMember, setAddingMember] = useState(false);
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<{ business: AdminBusiness; member: AdminBusinessMember } | null>(null);
+  const [removingMember, setRemovingMember] = useState(false);
 
   const numericEventId = useMemo(() => Number(eventId), [eventId]);
 
@@ -389,20 +393,35 @@ export default function EventBusinesses() {
     }
   };
 
-  const handleRemoveMember = async (business: AdminBusiness, member: AdminBusinessMember) => {
-    if (!numericEventId) return;
+  const handleRemoveMember = (business: AdminBusiness, member: AdminBusinessMember) => {
     if (member.carnet === business.lead_carnet) {
       alert('No puedes remover al responsable principal del negocio.');
       return;
     }
-    const confirmed = window.confirm(`¿Eliminar a ${member.carnet} del negocio?`);
-    if (!confirmed) return;
+    setMemberToRemove({ business, member });
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!memberToRemove || !numericEventId) return;
+    setRemovingMember(true);
     try {
-      await removeBusinessMember(numericEventId, business.id, member.id);
+      await removeBusinessMember(numericEventId, memberToRemove.business.id, memberToRemove.member.id);
       await refreshBusinesses();
+      setMemberToRemove(null);
+      // Si el negocio del que se eliminó el miembro es el que está abierto en el modal, actualizar la lista
+      if (viewMembersBusiness?.id === memberToRemove.business.id) {
+        const updatedBusinesses = await fetchBusinesses(numericEventId);
+        setBusinesses(updatedBusinesses);
+        const updatedBusiness = updatedBusinesses.find(b => b.id === memberToRemove.business.id);
+        if (updatedBusiness) {
+          setViewMembersBusiness(updatedBusiness);
+        }
+      }
     } catch (err: any) {
       console.error('Error eliminando miembro', err);
       alert(err.response?.data?.error || 'No se pudo eliminar el miembro');
+    } finally {
+      setRemovingMember(false);
     }
   };
 
@@ -455,7 +474,8 @@ export default function EventBusinesses() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <button
         onClick={() => navigate('/admin/events')}
         className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors bg-dark-card border border-dark-border px-3 py-2 rounded-lg"
@@ -656,9 +676,24 @@ export default function EventBusinesses() {
         </div>
       )}
 
-      {isBusinessModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      {isBusinessModalOpen && createPortal(
+        <div 
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center" 
+          onClick={closeBusinessModal} 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-dark-border sticky top-0 bg-dark-card z-10">
               <h2 className="text-xl font-bold text-white">
                 {editingBusiness ? 'Editar negocio' : 'Crear negocio'}
@@ -768,12 +803,28 @@ export default function EventBusinesses() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {viewMembersBusiness && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
+      {viewMembersBusiness && createPortal(
+        <div 
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center" 
+          onClick={closeViewMembersModal} 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-dark-border">
               <div>
                 <h2 className="text-xl font-bold text-white">Miembros del negocio</h2>
@@ -834,12 +885,28 @@ export default function EventBusinesses() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {addMemberBusiness && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-xl shadow-2xl max-h-[85vh] overflow-y-auto">
+      {addMemberBusiness && createPortal(
+        <div 
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center" 
+          onClick={closeAddMemberModal} 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-xl shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-dark-border sticky top-0 bg-dark-card z-10">
               <div>
                 <h2 className="text-xl font-bold text-white">Agregar miembro</h2>
@@ -925,8 +992,26 @@ export default function EventBusinesses() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+
+      {/* Modal de confirmación para eliminar miembro */}
+      <ConfirmModal
+        open={!!memberToRemove}
+        title="Eliminar miembro"
+        description={
+          memberToRemove
+            ? `¿Seguro que deseas eliminar a ${memberToRemove.member.carnet} del negocio "${memberToRemove.business.name}"? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmRemoveMember}
+        onClose={() => !removingMember && setMemberToRemove(null)}
+        loading={removingMember}
+      />
+      </div>
+    </>
   );
 }

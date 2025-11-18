@@ -1,4 +1,5 @@
 import { HiExclamation } from 'react-icons/hi';
+import { createPortal } from 'react-dom';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -23,11 +24,44 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <>
-      <div className="fixed inset-0 bg-black/60 z-50" onClick={onClose} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-dark-card border border-dark-border rounded-xl shadow-2xl overflow-hidden">
+      <div 
+        className="bg-black/60 z-[9999]" 
+        onClick={onClose} 
+        style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          width: '100vw', 
+          height: '100vh', 
+          margin: 0,
+          zIndex: 9999
+        }} 
+      />
+      <div 
+        className="z-[9999] flex items-center justify-center" 
+        style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          width: '100vw', 
+          height: '100vh', 
+          margin: 0,
+          padding: '1rem',
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}
+      >
+        <div 
+          className="w-full max-w-md bg-dark-card border border-dark-border rounded-xl shadow-2xl overflow-hidden"
+          style={{ pointerEvents: 'auto' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="p-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
@@ -60,7 +94,8 @@ export default function ConfirmModal({
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
+import { 
   HiSearch,
   HiPlus,
   HiPencil,
@@ -486,8 +486,8 @@ export default function UserManagement() {
               className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
               title="Mostrar filtros avanzados"
             >
-              <HiFilter className="w-5 h-5" />
-            </button>
+                <HiFilter className="w-5 h-5" />
+              </button>
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -498,7 +498,7 @@ export default function UserManagement() {
               title="Limpiar filtros"
             >
               <HiX className="w-5 h-5" />
-            </button>
+              </button>
           </div>
 
           {filterOpen && (
@@ -573,57 +573,57 @@ export default function UserManagement() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-dark-bg/50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-dark-bg/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Usuario
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Carnet
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Estado
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Rol
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Rol
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Creado
-                    </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-dark-border">
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dark-border">
                   {paginatedUsers.map((user) => (
-                    <tr
-                      key={user.id}
+                  <tr
+                    key={user.id}
                       className="hover:bg-dark-bg/40 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
                           <span className="text-white font-semibold">{`${user.nombres} ${user.apellidos}`}</span>
                           <span className="text-xs text-gray-400">{user.email}</span>
                         </div>
-                      </td>
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-300">{user.carnet_universitario}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap">
                         {renderStatusChip(user.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-3 py-1 rounded-lg text-xs font-semibold bg-primary-red/10 text-primary-red border border-primary-red/20">
                           {user.role}
-                        </span>
-                      </td>
+                      </span>
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                         {formatDate(user.created_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
                             onClick={() => openDetailModal(user)}
                             className="p-2 text-gray-400 hover:text-white hover:bg-dark-bg/60 rounded-lg transition-all"
                             title="Ver detalle"
@@ -650,28 +650,28 @@ export default function UserManagement() {
                           )}
                           <button
                             onClick={() => openEditModal(user)}
-                            className="p-2 text-gray-400 hover:text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all"
-                            title="Editar"
-                          >
-                            <HiPencil className="w-5 h-5" />
-                          </button>
+                          className="p-2 text-gray-400 hover:text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all"
+                          title="Editar"
+                        >
+                          <HiPencil className="w-5 h-5" />
+                        </button>
                           {canDeleteUser && (
-                            <button
+                        <button
                               onClick={() => handleDelete(user)}
                               className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all disabled:opacity-50"
-                              title="Eliminar"
+                          title="Eliminar"
                               disabled={deletingId === user.id}
-                            >
-                              <HiTrash className="w-5 h-5" />
-                            </button>
+                        >
+                          <HiTrash className="w-5 h-5" />
+                        </button>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           )}
         </div>
       </div>
@@ -730,7 +730,21 @@ export default function UserManagement() {
       />
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div 
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center" 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
+        >
           <div className="bg-dark-card rounded-2xl border border-dark-border w-full max-w-2xl shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-dark-border">
               <div>
@@ -795,31 +809,37 @@ export default function UserManagement() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Rol</label>
+                  <div className="relative">
                   <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all"
-                  >
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.name}>
-                        {role.name}
-                      </option>
-                    ))}
+                      value={formData.role}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                      className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all appearance-none cursor-pointer pr-10"
+                    >
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.name}>
+                          {role.name}
+                        </option>
+                      ))}
                   </select>
+                    <HiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Estado</label>
+                  <div className="relative">
                   <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all"
-                  >
-                    {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all appearance-none cursor-pointer pr-10"
+                    >
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
                   </select>
+                    <HiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+                  </div>
                   {formErrors.status && (
                     <p className="mt-1 text-xs text-negative">{formErrors.status}</p>
                   )}
@@ -854,17 +874,17 @@ export default function UserManagement() {
                 {formErrors.password && (
                   <p className="mt-1 text-xs text-negative">{formErrors.password}</p>
                 )}
-              </div>
+            </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-dark-border">
-                <button
+              <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-6 py-2.5 bg-dark-bg hover:bg-dark-border text-gray-300 hover:text-white font-medium rounded-lg transition-all"
+                className="px-6 py-2.5 bg-dark-bg hover:bg-dark-border text-gray-300 hover:text-white font-medium rounded-lg transition-all"
                   disabled={saving}
-                >
-                  Cancelar
-                </button>
+              >
+                Cancelar
+              </button>
                 <button
                   type="submit"
                   disabled={saving}
@@ -880,7 +900,19 @@ export default function UserManagement() {
 
       {showDetailModal && detailUser && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
           onClick={closeDetailModal}
         >
           <div

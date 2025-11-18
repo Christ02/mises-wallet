@@ -1,4 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiCalendar,
@@ -489,6 +490,7 @@ export default function EventManagement() {
   );
 
   return (
+    <>
       <div className="space-y-6">
       {error && (
         <div className="bg-negative/10 border border-negative/30 text-negative px-4 py-3 rounded-lg">
@@ -507,7 +509,7 @@ export default function EventManagement() {
               Crea, publica y gestiona los eventos y sus negocios participantes.
             </p>
           </div>
-        </div>
+                </div>
                 <button 
           onClick={openCreateModal}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all self-start sm:self-auto"
@@ -530,15 +532,15 @@ export default function EventManagement() {
         </div>
 
         <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
-          <div>
+                    <div>
             <p className="text-xs uppercase tracking-wider text-gray-500">Publicados</p>
             <p className="text-2xl font-bold text-white mt-2">{analytics.published}</p>
             <p className={`text-xs mt-3 ${trendColors[publishedTrend.tone]}`}>{publishedTrend.message}</p>
-          </div>
+                      </div>
           <div className="w-12 h-12 rounded-xl bg-positive/10 border border-positive/30 flex items-center justify-center">
             <HiClock className="w-6 h-6 text-positive" />
-          </div>
-        </div>
+                      </div>
+                    </div>
 
         <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
           <div>
@@ -549,19 +551,19 @@ export default function EventManagement() {
           <div className="w-12 h-12 rounded-xl bg-gray-500/10 border border-gray-500/30 flex items-center justify-center">
             <HiShoppingBag className="w-6 h-6 text-gray-400" />
           </div>
-        </div>
+                  </div>
 
         <div className="bg-dark-card border border-dark-border rounded-xl p-5 flex items-center justify-between">
           <div>
             <p className="text-xs uppercase tracking-wider text-gray-500">Borradores</p>
             <p className="text-2xl font-bold text-white mt-2">{analytics.draft}</p>
             <p className={`text-xs mt-3 ${trendColors[draftTrend.tone]}`}>{draftTrend.message}</p>
-          </div>
+                    </div>
           <div className="w-12 h-12 rounded-xl bg-accent-yellow/10 border border-accent-yellow/30 flex items-center justify-center">
             <HiPhotograph className="w-6 h-6 text-accent-yellow" />
-          </div>
-        </div>
-      </div>
+                    </div>
+                    </div>
+                  </div>
 
       <div className="bg-dark-card rounded-xl border border-dark-border p-6">
         <div className="flex items-center gap-3">
@@ -575,13 +577,13 @@ export default function EventManagement() {
               className="w-full pl-10 pr-4 py-3.5 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
             />
           </div>
-          <button
+                    <button
             onClick={() => setFilterOpen((prev) => !prev)}
             className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
             title="Mostrar filtros avanzados"
-          >
+                    >
             <HiFilter className="w-5 h-5" />
-          </button>
+                    </button>
           <button
             onClick={() => {
               setSearchTerm('');
@@ -595,7 +597,7 @@ export default function EventManagement() {
             title="Limpiar filtros"
           >
             <HiX className="w-5 h-5" />
-          </button>
+                    </button>
         </div>
 
         {filterOpen && (
@@ -614,8 +616,8 @@ export default function EventManagement() {
                   <option value="finalizado">Finalizado</option>
                 </select>
                 <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
-              </div>
-            </div>
+                  </div>
+                </div>
             <div>
               <label className="block text-gray-400 mb-2">Desde</label>
               <input
@@ -636,7 +638,7 @@ export default function EventManagement() {
             </div>
           </div>
         )}
-      </div>
+            </div>
 
       <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
         {loading ? (
@@ -671,7 +673,7 @@ export default function EventManagement() {
                 Crear evento
               </button>
             )}
-          </div>
+            </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -724,7 +726,7 @@ export default function EventManagement() {
                       <div className="flex items-center gap-1">
                         <HiLocationMarker className="w-4 h-4 text-gray-400" />
                         <span>{event.location}</span>
-                      </div>
+                    </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${STATUS_STYLES[event.status]}`}>
@@ -743,23 +745,23 @@ export default function EventManagement() {
                         >
                           <HiShoppingBag className="w-5 h-5" />
                         </button>
-                        <button
+                    <button
                           onClick={() => openEditModal(event)}
                           className="p-2 text-gray-400 hover:text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all"
                           title="Editar"
-                        >
+                    >
                           <HiPencil className="w-5 h-5" />
-                        </button>
+                    </button>
                         {canDeleteEvent && (
                           <button
                             onClick={() => handleDelete(event)}
                             className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
                             title="Eliminar"
                           >
-                            <HiTrash className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
+                      <HiTrash className="w-5 h-5" />
+                    </button>
+              )}
+            </div>
                     </td>
                   </tr>
                 ))}
@@ -778,9 +780,24 @@ export default function EventManagement() {
         />
       )}
 
-      {isCreateOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
+      {isCreateOpen && createPortal(
+        <div 
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center" 
+          onClick={closeModal} 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-dark-border flex-shrink-0">
               <h2 className="text-xl font-bold text-white">
                 {editingEvent ? 'Editar evento' : 'Crear evento'}
@@ -865,14 +882,17 @@ export default function EventManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Estado *</label>
+                <div className="relative">
                 <select
-                  value={formState.status}
-                  onChange={(e) => handleChange('status', e.target.value as EventFormState['status'])}
-                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
+                    value={formState.status}
+                    onChange={(e) => handleChange('status', e.target.value as EventFormState['status'])}
+                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all appearance-none cursor-pointer pr-10"
                 >
-                  <option value="borrador">Borrador</option>
-                  <option value="publicado">Publicado</option>
+                    <option value="borrador">Borrador</option>
+                    <option value="publicado">Publicado</option>
                 </select>
+                  <HiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+              </div>
             </div>
 
               <div>
@@ -908,24 +928,24 @@ export default function EventManagement() {
                               Ya existente
                             </div>
                           )}
-                          <button
+              <button
                             type="button"
                             onClick={() => handleRemoveImage(index)}
                             className="absolute top-2 right-2 w-7 h-7 bg-red-500/90 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                             title={preview.isExisting ? "Eliminar imagen existente" : "Eliminar imagen"}
                           >
                             <HiX className="w-4 h-4" />
-                          </button>
-                        </div>
+              </button>
+            </div>
                       ))}
-                    </div>
-                  )}
+        </div>
+      )}
 
                   <div className="text-xs text-gray-500 space-y-1">
                     <p>Formatos permitidos: JPG, PNG, WEBP, GIF · Máx 5MB por imagen</p>
                     <p>Puedes seleccionar múltiples imágenes a la vez</p>
                   </div>
-                </div>
+            </div>
               </div>
               </div>
 
@@ -942,14 +962,16 @@ export default function EventManagement() {
                   type="submit"
                   disabled={saving}
                   className="px-6 py-2.5 bg-primary-red hover:bg-primary-red/90 text-white font-semibold rounded-lg transition-all disabled:opacity-60"
-                >
+              >
                   {saving ? 'Guardando...' : editingEvent ? 'Actualizar evento' : 'Crear evento'}
               </button>
-              </div>
+            </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-        </div>
+      </div>
+    </>
   );
 }

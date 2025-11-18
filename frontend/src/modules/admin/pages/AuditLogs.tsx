@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiAnnotation,
   HiChevronDown,
@@ -130,7 +131,8 @@ export default function AuditLogs() {
   const hasActiveFilters = searchInput || actionFilter !== 'Todos' || entityFilter !== 'Todos' || dateFrom || dateTo;
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
         <div className="flex items-start gap-4">
@@ -360,9 +362,24 @@ export default function AuditLogs() {
       )}
 
       {/* Modal de detalles */}
-      {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-dark-card border border-dark-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+      {selectedLog && createPortal(
+        <div 
+          className="bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center" 
+          onClick={() => setSelectedLog(null)} 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            margin: 0, 
+            padding: '1rem',
+            zIndex: 9999
+          }}
+        >
+          <div className="bg-dark-card border border-dark-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-dark-border">
               <div className="flex items-center gap-3">
@@ -483,9 +500,11 @@ export default function AuditLogs() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

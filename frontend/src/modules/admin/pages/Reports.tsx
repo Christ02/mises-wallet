@@ -948,24 +948,11 @@ export default function Reports() {
 
       {/* Historial reciente - Completamente abajo */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-semibold text-white mb-1">Historial reciente</h2>
-            <p className="text-xs text-gray-500">
-              Reportes generados anteriormente. Puedes descargarlos o reenviarlos.
-            </p>
-          </div>
-          {recentReports.length > 0 && (
-            <button
-              onClick={() => {
-                setRecentReports([]);
-                localStorage.removeItem('recentReports');
-              }}
-              className="text-xs text-gray-500 hover:text-white transition px-3 py-1.5 bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-bg/80"
-            >
-              Limpiar historial
-            </button>
-          )}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white mb-1">Historial reciente</h2>
+          <p className="text-xs text-gray-500">
+            Reportes generados anteriormente. Puedes descargarlos o reenviarlos.
+          </p>
         </div>
         {recentReports.length === 0 ? (
           <div className="py-12 text-center">
