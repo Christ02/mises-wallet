@@ -1,0 +1,82 @@
+/**
+ * Ejemplo de uploadMiddleware usando Cloud Storage
+ * 
+ * Para usar este middleware:
+ * 1. Instalar: npm install @aws-sdk/client-s3
+ * 2. Renombrar este archivo a uploadMiddleware.js
+ * 3. Configurar variables de entorno (ver .env.example)
+ * 4. Reemplazar el uploadMiddleware.js actual
+ */
+
+import multer from 'multer';
+import storageService from '../services/storageService.js';
+
+const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+function fileFilter(_req, file, cb) {
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Solo se permiten imágenes (jpg, png, webp, gif).'));
+  }
+}
+
+// Multer en memoria (no guarda en disco, subimos directamente a cloud)
+const storage = multer.memoryStorage();
+
+export const eventImageUpload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  }
+});
+
+/**
+ * Función helper para subir archivos a cloud storage después de multer
+ * Usar en el controller después de multer
+ */
+export async function uploadToCloudStorage(files) {
+  if (!files || files.length === 0) return [];
+
+  const uploadPromises = files.map(async (file) => {
+    const timestamp = Date.now();
+    const random = Math.round(Math.random() * 1e9);
+    const extension = file.originalname.split('.').pop().toLowerCase();
+    const fileName = `${timestamp}-${random}.${extension}`;
+
+    const publicUrl = await storageService.uploadFile(
+      file.buffer,
+      fileName,
+      file.mimetype
+    );
+
+    return publicUrl;
+  });
+
+  return Promise.all(uploadPromises);
+}
+
+/**
+ * Función helper para construir URL (compatibilidad con código existente)
+ * Ahora retorna la URL completa de cloud storage
+ */
+export function buildEventImageUrl(filename) {
+  if (!filename) return null;
+  
+  // Si ya es una URL completa, retornarla
+  if (filename.startsWith('http://') || filename.startsWith('https://')) {
+    return filename;
+  }
+  
+  // Si es un path relativo, construir URL completa
+  // Esto es para compatibilidad con imágenes existentes
+  const publicUrl = process.env.STORAGE_PUBLIC_URL || '';
+  if (publicUrl) {
+    return `${publicUrl}/events/${filename}`;
+  }
+  
+  // Fallback a local
+  return `/uploads/events/${filename}`;
+}
+

@@ -58,6 +58,8 @@ services:
       - ./backend:/app
       - ./database:/app/database
       - /app/node_modules
+      # Volumen persistente para uploads (solución temporal hasta migrar a cloud storage)
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,6 +115,8 @@ volumes:
   postgres_data:
     driver: local
   pgadmin_data:
+    driver: local
+  uploads_data:
     driver: local
 
 networks:
