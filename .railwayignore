@@ -8,7 +8,7 @@ frontend/
 docker/
 docs/
 contracts/
-scripts/
+# scripts/ - Comentado para permitir backend/src/scripts/
 database/migrations
 uploads/
 
