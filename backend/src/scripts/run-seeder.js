@@ -64,7 +64,13 @@ async function createSuperAdmin() {
   }
 }
 
-createSuperAdmin()
-  .then(() => process.exit(0))
-  .catch(() => process.exit(1));
+// Exportar la función para uso en otros módulos
+export { createSuperAdmin };
+
+// Solo ejecutar si se llama directamente (no cuando se importa)
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.includes('run-seeder.js')) {
+  createSuperAdmin()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
 

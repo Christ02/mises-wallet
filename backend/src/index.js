@@ -17,6 +17,17 @@ if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
       runMigrations()
         .then(() => {
           console.log('✅ Migraciones completadas exitosamente');
+          
+          // Después de las migraciones, ejecutar el seeder para crear el super admin
+          if (process.env.RUN_SEEDER_ON_START !== 'false') {
+            import('./scripts/run-seeder.js')
+              .then(() => {
+                console.log('✅ Seeder ejecutado (super admin creado o ya existe)');
+              })
+              .catch((error) => {
+                console.error('⚠️  Error al ejecutar seeder (no crítico):', error.message);
+              });
+          }
         })
         .catch((error) => {
           console.error('⚠️  Error al ejecutar migraciones (no crítico):', error.message);
