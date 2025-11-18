@@ -219,8 +219,12 @@ async function runMigrations() {
   }
 }
 
-// Ejecutar migraciones
-runMigrations()
+// Exportar la función para uso en otros módulos
+export { runMigrations };
+
+// Solo ejecutar si se llama directamente (no cuando se importa)
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.includes('run-migrations.js')) {
+  runMigrations()
   .then(() => {
     console.log('\n✅ Migraciones completadas exitosamente');
     process.exit(0);
