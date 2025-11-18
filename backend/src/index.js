@@ -8,35 +8,42 @@ import { config } from './config/config.js';
 // Cargar variables de entorno
 dotenv.config();
 
-// Ejecutar migraciones en segundo plano al iniciar (no bloquea el servidor)
+// Ejecutar migraciones y seeder en segundo plano al iniciar (no bloquea el servidor)
 if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
   (async () => {
     try {
-      const { runMigrations } = await import('./scripts/run-migrations.js');
-      console.log('🔄 Ejecutando migraciones en segundo plano...');
-      runMigrations()
-        .then(() => {
-          console.log('✅ Migraciones completadas exitosamente');
-          
-          // Después de las migraciones, ejecutar el seeder para crear el super admin
-          if (process.env.RUN_SEEDER_ON_START !== 'false') {
-            import('./scripts/run-seeder.js')
-              .then(({ createSuperAdmin }) => {
-                console.log('🌱 Ejecutando seeder para crear super admin...');
-                return createSuperAdmin();
-              })
-              .then(() => {
-                console.log('✅ Seeder ejecutado (super admin creado o ya existe)');
-              })
-              .catch((error) => {
-                console.error('⚠️  Error al ejecutar seeder (no crítico):', error.message);
-              });
-          }
-        })
-        .catch((error) => {
-          console.error('⚠️  Error al ejecutar migraciones (no crítico):', error.message);
-          // No detener el servidor si las migraciones fallan
-        });
+      // Importar dinámicamente para evitar ejecución directa
+      const migrationsModule = await import('./scripts/run-migrations.js?t=' + Date.now());
+      const { runMigrations } = migrationsModule;
+      
+      if (typeof runMigrations === 'function') {
+        console.log('🔄 Ejecutando migraciones en segundo plano...');
+        runMigrations()
+          .then(() => {
+            console.log('✅ Migraciones completadas exitosamente');
+            
+            // Después de las migraciones, ejecutar el seeder para crear el super admin
+            if (process.env.RUN_SEEDER_ON_START !== 'false') {
+              import('./scripts/run-seeder.js?t=' + Date.now())
+                .then(({ createSuperAdmin }) => {
+                  console.log('🌱 Ejecutando seeder para crear super admin...');
+                  return createSuperAdmin();
+                })
+                .then(() => {
+                  console.log('✅ Seeder ejecutado (super admin creado o ya existe)');
+                })
+                .catch((error) => {
+                  console.error('⚠️  Error al ejecutar seeder (no crítico):', error.message);
+                });
+            }
+          })
+          .catch((error) => {
+            console.error('⚠️  Error al ejecutar migraciones (no crítico):', error.message);
+            // No detener el servidor si las migraciones fallan
+          });
+      } else {
+        console.error('⚠️  runMigrations no es una función');
+      }
     } catch (error) {
       console.error('⚠️  No se pudo cargar el script de migraciones:', error.message);
       // Continuar iniciando el servidor
