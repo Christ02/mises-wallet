@@ -100,6 +100,19 @@ export class AdminEventService {
         if (computedStatus !== event.status) {
           await EventRepository.updateStatus(event.id, computedStatus);
         }
+        // Parsear el campo images si es JSONB
+        let imagesArray = [];
+        if (event.images) {
+          try {
+            imagesArray = typeof event.images === 'string' ? JSON.parse(event.images) : event.images;
+            if (!Array.isArray(imagesArray)) {
+              imagesArray = [];
+            }
+          } catch {
+            imagesArray = [];
+          }
+        }
+
         return {
           id: event.id,
           name: event.name,
@@ -110,6 +123,7 @@ export class AdminEventService {
           description: event.description,
           status: computedStatus,
           cover_image_url: event.cover_image_url,
+          images: imagesArray,
           business_count: event.business_count ?? 0,
           created_at: event.created_at,
           updated_at: event.updated_at
@@ -130,10 +144,24 @@ export class AdminEventService {
       event.status = computedStatus;
     }
 
+    // Parsear el campo images si es JSONB
+    let imagesArray = [];
+    if (event.images) {
+      try {
+        imagesArray = typeof event.images === 'string' ? JSON.parse(event.images) : event.images;
+        if (!Array.isArray(imagesArray)) {
+          imagesArray = [];
+        }
+      } catch {
+        imagesArray = [];
+      }
+    }
+    event.images = imagesArray;
+
     return event;
   }
 
-  static async createEvent({ name, event_date, location, start_time, end_time, description, status, cover_image_url }) {
+  static async createEvent({ name, event_date, location, start_time, end_time, description, status, cover_image_url, images }) {
     if (!name || !event_date || !location || !start_time || !end_time) {
       throw new Error('Faltan campos obligatorios para crear el evento');
     }
@@ -150,7 +178,8 @@ export class AdminEventService {
       end_time,
       description,
       status: normalizedStatus,
-      cover_image_url
+      cover_image_url,
+      images
     });
 
     return { ...event, business_count: 0 };
@@ -172,9 +201,37 @@ export class AdminEventService {
       payload.status = normalizedStatus;
     }
 
+    // Manejar imágenes: si se envía un array de imágenes, actualizar el campo images
+    // También actualizar cover_image_url con la primera imagen para compatibilidad
+    if (payload.images && Array.isArray(payload.images)) {
+      if (payload.images.length > 0) {
+        payload.cover_image_url = payload.images[0];
+      } else {
+        payload.cover_image_url = null;
+      }
+    }
+
+    // Si se elimina explícitamente la portada
+    if (payload.remove_cover_image === "true" && !payload.images) {
+      payload.cover_image_url = null;
+      payload.images = [];
+    }
+    delete payload.remove_cover_image;
+
     const updated = await EventRepository.update(id, payload);
 
-    if (
+    // Eliminar archivos antiguos que ya no están en el nuevo array de imágenes
+    if (payload.images && Array.isArray(payload.images)) {
+      const existingImages = existingEvent.images || [];
+      const existingImagesArray = Array.isArray(existingImages) ? existingImages : (existingImages.length > 0 ? [existingImages] : []);
+      const newImagesArray = payload.images;
+      
+      // Encontrar imágenes que se eliminaron
+      const removedImages = existingImagesArray.filter(img => !newImagesArray.includes(img));
+      removedImages.forEach(img => {
+        deleteFileIfExists(img);
+      });
+    } else if (
       Object.prototype.hasOwnProperty.call(payload, 'cover_image_url') &&
       existingEvent.cover_image_url &&
       payload.cover_image_url !== existingEvent.cover_image_url
@@ -199,8 +256,25 @@ export class AdminEventService {
       throw new Error('Evento no encontrado');
     }
 
+    // Eliminar todas las imágenes del evento
     if (event.cover_image_url) {
       deleteFileIfExists(event.cover_image_url);
+    }
+
+    // Eliminar todas las imágenes del array
+    if (event.images) {
+      let imagesArray = [];
+      try {
+        imagesArray = typeof event.images === 'string' ? JSON.parse(event.images) : event.images;
+        if (!Array.isArray(imagesArray)) {
+          imagesArray = [];
+        }
+      } catch {
+        imagesArray = [];
+      }
+      imagesArray.forEach(img => {
+        deleteFileIfExists(img);
+      });
     }
 
     await EventRepository.delete(id);

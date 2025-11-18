@@ -11,7 +11,9 @@ import {
 import api from '../../../services/api';
 import { fetchTransactions } from '../services/transactions';
 import { fetchEvents, fetchBusinesses } from '../services/events';
+import { fetchAuditLogs } from '../services/auditLogs';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 type EntityOption = {
   value: string;
@@ -23,7 +25,10 @@ const ENTITY_OPTIONS: EntityOption[] = [
   { value: 'users', label: 'Usuarios', description: 'Información de usuarios registrados y sus roles.' },
   { value: 'transactions', label: 'Transacciones', description: 'Movimientos globales en blockchain.' },
   { value: 'events', label: 'Eventos', description: 'Eventos organizados y métricas de asistencia.' },
-  { value: 'businesses', label: 'Negocios de eventos', description: 'Cuentas y miembros de comercios en eventos.' }
+  { value: 'businesses', label: 'Negocios de eventos', description: 'Cuentas y miembros de comercios en eventos.' },
+  { value: 'logs', label: 'Logs de auditoría', description: 'Registro de acciones y cambios en el sistema.' },
+  { value: 'settlements', label: 'Solicitudes de liquidación', description: 'Solicitudes de equipos para convertir saldo a efectivo.' },
+  { value: 'withdrawals', label: 'Solicitudes de retiro', description: 'Solicitudes de usuarios para retirar fondos.' }
 ];
 
 const USER_COLUMNS = [
@@ -65,6 +70,42 @@ const BUSINESS_COLUMNS = [
   { value: 'members', label: 'Miembros' }
 ];
 
+const LOG_COLUMNS = [
+  { value: 'id', label: 'ID' },
+  { value: 'user', label: 'Usuario' },
+  { value: 'action', label: 'Acción' },
+  { value: 'entity', label: 'Entidad' },
+  { value: 'entity_id', label: 'ID Entidad' },
+  { value: 'description', label: 'Descripción' },
+  { value: 'ip_address', label: 'IP' },
+  { value: 'created_at', label: 'Fecha' }
+];
+
+const SETTLEMENT_COLUMNS = [
+  { value: 'id', label: 'ID' },
+  { value: 'event', label: 'Evento' },
+  { value: 'business', label: 'Equipo' },
+  { value: 'group_id', label: 'ID Grupo' },
+  { value: 'amount', label: 'Monto' },
+  { value: 'token_symbol', label: 'Moneda' },
+  { value: 'status', label: 'Estado' },
+  { value: 'method', label: 'Método' },
+  { value: 'notes', label: 'Notas' },
+  { value: 'created_at', label: 'Fecha solicitud' },
+  { value: 'hash', label: 'Hash transacción' }
+];
+
+const WITHDRAWAL_COLUMNS = [
+  { value: 'id', label: 'ID' },
+  { value: 'user', label: 'Usuario' },
+  { value: 'carnet', label: 'Carnet' },
+  { value: 'amount', label: 'Monto' },
+  { value: 'token_symbol', label: 'Moneda' },
+  { value: 'status', label: 'Estado' },
+  { value: 'notes', label: 'Notas' },
+  { value: 'created_at', label: 'Fecha solicitud' }
+];
+
 const getColumnsForEntity = (entity: string) => {
   switch (entity) {
     case 'users':
@@ -75,14 +116,28 @@ const getColumnsForEntity = (entity: string) => {
       return EVENT_COLUMNS;
     case 'businesses':
       return BUSINESS_COLUMNS;
+    case 'logs':
+      return LOG_COLUMNS;
+    case 'settlements':
+      return SETTLEMENT_COLUMNS;
+    case 'withdrawals':
+      return WITHDRAWAL_COLUMNS;
     default:
       return [];
   }
 };
 
 export default function Reports() {
+  // Permisos
+  const { hasPermission } = usePermissions();
+  const canDeleteReport = hasPermission('reports.delete');
+
   const [selectedEntity, setSelectedEntity] = useState<EntityOption>(ENTITY_OPTIONS[0]);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(['nombres', 'apellidos', 'email']);
+  const getDefaultColumns = (entityValue: string) => {
+    const cols = getColumnsForEntity(entityValue);
+    return cols.slice(0, Math.min(3, cols.length)).map((c) => c.value);
+  };
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(getDefaultColumns(ENTITY_OPTIONS[0].value));
   const [includeFilters, setIncludeFilters] = useState({
     dateRange: false,
     status: false,
@@ -272,6 +327,102 @@ export default function Reports() {
             default:
               value = row[col] || '';
           }
+        } else if (selectedEntity.value === 'logs') {
+          switch (col) {
+            case 'id':
+              value = row.id || '';
+              break;
+            case 'user':
+              value = row.user ? `${row.user.nombres} ${row.user.apellidos} (${row.user.email})` : 'Sistema';
+              break;
+            case 'action':
+              value = row.action || '';
+              break;
+            case 'entity':
+              value = row.entity || '';
+              break;
+            case 'entity_id':
+              value = row.entity_id || '';
+              break;
+            case 'description':
+              value = row.description || '';
+              break;
+            case 'ip_address':
+              value = row.ip_address || '';
+              break;
+            case 'created_at':
+              value = row.created_at ? new Date(row.created_at).toLocaleString('es-GT') : '';
+              break;
+            default:
+              value = row[col] || '';
+          }
+        } else if (selectedEntity.value === 'settlements') {
+          switch (col) {
+            case 'id':
+              value = row.id || '';
+              break;
+            case 'event':
+              value = row.event_name || '';
+              break;
+            case 'business':
+              value = row.business_name || '';
+              break;
+            case 'group_id':
+              value = row.group_id || '';
+              break;
+            case 'amount':
+              value = row.requested_amount || '';
+              break;
+            case 'token_symbol':
+              value = row.token_symbol || '';
+              break;
+            case 'status':
+              value = row.status || '';
+              break;
+            case 'method':
+              value = row.method || 'efectivo';
+              break;
+            case 'notes':
+              value = row.notes || '';
+              break;
+            case 'created_at':
+              value = row.created_at ? new Date(row.created_at).toLocaleString('es-GT') : '';
+              break;
+            case 'hash':
+              value = row.token_transfer_hash || '';
+              break;
+            default:
+              value = row[col] || '';
+          }
+        } else if (selectedEntity.value === 'withdrawals') {
+          switch (col) {
+            case 'id':
+              value = row.id || '';
+              break;
+            case 'user':
+              value = row.user ? `${row.user.nombres || ''} ${row.user.apellidos || ''}`.trim() || row.user.carnet : 'Usuario';
+              break;
+            case 'carnet':
+              value = row.user?.carnet || '';
+              break;
+            case 'amount':
+              value = row.amount || '';
+              break;
+            case 'token_symbol':
+              value = row.token_symbol || '';
+              break;
+            case 'status':
+              value = row.status || '';
+              break;
+            case 'notes':
+              value = row.notes || '';
+              break;
+            case 'created_at':
+              value = row.created_at ? new Date(row.created_at).toLocaleString('es-GT') : '';
+              break;
+            default:
+              value = row[col] || '';
+          }
         } else {
           value = row[col] || '';
         }
@@ -389,6 +540,49 @@ export default function Reports() {
           
           return filteredBusinesses;
         
+        case 'logs':
+          filters.limit = 10000; // Obtener todos los logs
+          const logsResponse = await fetchAuditLogs(filters);
+          return logsResponse.data || [];
+        
+        case 'settlements':
+          const settlementsResponse = await api.get('/api/admin/central-wallet/settlements');
+          let settlements = settlementsResponse.data?.settlements || [];
+          // Aplicar filtros manualmente
+          if (includeFilters.status && filterValues.status) {
+            settlements = settlements.filter((s: any) => s.status === filterValues.status);
+          }
+          if (includeFilters.dateRange && filterValues.dateFrom) {
+            settlements = settlements.filter((s: any) => 
+              new Date(s.created_at) >= new Date(filterValues.dateFrom)
+            );
+          }
+          if (includeFilters.dateRange && filterValues.dateTo) {
+            settlements = settlements.filter((s: any) => 
+              new Date(s.created_at) <= new Date(filterValues.dateTo)
+            );
+          }
+          return settlements;
+        
+        case 'withdrawals':
+          const withdrawalsResponse = await api.get('/api/admin/central-wallet/withdrawals');
+          let withdrawals = withdrawalsResponse.data?.withdrawals || [];
+          // Aplicar filtros manualmente
+          if (includeFilters.status && filterValues.status) {
+            withdrawals = withdrawals.filter((w: any) => w.status === filterValues.status);
+          }
+          if (includeFilters.dateRange && filterValues.dateFrom) {
+            withdrawals = withdrawals.filter((w: any) => 
+              new Date(w.created_at) >= new Date(filterValues.dateFrom)
+            );
+          }
+          if (includeFilters.dateRange && filterValues.dateTo) {
+            withdrawals = withdrawals.filter((w: any) => 
+              new Date(w.created_at) <= new Date(filterValues.dateTo)
+            );
+          }
+          return withdrawals;
+        
         default:
           return [];
       }
@@ -497,7 +691,8 @@ export default function Reports() {
                   key={option.value}
                   onClick={() => {
                     setSelectedEntity(option);
-                    setSelectedColumns(getColumnsForEntity(option.value).slice(0, 3).map((c) => c.value));
+                    const defaultCols = getColumnsForEntity(option.value);
+                    setSelectedColumns(defaultCols.slice(0, Math.min(3, defaultCols.length)).map((c) => c.value));
                   }}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                     selectedEntity.value === option.value
@@ -855,13 +1050,15 @@ export default function Reports() {
                         >
                           <HiDownload className="w-5 h-5" />
                         </button>
-                        <button
-                          onClick={() => setReportToDelete({ id: report.id, name: report.name })}
-                          className="p-2 text-negative hover:bg-negative/10 rounded-lg transition-colors"
-                          title="Eliminar reporte"
-                        >
-                          <HiTrash className="w-5 h-5" />
-                        </button>
+                        {canDeleteReport && (
+                          <button
+                            onClick={() => setReportToDelete({ id: report.id, name: report.name })}
+                            className="p-2 text-negative hover:bg-negative/10 rounded-lg transition-colors"
+                            title="Eliminar reporte"
+                          >
+                            <HiTrash className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

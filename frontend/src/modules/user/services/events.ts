@@ -10,6 +10,7 @@ export interface UserEvent {
   end_time: string | null;
   status: string;
   cover_image_url: string | null;
+  images?: string[];
   photos?: string[] | null;
   isOrganizer?: boolean;
   groupId?: string | null;

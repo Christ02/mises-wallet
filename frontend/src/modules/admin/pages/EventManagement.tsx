@@ -26,6 +26,7 @@ import {
 import { API_BASE_URL } from '../../../services/api';
 import Pagination from '../components/Pagination';
 import { useModal } from '../../../hooks/useModal';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -70,8 +71,9 @@ export default function EventManagement() {
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
   const [saving, setSaving] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<Array<{ url: string; isExisting: boolean }>>([]);
+  const [imagePreviews, setImagePreviews] = useState<Array<{ url: string; isExisting: boolean; originalPath?: string }>>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingImagePaths, setExistingImagePaths] = useState<string[]>([]); // Rutas relativas originales
   const [removeExistingCover, setRemoveExistingCover] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -83,6 +85,10 @@ export default function EventManagement() {
 
   // Prevenir scroll del body cuando el modal está abierto
   useModal(isCreateOpen);
+
+  // Permisos
+  const { hasPermission } = usePermissions();
+  const canDeleteEvent = hasPermission('events.delete');
 
   const buildCoverImageUrl = (path?: string | null) => {
     if (!path) return null;
@@ -105,6 +111,7 @@ export default function EventManagement() {
     setImageFiles([]);
     setImagePreviews([]);
     setExistingImages([]);
+    setExistingImagePaths([]);
     setRemoveExistingCover(false);
   };
 
@@ -135,6 +142,10 @@ export default function EventManagement() {
     if (newFiles.length > 0) {
       setImageFiles((prev) => [...prev, ...newFiles]);
       setImagePreviews((prev) => [...prev, ...newPreviews]);
+      // Si se agregan nuevas imágenes, no eliminamos la existente (se reemplazará con la primera nueva)
+      if (existingImages.length > 0) {
+        setRemoveExistingCover(false);
+      }
     }
 
     event.target.value = '';
@@ -144,12 +155,17 @@ export default function EventManagement() {
     const preview = imagePreviews[index];
     
     if (preview.isExisting) {
-      // Es una imagen existente, solo la removemos de los arrays
-      const existingIndex = existingImages.findIndex((url) => url === preview.url);
-      if (existingIndex !== -1) {
-        setExistingImages((prev) => prev.filter((_, i) => i !== existingIndex));
+      // Es una imagen existente, removemos de todos los arrays usando originalPath
+      if (preview.originalPath) {
+        setExistingImagePaths((prev) => prev.filter((path) => path !== preview.originalPath));
       }
-      setRemoveExistingCover(true);
+      // También remover de existingImages usando la URL
+      setExistingImages((prev) => prev.filter((url) => url !== preview.url));
+      
+      // Si solo queda una imagen existente y se elimina, marcar para remover
+      if (imagePreviews.filter(p => p.isExisting).length === 1) {
+        setRemoveExistingCover(true);
+      }
     } else {
       // Es una imagen nueva, revocamos el blob URL y la removemos de files
       revokePreview(preview.url);
@@ -249,12 +265,28 @@ export default function EventManagement() {
     resetImageState();
     setRemoveExistingCover(false);
     
-    // Si el evento tiene imágenes existentes, las cargamos
-    // Por ahora solo manejamos cover_image_url, pero esto se puede extender
-    const imageUrl = buildCoverImageUrl(event.cover_image_url);
-    if (imageUrl) {
-      setExistingImages([imageUrl]);
-      setImagePreviews([{ url: imageUrl, isExisting: true }]);
+    // Cargar imágenes existentes del evento
+    // Primero intentar usar el campo images (array), si no existe usar cover_image_url
+    const eventImages = (event as any).images || [];
+    const existingImagesArray = Array.isArray(eventImages) && eventImages.length > 0
+      ? eventImages
+      : (event.cover_image_url ? [event.cover_image_url] : []);
+    
+    // Guardar las rutas relativas originales
+    setExistingImagePaths(existingImagesArray);
+    
+    // Construir URLs completas para mostrar
+    const existingImageUrls = existingImagesArray
+      .map(img => buildCoverImageUrl(img))
+      .filter((url): url is string => url !== null);
+    
+    if (existingImageUrls.length > 0) {
+      setExistingImages(existingImageUrls);
+      setImagePreviews(existingImagesArray.map((path, index) => ({ 
+        url: existingImageUrls[index], 
+        isExisting: true,
+        originalPath: path
+      })));
     }
     setIsCreateOpen(true);
   };
@@ -280,28 +312,48 @@ export default function EventManagement() {
 
     setSaving(true);
     try {
-      // Por ahora, usamos la primera imagen como cover_image para mantener compatibilidad con el backend
-      // En el futuro, el backend puede extenderse para manejar múltiples imágenes
-      const firstImageFile = imageFiles.length > 0 ? imageFiles[0] : undefined;
-      const hasNewImages = imageFiles.length > 0;
-      
       if (editingEvent) {
         const updatePayload: UpdateEventPayload = {
           ...formState
         };
 
-        // Si se eliminó la portada y no se está subiendo una nueva, avisamos al backend
-        if (!hasNewImages && removeExistingCover) {
-          updatePayload.remove_cover_image = 'true';
-        }
+        // Obtener las rutas relativas de las imágenes existentes que se deben mantener
+        // Usar originalPath si está disponible, sino extraer la ruta de la URL
+        const existingImagesToKeep = imagePreviews
+          .filter(preview => preview.isExisting)
+          .map(preview => {
+            if (preview.originalPath) {
+              return preview.originalPath;
+            }
+            // Si no hay originalPath, extraer la ruta relativa de la URL completa
+            if (preview.url.startsWith(API_BASE_URL)) {
+              return preview.url.replace(API_BASE_URL, '');
+            }
+            return preview.url;
+          });
 
-        const updated = await updateEvent(
-          editingEvent.id,
-          updatePayload,
-          hasNewImages ? firstImageFile : undefined
-        );
-        setEvents((prev) => prev.map((evt) => (evt.id === updated.id ? { ...evt, ...updated } : evt)));
+        // Si se eliminaron todas las existentes y no hay nuevas, remover todas las imágenes
+        if (removeExistingCover && imageFiles.length === 0) {
+          updatePayload.remove_cover_image = 'true';
+          const updated = await updateEvent(
+            editingEvent.id,
+            updatePayload,
+            undefined,
+            []
+          );
+          setEvents((prev) => prev.map((evt) => (evt.id === updated.id ? { ...evt, ...updated } : evt)));
+        } else {
+          // Enviar todas las imágenes: existentes que se mantienen + nuevas
+          const updated = await updateEvent(
+            editingEvent.id,
+            updatePayload,
+            imageFiles.length > 0 ? imageFiles : undefined,
+            existingImagesToKeep.length > 0 ? existingImagesToKeep : undefined
+          );
+          setEvents((prev) => prev.map((evt) => (evt.id === updated.id ? { ...evt, ...updated } : evt)));
+        }
       } else {
+        // Crear nuevo evento
         const payload: CreateEventPayload = {
           name: formState.name,
           event_date: formState.event_date,
@@ -311,7 +363,7 @@ export default function EventManagement() {
           description: formState.description,
           status: formState.status
         };
-        const created = await createEvent(payload, firstImageFile);
+        const created = await createEvent(payload, imageFiles.length > 0 ? imageFiles : undefined);
         setEvents((prev) => [{ ...created }, ...prev]);
       }
       closeModal();
@@ -698,13 +750,15 @@ export default function EventManagement() {
                         >
                           <HiPencil className="w-5 h-5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(event)}
-                          className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
-                          title="Eliminar"
-                        >
-                          <HiTrash className="w-5 h-5" />
-                        </button>
+                        {canDeleteEvent && (
+                          <button
+                            onClick={() => handleDelete(event)}
+                            className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
+                            title="Eliminar"
+                          >
+                            <HiTrash className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -843,13 +897,22 @@ export default function EventManagement() {
                           <img
                             src={preview.url}
                             alt={`Previsualización ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border border-dark-border"
+                            className={`w-full h-32 object-cover rounded-lg border ${
+                              preview.isExisting 
+                                ? 'border-accent-yellow/50' 
+                                : 'border-dark-border'
+                            }`}
                           />
+                          {preview.isExisting && (
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-accent-yellow/90 text-dark-bg text-xs font-semibold rounded">
+                              Ya existente
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleRemoveImage(index)}
                             className="absolute top-2 right-2 w-7 h-7 bg-red-500/90 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Eliminar imagen"
+                            title={preview.isExisting ? "Eliminar imagen existente" : "Eliminar imagen"}
                           >
                             <HiX className="w-4 h-4" />
                           </button>
@@ -858,9 +921,9 @@ export default function EventManagement() {
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 space-y-1">
                     <p>Formatos permitidos: JPG, PNG, WEBP, GIF · Máx 5MB por imagen</p>
-                    <p className="mt-1">Puedes seleccionar múltiples imágenes a la vez</p>
+                    <p>Puedes seleccionar múltiples imágenes a la vez</p>
                   </div>
                 </div>
               </div>

@@ -33,7 +33,11 @@ export class AdminEventController {
 
   static async createEvent(req, res) {
     try {
-      const coverImageUrl = req.file ? buildEventImageUrl(req.file.filename) : undefined;
+      const imageUrls = req.files && req.files.length > 0 
+        ? req.files.map(file => buildEventImageUrl(file.filename))
+        : [];
+      const coverImageUrl = imageUrls.length > 0 ? imageUrls[0] : undefined;
+      
       const payload = {
         name: req.body.name,
         event_date: req.body.event_date,
@@ -42,7 +46,8 @@ export class AdminEventController {
         end_time: req.body.end_time,
         description: req.body.description,
         status: req.body.status,
-        cover_image_url: coverImageUrl
+        cover_image_url: coverImageUrl,
+        images: imageUrls
       };
       const event = await AdminEventService.createEvent(payload);
       
@@ -63,8 +68,12 @@ export class AdminEventController {
       
       res.status(201).json({ message: 'Evento creado exitosamente', event });
     } catch (error) {
-      if (req.file?.path) {
-        fs.unlink(req.file.path, () => {});
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path, () => {});
+          }
+        });
       }
       res.status(400).json({ error: error.message || 'Error al crear evento' });
     }
@@ -78,17 +87,73 @@ export class AdminEventController {
       // Obtener evento anterior para el log
       const oldEvent = await AdminEventService.getEventById(eventIdNum);
       
-      const coverImageUrl = req.file ? buildEventImageUrl(req.file.filename) : undefined;
       const updates = { ...req.body };
       const removeCoverImage = updates.remove_cover_image === 'true';
       delete updates.remove_cover_image;
 
-      if (coverImageUrl) {
-        updates.cover_image_url = coverImageUrl;
-      } else if (removeCoverImage) {
-        // El admin decidió remover la portada sin subir una nueva
-        updates.cover_image_url = null;
+      // Obtener imágenes existentes del evento
+      let existingImages = oldEvent.images || [];
+      // Parsear si es JSONB (puede venir como string o array)
+      if (typeof existingImages === 'string') {
+        try {
+          existingImages = JSON.parse(existingImages);
+        } catch {
+          existingImages = [];
+        }
       }
+      const existingImagesArray = Array.isArray(existingImages) 
+        ? existingImages 
+        : [];
+
+      // Procesar nuevas imágenes subidas
+      const newImageUrls = req.files && req.files.length > 0
+        ? req.files.map(file => buildEventImageUrl(file.filename))
+        : [];
+
+      // Combinar imágenes existentes (que no se eliminaron) con las nuevas
+      // El frontend envía las rutas relativas de las imágenes existentes que se deben mantener
+      let existingImagesToKeep = [];
+      if (updates.existing_images) {
+        const sentImages = Array.isArray(updates.existing_images) 
+          ? updates.existing_images 
+          : [updates.existing_images];
+        
+        // Normalizar las rutas: remover API_BASE_URL si está presente y asegurar que empiecen con /
+        existingImagesToKeep = sentImages.map(img => {
+          if (!img) return null;
+          // Si es una URL completa, extraer la ruta relativa
+          if (img.startsWith('http://') || img.startsWith('https://')) {
+            const urlObj = new URL(img);
+            return urlObj.pathname;
+          }
+          // Si ya es una ruta relativa, asegurar que empiece con /
+          return img.startsWith('/') ? img : `/${img}`;
+        }).filter(img => img !== null);
+      } else if (!removeCoverImage) {
+        // Si no se enviaron imágenes existentes pero no se está removiendo, mantener todas
+        existingImagesToKeep = existingImagesArray;
+      }
+      delete updates.existing_images;
+
+      // Combinar todas las imágenes: existentes que se mantienen + nuevas
+      const allImages = [...existingImagesToKeep, ...newImageUrls];
+
+      if (removeCoverImage && newImageUrls.length === 0) {
+        // Se eliminó la portada y no hay nuevas imágenes
+        updates.cover_image_url = null;
+        updates.images = [];
+      } else if (allImages.length > 0) {
+        // Hay imágenes (existentes + nuevas o solo nuevas)
+        updates.images = allImages;
+        updates.cover_image_url = allImages[0]; // Primera imagen como portada
+      } else if (newImageUrls.length === 0 && !removeCoverImage) {
+        // No hay cambios en las imágenes, mantener las existentes
+        if (existingImagesArray.length > 0) {
+          updates.images = existingImagesArray;
+          updates.cover_image_url = existingImagesArray[0];
+        }
+      }
+
       const event = await AdminEventService.updateEvent(eventIdNum, updates);
       
       // Log de actualización
@@ -112,8 +177,12 @@ export class AdminEventController {
       
       res.status(200).json({ message: 'Evento actualizado', event });
     } catch (error) {
-      if (req.file?.path) {
-        fs.unlink(req.file.path, () => {});
+      if (req.files && req.files.length > 0) {
+        req.files.forEach(file => {
+          if (file.path) {
+            fs.unlink(file.path, () => {});
+          }
+        });
       }
       res.status(400).json({ error: error.message || 'Error al actualizar evento' });
     }

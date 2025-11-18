@@ -1,13 +1,14 @@
 import pool from '../config/database.js';
 
 export class EventRepository {
-  static async create({ name, event_date, location, start_time, end_time, description, status, cover_image_url }) {
+  static async create({ name, event_date, location, start_time, end_time, description, status, cover_image_url, images }) {
     const query = `
-      INSERT INTO events (name, event_date, location, start_time, end_time, description, status, cover_image_url)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO events (name, event_date, location, start_time, end_time, description, status, cover_image_url, images)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `;
 
+    const imagesArray = images || (cover_image_url ? [cover_image_url] : []);
     const result = await pool.query(query, [
       name,
       event_date,
@@ -16,7 +17,8 @@ export class EventRepository {
       end_time,
       description ?? null,
       status ?? 'borrador',
-      cover_image_url ?? null
+      cover_image_url ?? null,
+      JSON.stringify(imagesArray)
     ]);
 
     return result.rows[0];
@@ -68,15 +70,21 @@ export class EventRepository {
   }
 
   static async update(id, data) {
-    const allowedFields = ['name', 'event_date', 'location', 'start_time', 'end_time', 'description', 'status', 'cover_image_url'];
+    const allowedFields = ['name', 'event_date', 'location', 'start_time', 'end_time', 'description', 'status', 'cover_image_url', 'images'];
     const setClauses = [];
     const values = [];
     let index = 1;
 
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
-        setClauses.push(`${field} = $${index}`);
-        values.push(data[field]);
+        if (field === 'images') {
+          // images es un array, necesitamos convertirlo a JSON
+          setClauses.push(`${field} = $${index}::jsonb`);
+          values.push(JSON.stringify(data[field]));
+        } else {
+          setClauses.push(`${field} = $${index}`);
+          values.push(data[field]);
+        }
         index += 1;
       }
     }

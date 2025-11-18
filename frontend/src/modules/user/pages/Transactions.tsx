@@ -148,7 +148,7 @@ export default function Transactions() {
     }
   };
 
-  const convertTokenToUsd = (tokenBalance: string) => {
+  const convertTokenToGtq = (tokenBalance: string) => {
     const tokens = parseFloat(tokenBalance);
     if (!tokens || !usdToTokenRate) return '0.00';
     return (tokens / usdToTokenRate).toFixed(2);
@@ -261,7 +261,7 @@ export default function Transactions() {
                     {balance.tokenSymbol || tokenSymbol}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">≈ ${convertTokenToUsd(balance.balance)} USD</p>
+                <p className="text-xs sm:text-sm text-gray-400">≈ Q{convertTokenToGtq(balance.balance)} GTQ</p>
               </div>
             )}
           </div>
@@ -379,11 +379,6 @@ export default function Transactions() {
                           <p className="text-sm sm:text-base text-gray-400 truncate mt-1">
                             {formatDate(transaction.created_at)}
                           </p>
-                          {transaction.reference && (
-                            <p className="text-xs text-gray-500 font-mono truncate mt-1">
-                              Ref: {transaction.reference}
-                            </p>
-                          )}
                           <p className="text-xs text-gray-500 truncate">
                             {transaction.direction === 'entrante' ? 'Desde' : 'Hacia'}{' '}
                             {transaction.counterparty}
@@ -658,7 +653,7 @@ export default function Transactions() {
                       {selectedTransaction.amount.toFixed(4)} {selectedTransaction.currency}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-400 mt-1 sm:mt-2">
-                      ≈ ${convertTokenToUsd(selectedTransaction.amount.toString())} USD
+                      ≈ Q{convertTokenToGtq(selectedTransaction.amount.toString())} GTQ
                     </p>
                   </div>
                 </div>

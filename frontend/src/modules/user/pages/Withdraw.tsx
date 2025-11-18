@@ -15,14 +15,6 @@ interface WalletBalance {
   tokenSymbol: string;
 }
 
-type WithdrawalRequest = {
-  id: number;
-  amount: number;
-  token_symbol: string;
-  status: string;
-  created_at: string;
-  notes?: string | null;
-};
 
 export default function Withdraw() {
   const navigate = useNavigate();
@@ -33,8 +25,6 @@ export default function Withdraw() {
   const [showHelp, setShowHelp] = useState(false);
   const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
-  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(true);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -52,20 +42,7 @@ export default function Withdraw() {
       }
     };
 
-    const fetchWithdrawals = async () => {
-      setRequestsLoading(true);
-      try {
-        const response = await api.get('/api/wallet/withdrawals');
-        setRequests(response.data?.withdrawals || []);
-      } catch (err) {
-        console.error('Error fetching withdrawals:', err);
-      } finally {
-        setRequestsLoading(false);
-      }
-    };
-
     fetchBalance();
-    fetchWithdrawals();
   }, []);
 
   const formattedBalance = useMemo(() => {
@@ -95,8 +72,6 @@ export default function Withdraw() {
       if (tokenBalance !== undefined && tokenSymbol) {
         setBalance({ balance: String(tokenBalance), tokenSymbol });
       }
-      const refreshed = await api.get('/api/wallet/withdrawals');
-      setRequests(refreshed.data?.withdrawals || []);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Error al retirar fondos');
     } finally {
@@ -212,80 +187,6 @@ export default function Withdraw() {
             )}
           </button>
         </form>
-      </div>
-
-      {/* Info */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold text-white">Mis solicitudes de retiro</h3>
-          <p className="text-xs text-gray-500">
-            Aquí puedes consultar el estado de cada retiro que solicitaste.
-          </p>
-        </div>
-        {requestsLoading ? (
-          <div className="py-6 text-center text-sm text-gray-500">
-            <span className="h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin inline-block mr-3" />
-            Cargando solicitudes...
-          </div>
-        ) : requests.length === 0 ? (
-          <div className="py-4 text-sm text-gray-400 text-center">
-            No tienes solicitudes de retiro registradas.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {requests.map((request) => (
-              <div
-                key={request.id}
-                className="bg-dark-bg border border-dark-border rounded-lg px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-              >
-                <div>
-                  <p className="text-sm text-gray-400">Monto</p>
-                  <p className="text-lg font-semibold text-white">
-                    {request.amount.toLocaleString('es-ES', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}{' '}
-                    {request.token_symbol}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Fecha</p>
-                  <p className="text-sm text-gray-300">
-                    {new Date(request.created_at).toLocaleString('es-GT', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Estado</p>
-                  <span
-                    className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${
-                      request.status === 'pendiente'
-                        ? 'bg-accent-yellow/10 text-accent-yellow border border-accent-yellow/20'
-                        : request.status === 'aprobado' || request.status === 'completado'
-                        ? 'bg-positive/10 text-positive border border-positive/20'
-                        : request.status === 'rechazado'
-                        ? 'bg-negative/10 text-negative border border-negative/20'
-                        : 'bg-gray-600/10 text-gray-300 border border-gray-600/20'
-                    }`}
-                  >
-                    {request.status.toUpperCase()}
-                  </span>
-                </div>
-                {request.notes ? (
-                  <div className="sm:max-w-xs text-xs text-gray-400">
-                    <p className="font-semibold text-gray-300">Notas</p>
-                    <p>{request.notes}</p>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="bg-dark-card/60 border border-dark-border rounded-xl p-4 sm:p-5">

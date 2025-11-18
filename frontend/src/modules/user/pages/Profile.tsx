@@ -67,7 +67,7 @@ export default function Profile() {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const convertBalanceToUsd = (balance: string) => {
+  const convertBalanceToGtq = (balance: string) => {
     if (!rechargeSummary?.usdToTokenRate) return null;
     const tokens = parseFloat(balance);
     if (!tokens || !rechargeSummary.usdToTokenRate) return '0.00';
@@ -147,7 +147,7 @@ export default function Profile() {
                 </div>
                 {rechargeSummary && (
                   <p className="text-xs sm:text-sm text-gray-400">
-                    ≈ ${convertBalanceToUsd(wallet.balance)} USD
+                    ≈ Q{convertBalanceToGtq(wallet.balance)} GTQ
                   </p>
                 )}
               </div>

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiChevronLeft, HiChevronRight, HiCreditCard, HiCheckCircle, HiXCircle } from 'react-icons/hi';
+import { HiArrowLeft, HiCreditCard, HiCheckCircle, HiXCircle } from 'react-icons/hi';
 import api from '../../../services/api';
 import { useModal } from '../../../hooks/useModal';
+import { usePermissions } from '../../../hooks/usePermissions';
+import Pagination from '../components/Pagination';
 
 type WithdrawalRequest = {
   id: number;
@@ -36,6 +38,10 @@ export default function WithdrawalRequests() {
   // Prevenir scroll del body cuando hay modales abiertos
   useModal(rejectModalOpen || approveModalOpen);
 
+  // Permisos
+  const { hasPermission } = usePermissions();
+  const canApprove = hasPermission('centralWallet.approve');
+
   useEffect(() => {
     fetchWithdrawals();
   }, []);
@@ -46,6 +52,7 @@ export default function WithdrawalRequests() {
     try {
       const response = await api.get('/api/admin/central-wallet/withdrawals');
       setWithdrawals(response.data?.withdrawals || []);
+      setCurrentPage(1); // Resetear a la primera página cuando se cargan nuevos datos
     } catch (err: any) {
       console.error('Error fetching withdrawals', err);
       setError(err.response?.data?.error || 'No se pudieron obtener las solicitudes de retiro');
@@ -83,7 +90,7 @@ export default function WithdrawalRequests() {
     return withdrawals.slice(startIndex, endIndex);
   }, [withdrawals, currentPage]);
 
-  const totalPages = Math.ceil(withdrawals.length / ITEMS_PER_PAGE);
+  const totalPages = Math.max(Math.ceil(withdrawals.length / ITEMS_PER_PAGE), 1);
 
   const handleApprove = async (withdrawal: WithdrawalRequest) => {
     setSelectedWithdrawal(withdrawal);
@@ -290,24 +297,28 @@ export default function WithdrawalRequests() {
                         <td className="px-6 py-4 text-sm text-gray-300">{formatDateTime(withdrawal.created_at)}</td>
                         <td className="px-6 py-4">
                           {withdrawal.status === 'pendiente' ? (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleApprove(withdrawal)}
-                                disabled={processingId === withdrawal.id}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-positive/10 hover:bg-positive/20 text-positive border border-positive/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                              >
-                                <HiCheckCircle className="w-4 h-4" />
-                                Aprobar
-                              </button>
-                              <button
-                                onClick={() => handleReject(withdrawal)}
-                                disabled={processingId === withdrawal.id}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-negative/10 hover:bg-negative/20 text-negative border border-negative/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                              >
-                                <HiXCircle className="w-4 h-4" />
-                                Rechazar
-                              </button>
-                            </div>
+                            canApprove ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleApprove(withdrawal)}
+                                  disabled={processingId === withdrawal.id}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-positive/10 hover:bg-positive/20 text-positive border border-positive/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                                >
+                                  <HiCheckCircle className="w-4 h-4" />
+                                  Aprobar
+                                </button>
+                                <button
+                                  onClick={() => handleReject(withdrawal)}
+                                  disabled={processingId === withdrawal.id}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-negative/10 hover:bg-negative/20 text-negative border border-negative/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                                >
+                                  <HiXCircle className="w-4 h-4" />
+                                  Rechazar
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-500">Solo super admin puede aprobar</span>
+                            )
                           ) : (
                             <span className="text-xs text-gray-500">—</span>
                           )}
@@ -319,36 +330,18 @@ export default function WithdrawalRequests() {
               </div>
             </div>
 
-            {/* Paginación */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-400">
-                  Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, withdrawals.length)} de {withdrawals.length} solicitudes
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary-red/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    <HiChevronLeft className="w-5 h-5" />
-                  </button>
-                  <span className="px-4 py-2 text-sm text-gray-300">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary-red/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    <HiChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
+      {withdrawals.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={withdrawals.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
+      )}
 
       {/* Modal de confirmación para aprobar */}
       {approveModalOpen && selectedWithdrawal && (

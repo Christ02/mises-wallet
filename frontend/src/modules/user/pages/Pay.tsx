@@ -370,7 +370,7 @@ export default function Pay() {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const convertTokenToUsd = (tokenBalance: string) => {
+  const convertTokenToGtq = (tokenBalance: string) => {
     const tokens = parseFloat(tokenBalance);
     if (!tokens || !usdToTokenRate) return '0.00';
     return (tokens / usdToTokenRate).toFixed(2);
@@ -422,7 +422,7 @@ export default function Pay() {
                     {balance.tokenSymbol || tokenSymbol}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">≈ ${convertTokenToUsd(balance.balance)} USD</p>
+                <p className="text-xs sm:text-sm text-gray-400">≈ Q{convertTokenToGtq(balance.balance)} GTQ</p>
               </div>
             )}
           </div>

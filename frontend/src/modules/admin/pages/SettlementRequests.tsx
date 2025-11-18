@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiChevronLeft, HiChevronRight, HiCreditCard } from 'react-icons/hi';
+import { HiArrowLeft, HiCreditCard } from 'react-icons/hi';
 import api from '../../../services/api';
+import Pagination from '../components/Pagination';
 
 type Settlement = {
   id: number;
@@ -38,6 +39,7 @@ export default function SettlementRequests() {
     try {
       const response = await api.get('/api/admin/central-wallet/settlements');
       setSettlements(response.data?.settlements || []);
+      setCurrentPage(1); // Resetear a la primera página cuando se cargan nuevos datos
     } catch (err: any) {
       console.error('Error fetching settlements', err);
       setError(err.response?.data?.error || 'No se pudo obtener las solicitudes de liquidación');
@@ -85,7 +87,7 @@ export default function SettlementRequests() {
     return settlements.slice(startIndex, endIndex);
   }, [settlements, currentPage]);
 
-  const totalPages = Math.ceil(settlements.length / ITEMS_PER_PAGE);
+  const totalPages = Math.max(Math.ceil(settlements.length / ITEMS_PER_PAGE), 1);
 
   return (
     <div className="space-y-6">
@@ -271,36 +273,18 @@ export default function SettlementRequests() {
               </div>
             </div>
 
-            {/* Paginación */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-400">
-                  Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, settlements.length)} de {settlements.length} solicitudes
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary-red/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    <HiChevronLeft className="w-5 h-5" />
-                  </button>
-                  <span className="px-4 py-2 text-sm text-gray-300">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-300 hover:text-white hover:border-primary-red/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    <HiChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
+      {settlements.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={settlements.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
+      )}
     </div>
   );
 }

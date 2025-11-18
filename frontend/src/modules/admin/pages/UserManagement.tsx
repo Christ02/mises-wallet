@@ -17,6 +17,7 @@ import api from '../../../services/api';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import Pagination from '../components/Pagination';
 import { useModal } from '../../../hooks/useModal';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 interface AdminUser {
   id: number;
@@ -74,6 +75,11 @@ export default function UserManagement() {
 
   // Prevenir scroll del body cuando algún modal está abierto
   useModal(showModal || showDetailModal);
+
+  // Permisos
+  const { hasPermission } = usePermissions();
+  const canDeleteUser = hasPermission('users.delete');
+  const canDisableUser = hasPermission('users.disable');
 
   const statusOptions = [
     { value: 'activo', label: 'Activo' },
@@ -624,22 +630,24 @@ export default function UserManagement() {
                           >
                             <HiEye className="w-5 h-5" />
                           </button>
-                          <button
-                            onClick={() => handleToggleStatus(user)}
-                            className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-bg/60 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={
-                              (user.status ?? 'activo') === 'activo'
-                                ? 'Marcar como inactivo'
-                                : 'Marcar como activo'
-                            }
-                            disabled={statusUpdatingId === user.id}
-                          >
-                            {(user.status ?? 'activo') === 'activo' ? (
-                              <HiBan className="w-5 h-5 text-negative" />
-                            ) : (
-                              <HiCheckCircle className="w-5 h-5 text-positive" />
-                            )}
-                          </button>
+                          {canDisableUser && (
+                            <button
+                              onClick={() => handleToggleStatus(user)}
+                              className="p-2 text-gray-400 hover:text-gray-100 hover:bg-dark-bg/60 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                (user.status ?? 'activo') === 'activo'
+                                  ? 'Marcar como inactivo'
+                                  : 'Marcar como activo'
+                              }
+                              disabled={statusUpdatingId === user.id}
+                            >
+                              {(user.status ?? 'activo') === 'activo' ? (
+                                <HiBan className="w-5 h-5 text-negative" />
+                              ) : (
+                                <HiCheckCircle className="w-5 h-5 text-positive" />
+                              )}
+                            </button>
+                          )}
                           <button
                             onClick={() => openEditModal(user)}
                             className="p-2 text-gray-400 hover:text-accent-blue hover:bg-accent-blue/10 rounded-lg transition-all"
@@ -647,14 +655,16 @@ export default function UserManagement() {
                           >
                             <HiPencil className="w-5 h-5" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(user)}
-                            className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all disabled:opacity-50"
-                            title="Eliminar"
-                            disabled={deletingId === user.id}
-                          >
-                            <HiTrash className="w-5 h-5" />
-                          </button>
+                          {canDeleteUser && (
+                            <button
+                              onClick={() => handleDelete(user)}
+                              className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all disabled:opacity-50"
+                              title="Eliminar"
+                              disabled={deletingId === user.id}
+                            >
+                              <HiTrash className="w-5 h-5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

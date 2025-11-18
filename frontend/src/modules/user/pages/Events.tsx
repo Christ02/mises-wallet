@@ -77,15 +77,32 @@ export default function Events() {
     return `${API_BASE_URL}${path}`;
   };
 
+  // Obtener la primera imagen disponible del evento
+  const getEventImage = (event: UserEvent) => {
+    // Primero intentar usar el array de imágenes
+    const images = (event as any).images as string[] | undefined;
+    const photos = (event as any).photos as string[] | undefined;
+    const imageArray = images || photos;
+    
+    if (imageArray && imageArray.length > 0) {
+      return buildCoverImageUrl(imageArray[0]);
+    }
+    
+    // Fallback a cover_image_url
+    return buildCoverImageUrl(event.cover_image_url);
+  };
+
   const modalImages = useMemo(() => {
     if (!selectedEvent) return [];
+    const images = (selectedEvent as any).images as string[] | undefined;
     const photos = (selectedEvent as any).photos as string[] | undefined;
+    const imageArray = images || photos;
+    
     const urls: string[] = [];
-    if (photos && photos.length) {
-      urls.push(...photos);
-    }
-    if (selectedEvent.cover_image_url && !urls.includes(selectedEvent.cover_image_url)) {
-      urls.unshift(selectedEvent.cover_image_url);
+    if (imageArray && imageArray.length > 0) {
+      urls.push(...imageArray);
+    } else if (selectedEvent.cover_image_url) {
+      urls.push(selectedEvent.cover_image_url);
     }
     return urls;
   }, [selectedEvent]);
@@ -174,7 +191,7 @@ export default function Events() {
             <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
               <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
                 {visibleUpcomingEvents.map((event) => {
-                  const coverImage = buildCoverImageUrl(event.cover_image_url);
+                  const coverImage = getEventImage(event);
                   return (
                     <div
                       key={event.id}
@@ -234,7 +251,7 @@ export default function Events() {
             <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
               <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
                 {organizerEvents.map((event) => {
-                  const coverImage = buildCoverImageUrl(event.cover_image_url);
+                  const coverImage = getEventImage(event);
                   return (
                     <div
                       key={event.id}

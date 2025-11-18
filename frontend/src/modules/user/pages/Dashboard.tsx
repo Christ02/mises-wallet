@@ -148,7 +148,7 @@ export default function Dashboard() {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const convertBalanceToUsd = (balance: string) => {
+  const convertBalanceToGtq = (balance: string) => {
     if (!rechargeSummary?.usdToTokenRate) return null;
     const tokens = parseFloat(balance);
     if (!tokens || !rechargeSummary.usdToTokenRate) return '0.00';
@@ -185,15 +185,32 @@ export default function Dashboard() {
     return `${API_BASE_URL}${path}`;
   };
 
+  // Obtener la primera imagen disponible del evento
+  const getEventImage = (event: any) => {
+    // Primero intentar usar el array de imágenes
+    const images = event.images as string[] | undefined;
+    const photos = event.photos as string[] | undefined;
+    const imageArray = images || photos;
+    
+    if (imageArray && imageArray.length > 0) {
+      return buildCoverImageUrl(imageArray[0]);
+    }
+    
+    // Fallback a cover_image_url
+    return buildCoverImageUrl(event.cover_image_url);
+  };
+
   const modalEventImages = useMemo(() => {
     if (!selectedEvent) return [];
+    const images = (selectedEvent as any).images as string[] | undefined;
     const photos = (selectedEvent as any).photos as string[] | undefined;
+    const imageArray = images || photos;
+    
     const urls: string[] = [];
-    if (photos && photos.length) {
-      urls.push(...photos);
-    }
-    if (selectedEvent.cover_image_url && !urls.includes(selectedEvent.cover_image_url)) {
-      urls.unshift(selectedEvent.cover_image_url);
+    if (imageArray && imageArray.length > 0) {
+      urls.push(...imageArray);
+    } else if (selectedEvent.cover_image_url) {
+      urls.push(selectedEvent.cover_image_url);
     }
     return urls;
   }, [selectedEvent]);
@@ -253,7 +270,7 @@ export default function Dashboard() {
                 </div>
                 {rechargeSummary && (
                   <p className="text-xs sm:text-sm text-gray-400">
-                    ≈ ${convertBalanceToUsd(walletBalance.balance)} USD
+                    ≈ Q{convertBalanceToGtq(walletBalance.balance)} GTQ
                   </p>
                 )}
               </div>
@@ -393,7 +410,7 @@ export default function Dashboard() {
             <div className="overflow-x-auto overflow-y-hidden pb-6 sm:pb-8 lg:pb-10 scrollbar-hide">
               <div className="flex space-x-4 sm:space-x-5 lg:space-x-6" style={{ width: 'max-content' }}>
                 {recentEvents.map((eventCard) => {
-                  const coverImage = buildCoverImageUrl(eventCard.cover_image_url);
+                  const coverImage = getEventImage(eventCard);
                   return (
                     <div
                       key={eventCard.id}

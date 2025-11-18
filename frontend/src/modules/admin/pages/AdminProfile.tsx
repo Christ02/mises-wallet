@@ -348,37 +348,43 @@ export default function AdminProfile() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="relative">
                       <label className="block text-sm font-medium text-gray-300 mb-2">Nueva contraseña</label>
-                      <input
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={passwordForm.newPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                        className="w-full h-12 px-4 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all pr-12"
-                        placeholder="Mínimo 8 caracteres"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword((p) => !p)}
-                        className="absolute inset-y-8 right-3 flex items-center text-gray-400 hover:text-white"
-                      >
-                        {showNewPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
-                      </button>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          className="w-full h-12 px-4 pr-12 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all"
+                          placeholder="Mínimo 8 caracteres"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword((p) => !p)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 hover:text-white transition-colors p-1"
+                          aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                        >
+                          {showNewPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                        </button>
+                      </div>
                     </div>
                     <div className="relative">
                       <label className="block text-sm font-medium text-gray-300 mb-2">Confirmar contraseña</label>
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={passwordForm.confirmPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                        className="w-full h-12 px-4 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all pr-12"
-                        placeholder="Repite la nueva contraseña"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((p) => !p)}
-                        className="absolute inset-y-8 right-3 flex items-center text-gray-400 hover:text-white"
-                      >
-                        {showConfirmPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
-                      </button>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                          className="w-full h-12 px-4 pr-12 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/40 focus:border-primary-red/40 transition-all"
+                          placeholder="Repite la nueva contraseña"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((p) => !p)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-gray-400 hover:text-white transition-colors p-1"
+                          aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                        >
+                          {showConfirmPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center justify-end">

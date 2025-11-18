@@ -12,6 +12,7 @@ import {
   HiUserCircle
 } from 'react-icons/hi';
 import misesLogo from '../../../../assets/images/mises-wallet.svg';
+import { usePermissions } from '../../../../hooks/usePermissions';
 
 interface MenuItem {
   name: string;
@@ -37,6 +38,17 @@ const menuItems: MenuItem[] = [
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const location = useLocation();
+  const { hasPermission } = usePermissions();
+  const canViewSettings = hasPermission('settings.view');
+  const canViewAudit = hasPermission('audit.view');
+
+  // Filtrar items del menú según permisos
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.path === '/admin/audit' && !canViewAudit) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <>
@@ -71,7 +83,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
             const Icon = item.icon;
             
@@ -96,16 +108,24 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </nav>
 
         {/* Settings */}
-        <div className="p-4 border-t border-dark-border space-y-2">
-          <Link
-            to="/admin/settings"
-            onClick={onClose}
-            className="flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-dark-bg transition-all duration-200 border border-transparent group"
-          >
-            <HiCog className="w-5 h-5 text-gray-400 group-hover:text-white" />
-            <span className="font-medium text-sm text-gray-400 group-hover:text-white">Configuración</span>
-          </Link>
-        </div>
+        {canViewSettings && (
+          <div className="p-4 border-t border-dark-border space-y-2">
+            <Link
+              to="/admin/settings"
+              onClick={onClose}
+              className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 border ${
+                location.pathname === '/admin/settings'
+                  ? 'bg-primary-red/10 text-primary-red border-primary-red/20 shadow-lg shadow-primary-red/5'
+                  : 'text-gray-400 hover:text-white hover:bg-dark-bg border-transparent'
+              } group`}
+            >
+              <HiCog className={`w-5 h-5 ${location.pathname === '/admin/settings' ? 'text-primary-red' : 'text-gray-400 group-hover:text-white'}`} />
+              <span className={`font-medium text-sm ${location.pathname === '/admin/settings' ? 'text-primary-red' : 'text-gray-400 group-hover:text-white'}`}>
+                Configuración
+              </span>
+            </Link>
+          </div>
+        )}
       </aside>
     </>
   );

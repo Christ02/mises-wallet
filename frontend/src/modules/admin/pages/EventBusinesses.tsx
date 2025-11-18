@@ -31,6 +31,7 @@ import {
   HiCreditCard
 } from 'react-icons/hi';
 import { useModal } from '../../../hooks/useModal';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -100,6 +101,10 @@ export default function EventBusinesses() {
 
   // Prevenir scroll del body cuando el modal está abierto
   useModal(isBusinessModalOpen);
+
+  // Permisos
+  const { hasPermission } = usePermissions();
+  const canDeleteBusiness = hasPermission('events.deleteBusiness');
   const [savingBusiness, setSavingBusiness] = useState(false);
   const [leadSearchResults, setLeadSearchResults] = useState<AdminUserSummary[]>([]);
   const [leadSearchLoading, setLeadSearchLoading] = useState(false);
@@ -565,13 +570,15 @@ export default function EventBusinesses() {
                       >
                         <HiPencil className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleDeleteBusiness(business)}
-                        className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
-                        title="Eliminar negocio"
-                      >
-                        <HiTrash className="w-4 h-4" />
-                      </button>
+                      {canDeleteBusiness && (
+                        <button
+                          onClick={() => handleDeleteBusiness(business)}
+                          className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
+                          title="Eliminar negocio"
+                        >
+                          <HiTrash className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
 

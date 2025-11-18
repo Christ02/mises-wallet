@@ -95,6 +95,50 @@ export default function EventOrganizer() {
     return groupId || '';
   }, [groupId]);
 
+  const handleDownloadQR = () => {
+    if (!qrValue) return;
+    
+    // Buscar el canvas del QR (puede estar en el modal o necesitamos crearlo)
+    const qrCanvas = document.querySelector('#qr-canvas') as HTMLCanvasElement;
+    
+    if (qrCanvas) {
+      // Si el modal está abierto, usar ese canvas
+      qrCanvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `QR-${detail?.business.groupId || 'equipo'}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
+    } else {
+      // Si el modal no está abierto, abrirlo primero y luego descargar
+      setShowQrModal(true);
+      // Esperar a que el canvas se renderice
+      setTimeout(() => {
+        const canvas = document.querySelector('#qr-canvas') as HTMLCanvasElement;
+        if (canvas) {
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `QR-${detail?.business.groupId || 'equipo'}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }
+          }, 'image/png');
+        }
+      }, 300);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-4">
@@ -193,7 +237,7 @@ export default function EventOrganizer() {
                 Fondos actuales en HayekCoin. Este monto debe liquidarse al 100% con el banco central.
               </p>
             </div>
-            <div className="text-right">
+            <div>
               <p className="text-sm text-gray-300">Balance disponible</p>
               <p className="text-2xl sm:text-3xl font-bold text-white mt-1">
                 {detail.wallet.balance.toLocaleString('es-ES', {
@@ -205,27 +249,16 @@ export default function EventOrganizer() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-dark-bg/70 border border-dark-border rounded-xl p-4 space-y-3">
-              <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400">
-                <HiUsers className="w-4 h-4 text-primary-red" />
-                <span>Identificador del equipo</span>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm sm:text-base text-white font-semibold">{detail.business.name}</p>
-                <p className="text-xs sm:text-sm text-gray-400">Grupo ID: {detail.business.groupId || '—'}</p>
-                <p className="text-xs text-gray-500">
-                  Usa este ID para recibir pagos de comercios o compartirlo con tu equipo.
-                </p>
-              </div>
+          <div className="bg-dark-bg/70 border border-dark-border rounded-xl p-4 space-y-3">
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400">
+              <HiUsers className="w-4 h-4 text-primary-red" />
+              <span>Identificador del equipo</span>
             </div>
-            <div className="bg-dark-bg/70 border border-dark-border rounded-xl p-4 space-y-3">
-              <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400">
-                <HiMail className="w-4 h-4 text-primary-red" />
-                <span>Dirección de la wallet</span>
-              </div>
-              <p className="text-xs sm:text-sm text-gray-400 font-mono break-words">
-                {detail.wallet.address || 'Sin asignar'}
+            <div className="space-y-1">
+              <p className="text-sm sm:text-base text-white font-semibold">{detail.business.name}</p>
+              <p className="text-xs sm:text-sm text-gray-400">Grupo ID: {detail.business.groupId || '—'}</p>
+              <p className="text-xs text-gray-500">
+                Usa este ID para recibir pagos de comercios o compartirlo con tu equipo.
               </p>
             </div>
           </div>
@@ -239,10 +272,12 @@ export default function EventOrganizer() {
               <span>Ver QR del grupo</span>
             </button>
             <button
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-sm text-white hover:bg-dark-bg/80 transition-colors"
+              onClick={handleDownloadQR}
+              disabled={!qrValue}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-dark-bg border border-dark-border rounded-lg sm:rounded-xl text-sm text-white hover:bg-dark-bg/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <HiMail className="w-4 h-4" />
-              <span>Compartir con el equipo</span>
+              <HiQrcode className="w-4 h-4" />
+              <span>Descarga QR</span>
             </button>
             {canRequestSettlement && (
               <button
@@ -383,6 +418,7 @@ export default function EventOrganizer() {
                 <>
                   <div className="bg-white rounded-2xl p-6 flex items-center justify-center">
                     <QRCodeCanvas
+                      id="qr-canvas"
                       value={qrValue}
                       size={224}
                       includeMargin

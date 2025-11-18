@@ -37,11 +37,18 @@ export default function Recharge() {
 
   const formatTokenAmount = (value: number | string | null | undefined) => {
     const numeric = typeof value === 'string' ? parseFloat(value) : value ?? 0;
-    if (!Number.isFinite(numeric)) return `0.0000`;
-    if (numeric === 0) return '0.0000';
+    if (!Number.isFinite(numeric)) return `0.00`;
+    if (numeric === 0) return '0.00';
     if (numeric < 0.001) return numeric.toFixed(6);
     if (numeric < 1) return numeric.toFixed(4);
-    return numeric.toFixed(4);
+    return numeric.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const convertBalanceToGtq = (balance: string) => {
+    if (!rechargeSummary?.usdToTokenRate) return '0.00';
+    const tokens = parseFloat(balance);
+    if (!tokens || !rechargeSummary.usdToTokenRate) return '0.00';
+    return (tokens / rechargeSummary.usdToTokenRate).toFixed(2);
   };
 
   useEffect(() => {
@@ -150,7 +157,7 @@ export default function Recharge() {
       const finalTokenAmount = Number.isFinite(finalTokenAmountRaw) ? finalTokenAmountRaw : 0;
 
       setSuccessMessage(
-        `Recarga exitosa de ${finalTokenAmount.toFixed(4)} ${newSymbol || tokenSymbol} (≈ $${finalUsdAmount.toFixed(2)} USD).`
+        `Recarga exitosa de ${finalTokenAmount.toFixed(4)} ${newSymbol || tokenSymbol} (≈ Q${finalUsdAmount.toFixed(2)} GTQ).`
       );
 
       setAmount('');
@@ -201,44 +208,38 @@ export default function Recharge() {
         </div>
 
         {/* Wallet Overview */}
-        <div className="bg-gradient-to-br from-primary-red/20 via-primary-red/10 to-primary-red/5 border border-primary-red/30 rounded-xl sm:rounded-2xl p-5 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-white">Saldo disponible</h3>
-              <p className="text-xs sm:text-sm text-gray-400">HayekCoin listo para usar en la wallet</p>
-            </div>
-            <HiCreditCard className="w-10 h-10 text-primary-red/80" />
-          </div>
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-end sm:space-x-6 space-y-3 sm:space-y-0">
-            <p className="text-2xl sm:text-3xl font-bold text-white">
-              {formatTokenAmount(walletBalance?.balance)} {walletBalance?.tokenSymbol || tokenSymbol}
-            </p>
-            <div>
-              <p className="text-sm sm:text-base text-gray-300">
-                Red: {walletBalance?.network || 'Sepolia Testnet'}
-              </p>
-              <p className="text-xs text-gray-500">Tipo de cambio actual: 1 USD = {usdToTokenRate.toFixed(2)} {tokenSymbol}</p>
-            </div>
-          </div>
-          {rechargeSummary && (
-            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
-                <p className="text-xs text-gray-400 mb-1">Recargas acumuladas</p>
-                <p className="text-lg sm:text-xl font-semibold text-white">
-                  {rechargeSummary.totalTokens.toFixed(4)} {rechargeSummary.tokenSymbol}
-                </p>
+        <div className="bg-gradient-to-br from-primary-red/20 via-primary-red/10 to-primary-red/5 border border-primary-red/30 rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary-red/5"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2">Saldo disponible</h3>
+                <p className="text-sm sm:text-base text-gray-300">Fondos disponibles en tu wallet</p>
               </div>
-              <div className="bg-dark-card/60 border border-dark-border/60 rounded-xl p-4">
-                <p className="text-xs text-gray-400 mb-1">Equivalente estimado en USD</p>
-                <p className="text-lg sm:text-xl font-semibold text-white">
-                  ${rechargeSummary.totalUsd.toFixed(2)} USD
-                </p>
-                <p className="text-[10px] text-gray-500 mt-1">
-                  1 USD = {rechargeSummary.usdToTokenRate.toFixed(2)} {rechargeSummary.tokenSymbol}
-                </p>
-              </div>
+              <HiCreditCard className="w-12 h-12 sm:w-16 sm:h-16 text-primary-red/80" />
             </div>
-          )}
+            {walletBalance ? (
+              <div className="mt-4">
+                <div className="flex items-baseline space-x-2 mb-1">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
+                    {formatTokenAmount(walletBalance.balance)}
+                  </span>
+                  <span className="text-lg sm:text-xl text-gray-300 font-semibold">
+                    {walletBalance.tokenSymbol || tokenSymbol}
+                  </span>
+                </div>
+                {rechargeSummary && (
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    ≈ Q{convertBalanceToGtq(walletBalance.balance)} GTQ
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="h-12 sm:h-16 flex items-center mt-4">
+                <div className="animate-pulse bg-dark-bg/50 h-8 sm:h-12 w-32 sm:w-48 rounded"></div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Recharge Form */}
@@ -261,7 +262,7 @@ export default function Recharge() {
             {/* Amount Input */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Cantidad a Recargar (USD)
+                Cantidad a Recargar (GTQ)
               </label>
               <div className="relative">
                 <input
@@ -279,7 +280,7 @@ export default function Recharge() {
                   className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red focus:border-transparent transition-all text-lg"
                 />
                 <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  USD
+                  GTQ
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-2">
@@ -435,7 +436,7 @@ export default function Recharge() {
         {/* Info */}
         <div className="bg-dark-card/50 border border-dark-border rounded-xl p-4">
           <p className="text-xs text-gray-400 text-center">
-            Esta recarga es una simulación para pruebas: el cargo se captura en USD y se liquida instantáneamente en HayekCoin dentro de tu wallet.
+            Esta recarga es una simulación para pruebas: el cargo se captura en GTQ y se liquida instantáneamente en HayekCoin dentro de tu wallet.
           </p>
         </div>
 
@@ -460,8 +461,8 @@ export default function Recharge() {
                 </button>
               </div>
               <div className="space-y-4 text-sm sm:text-base text-gray-300">
-                <p>Ingresa la cantidad en USD o selecciona una opción rápida para simular el pago con tarjeta.</p>
-                <p>Automáticamente convertimos el monto a HayekCoin usando la tasa vigente. Esta operación es solo para pruebas y no mueve fondos reales.</p>
+                <p>Ingresa la cantidad en GTQ o selecciona una opción rápida para simular el pago con tarjeta.</p>
+                <p>Automáticamente convertimos el monto a HayekCoin usando la tasa vigente (1 Q = 1 HC). Esta operación es solo para pruebas y no mueve fondos reales.</p>
               </div>
             </div>
           </div>

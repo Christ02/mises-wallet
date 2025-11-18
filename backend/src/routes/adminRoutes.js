@@ -13,7 +13,7 @@ const router = express.Router();
 router.use(authenticate, authorize('admin', 'super_admin'));
 
 const handleEventImageUpload = (req, res, next) => {
-  eventImageUpload.single('cover_image')(req, res, (err) => {
+  eventImageUpload.array('cover_image', 10)(req, res, (err) => {
     if (err) {
       return res.status(400).json({ error: err.message });
     }

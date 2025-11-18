@@ -12,6 +12,7 @@ import CentralWallet from './pages/CentralWallet';
 import SettlementRequests from './pages/SettlementRequests';
 import WithdrawalRequests from './pages/WithdrawalRequests';
 import AdminProfile from './pages/AdminProfile';
+import ProtectedRoute from '../../components/auth/ProtectedRoute';
 
 export default function AdminRoutes() {
   return (
@@ -22,8 +23,22 @@ export default function AdminRoutes() {
         <Route path="/events" element={<EventManagement />} />
         <Route path="/events/:eventId" element={<EventBusinesses />} />
         <Route path="/transactions" element={<TransactionManagement />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/audit" element={<AuditLogs />} />
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <Settings />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/audit" 
+          element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+              <AuditLogs />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/reports" element={<Reports />} />
         <Route path="/central-wallet" element={<CentralWallet />} />
         <Route path="/central-wallet/settlements" element={<SettlementRequests />} />

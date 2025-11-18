@@ -11,6 +11,7 @@ import {
   HiArrowRight
 } from 'react-icons/hi';
 import api, { API_BASE_URL } from '../../../services/api';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 interface WalletStatusResponse {
   network: string;
@@ -125,6 +126,10 @@ const getEtherscanUrl = (hash: string): string | null => {
 };
 
 export default function CentralWallet() {
+  // Permisos
+  const { hasPermission } = usePermissions();
+  const canApprove = hasPermission('centralWallet.approve');
+
   const { status, loading, error, refresh } = useWalletStatus();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
@@ -223,10 +228,11 @@ export default function CentralWallet() {
     if (!balance) return '—';
     const num = Number(balance);
     if (Number.isNaN(num)) return `${balance} ${symbol}`;
-    if (Math.abs(num) >= 1_000_000_000) {
-      return `${num.toExponential(4)} ${symbol}`;
-    }
-    return `${num.toLocaleString('es-GT', { maximumFractionDigits: 4 })} ${symbol}`;
+    // Usar toLocaleString con opciones para evitar notación científica
+    return `${num.toLocaleString('es-GT', { 
+      maximumFractionDigits: 4,
+      useGrouping: true
+    })} ${symbol}`;
   }, [status?.token?.balance, status?.token?.symbol]);
 
   const totalSupplyFormatted = useMemo(() => {
@@ -235,10 +241,11 @@ export default function CentralWallet() {
     if (!supply) return null;
     const num = Number(supply);
     if (Number.isNaN(num)) return `${supply} ${symbol}`;
-    if (Math.abs(num) >= 1_000_000_000) {
-      return `${num.toExponential(4)} ${symbol}`;
-    }
-    return `${num.toLocaleString('es-GT', { maximumFractionDigits: 4 })} ${symbol}`;
+    // Usar toLocaleString con opciones para evitar notación científica
+    return `${num.toLocaleString('es-GT', { 
+      maximumFractionDigits: 4,
+      useGrouping: true
+    })} ${symbol}`;
   }, [status?.token?.totalSupply, status?.token?.symbol]);
 
 

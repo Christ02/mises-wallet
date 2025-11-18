@@ -1,5 +1,5 @@
-const DEFAULT_USD_TO_TOKEN_RATE = parseFloat(
-  process.env.USD_TO_HC_RATE || process.env.USD_TO_UFM_RATE || '1'
+const DEFAULT_GTQ_TO_TOKEN_RATE = parseFloat(
+  process.env.GTQ_TO_HC_RATE || process.env.USD_TO_HC_RATE || process.env.USD_TO_UFM_RATE || '1'
 );
 
 const sanitizeNumber = (value) => {
@@ -8,25 +8,38 @@ const sanitizeNumber = (value) => {
 };
 
 export class CurrencyService {
-  static getUsdToTokenRate() {
-    const envRate = parseFloat(process.env.USD_TO_HC_RATE || process.env.USD_TO_UFM_RATE || '0');
+  // Obtener tasa de cambio de Quetzales a Token (1 Q = 1 HC por defecto)
+  static getGtqToTokenRate() {
+    const envRate = parseFloat(process.env.GTQ_TO_HC_RATE || process.env.USD_TO_HC_RATE || process.env.USD_TO_UFM_RATE || '0');
     if (!Number.isFinite(envRate) || envRate <= 0) {
-      return DEFAULT_USD_TO_TOKEN_RATE;
+      return DEFAULT_GTQ_TO_TOKEN_RATE;
     }
     return envRate;
   }
 
-  static convertUsdToToken(amountUsd, customRate) {
-    const rate = customRate ?? this.getUsdToTokenRate();
-    const numericAmount = sanitizeNumber(amountUsd);
+  // Alias para mantener compatibilidad con código existente
+  static getUsdToTokenRate() {
+    return this.getGtqToTokenRate();
+  }
+
+  // Convertir Quetzales a Tokens
+  static convertGtqToToken(amountGtq, customRate) {
+    const rate = customRate ?? this.getGtqToTokenRate();
+    const numericAmount = sanitizeNumber(amountGtq);
     if (!numericAmount) {
       return 0;
     }
     return parseFloat((numericAmount * rate).toFixed(4));
   }
 
-  static convertTokenToUsd(amountToken, customRate) {
-    const rate = customRate ?? this.getUsdToTokenRate();
+  // Alias para mantener compatibilidad
+  static convertUsdToToken(amountUsd, customRate) {
+    return this.convertGtqToToken(amountUsd, customRate);
+  }
+
+  // Convertir Tokens a Quetzales
+  static convertTokenToGtq(amountToken, customRate) {
+    const rate = customRate ?? this.getGtqToTokenRate();
     const numericAmount = sanitizeNumber(amountToken);
     if (!numericAmount) {
       return 0;
@@ -37,13 +50,18 @@ export class CurrencyService {
     return parseFloat((numericAmount / rate).toFixed(2));
   }
 
+  // Alias para mantener compatibilidad
+  static convertTokenToUsd(amountToken, customRate) {
+    return this.convertTokenToGtq(amountToken, customRate);
+  }
+
   // Legacy aliases (UFM naming)
   static getUsdToUfmRate() {
-    return this.getUsdToTokenRate();
+    return this.getGtqToTokenRate();
   }
 
   static convertUsdToUfm(amountUsd, customRate) {
-    return this.convertUsdToToken(amountUsd, customRate);
+    return this.convertGtqToToken(amountUsd, customRate);
   }
 }
 

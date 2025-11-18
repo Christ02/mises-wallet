@@ -6,17 +6,39 @@ import { BusinessWalletService } from './businessWalletService.js';
 import { SettlementService } from './settlementService.js';
 import { CentralWalletService } from './centralWalletService.js';
 
-const mapEventForUser = (event) => ({
-  id: event.id,
-  name: event.name,
-  description: event.description,
-  event_date: event.event_date,
-  location: event.location,
-  start_time: event.start_time,
-  end_time: event.end_time,
-  status: event.status,
-  cover_image_url: event.cover_image_url
-});
+const mapEventForUser = (event) => {
+  // Parsear el campo images si es JSONB
+  let imagesArray = [];
+  if (event.images) {
+    try {
+      imagesArray = typeof event.images === 'string' ? JSON.parse(event.images) : event.images;
+      if (!Array.isArray(imagesArray)) {
+        imagesArray = [];
+      }
+    } catch {
+      imagesArray = [];
+    }
+  }
+  
+  // Si no hay imágenes en el array pero hay cover_image_url, usar cover_image_url como fallback
+  if (imagesArray.length === 0 && event.cover_image_url) {
+    imagesArray = [event.cover_image_url];
+  }
+
+  return {
+    id: event.id,
+    name: event.name,
+    description: event.description,
+    event_date: event.event_date,
+    location: event.location,
+    start_time: event.start_time,
+    end_time: event.end_time,
+    status: event.status,
+    cover_image_url: event.cover_image_url,
+    images: imagesArray,
+    photos: imagesArray // Para compatibilidad con el frontend que busca 'photos'
+  };
+};
 
 const mapOrganizerEvent = (event, membership) => ({
   ...mapEventForUser(event),

@@ -10,6 +10,7 @@ export interface AdminEvent {
   description?: string | null;
   status: 'borrador' | 'publicado' | 'finalizado';
   cover_image_url?: string | null;
+  images?: string[];
   business_count: number;
   created_at: string;
   updated_at: string;
@@ -85,15 +86,18 @@ export async function getEvent(eventId: number): Promise<AdminEvent> {
   return response.data.data;
 }
 
-export async function createEvent(payload: CreateEventPayload, coverImage?: File | null): Promise<AdminEvent> {
+export async function createEvent(payload: CreateEventPayload, coverImages?: File[] | File | null): Promise<AdminEvent> {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       formData.append(key, value);
     }
   });
-  if (coverImage) {
-    formData.append('cover_image', coverImage);
+  if (coverImages) {
+    const imagesArray = Array.isArray(coverImages) ? coverImages : [coverImages];
+    imagesArray.forEach(image => {
+      formData.append('cover_image', image);
+    });
   }
 
   const response = await api.post('/api/admin/events', formData, {
@@ -104,15 +108,28 @@ export async function createEvent(payload: CreateEventPayload, coverImage?: File
   return response.data.event;
 }
 
-export async function updateEvent(eventId: number, payload: UpdateEventPayload, coverImage?: File | null): Promise<AdminEvent> {
+export async function updateEvent(
+  eventId: number, 
+  payload: UpdateEventPayload, 
+  coverImages?: File[] | File | null,
+  existingImages?: string[]
+): Promise<AdminEvent> {
   const formData = new FormData();
   Object.entries(payload).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       formData.append(key, value);
     }
   });
-  if (coverImage) {
-    formData.append('cover_image', coverImage);
+  if (coverImages) {
+    const imagesArray = Array.isArray(coverImages) ? coverImages : [coverImages];
+    imagesArray.forEach(image => {
+      formData.append('cover_image', image);
+    });
+  }
+  if (existingImages && existingImages.length > 0) {
+    existingImages.forEach(url => {
+      formData.append('existing_images', url);
+    });
   }
 
   const response = await api.put(`/api/admin/events/${eventId}`, formData, {
