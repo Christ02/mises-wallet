@@ -58,8 +58,38 @@ const app = express();
 const PORT = parseInt(process.env.PORT) || 3000;
 
 // Middlewares
+// Configurar CORS para aceptar múltiples orígenes (desarrollo, producción, y dominios temporales de Vercel)
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  process.env.FRONTEND_URL,
+  'http://localhost:5174',
+  'http://localhost:5175',
+  /^https:\/\/mises-wallet.*\.vercel\.app$/, // Dominios temporales de Vercel
+  'https://mises-wallet.vercel.app' // Dominio de producción de Vercel
+].filter(Boolean); // Eliminar valores undefined/null
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5174',
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (como Postman o aplicaciones móviles)
+    if (!origin) return callback(null, true);
+    
+    // Verificar si el origin está en la lista de permitidos
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return origin === allowedOrigin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  CORS bloqueado para origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
