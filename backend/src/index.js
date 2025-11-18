@@ -12,8 +12,8 @@ dotenv.config();
 if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
   (async () => {
     try {
-      // Importar dinámicamente para evitar ejecución directa
-      const migrationsModule = await import('./scripts/run-migrations.js?t=' + Date.now());
+      // Importar dinámicamente el módulo de migraciones
+      const migrationsModule = await import('./scripts/run-migrations.js');
       const { runMigrations } = migrationsModule;
       
       if (typeof runMigrations === 'function') {
@@ -24,7 +24,7 @@ if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
             
             // Después de las migraciones, ejecutar el seeder para crear el super admin
             if (process.env.RUN_SEEDER_ON_START !== 'false') {
-              import('./scripts/run-seeder.js?t=' + Date.now())
+              import('./scripts/run-seeder.js')
                 .then(({ createSuperAdmin }) => {
                   console.log('🌱 Ejecutando seeder para crear super admin...');
                   return createSuperAdmin();
@@ -42,7 +42,7 @@ if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
             // No detener el servidor si las migraciones fallan
           });
       } else {
-        console.error('⚠️  runMigrations no es una función');
+        console.error('⚠️  runMigrations no es una función, tipo:', typeof runMigrations);
       }
     } catch (error) {
       console.error('⚠️  No se pudo cargar el script de migraciones:', error.message);
