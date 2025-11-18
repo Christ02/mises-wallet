@@ -9,6 +9,6 @@ docker/
 docs/
 contracts/
 # scripts/ - Comentado para permitir backend/src/scripts/
-database/migrations
+# database/migrations - Necesario para Railway (migraciones)
 uploads/
 

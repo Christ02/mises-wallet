@@ -34,10 +34,14 @@ const __dirname = path.dirname(__filename);
 async function ensureMigrationsTable() {
   const dockerMigrationsDir = '/app/database/migrations';
   const localMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
+  const backendMigrationsDir = path.resolve(__dirname, '../../database/migrations');
   
   let migrationsDir = dockerMigrationsDir;
   if (!fs.existsSync(migrationsDir)) {
-    migrationsDir = localMigrationsDir;
+    migrationsDir = backendMigrationsDir;
+    if (!fs.existsSync(migrationsDir)) {
+      migrationsDir = localMigrationsDir;
+    }
   }
 
   const initMigrationPath = path.join(migrationsDir, '000_create_migrations_table.sql');
@@ -99,11 +103,15 @@ async function runMigrations() {
 
     // Determinar directorio de migraciones
     const dockerMigrationsDir = '/app/database/migrations';
+    const backendMigrationsDir = path.resolve(__dirname, '../../database/migrations');
     const localMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
 
     let migrationsDir = dockerMigrationsDir;
     if (!fs.existsSync(migrationsDir)) {
-      migrationsDir = localMigrationsDir;
+      migrationsDir = backendMigrationsDir;
+      if (!fs.existsSync(migrationsDir)) {
+        migrationsDir = localMigrationsDir;
+      }
     }
 
     if (!fs.existsSync(migrationsDir)) {
