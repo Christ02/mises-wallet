@@ -9,7 +9,7 @@ import { config } from './config/config.js';
 dotenv.config();
 
 // Ejecutar migraciones y seeder en segundo plano al iniciar (solo en desarrollo)
-// En producción, se ejecutan antes de iniciar el servidor mediante start-production.js
+// En producción, se ejecutan mediante start-production.js después de iniciar el servidor
 if (process.env.RUN_MIGRATIONS_ON_START !== 'false' && process.env.NODE_ENV !== 'production') {
   (async () => {
     try {
