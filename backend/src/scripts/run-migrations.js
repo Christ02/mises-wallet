@@ -222,22 +222,28 @@ async function runMigrations() {
 // Exportar la función para uso en otros módulos
 export { runMigrations };
 
-// Solo ejecutar si se llama directamente (no cuando se importa)
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.includes('run-migrations.js')) {
+// Solo ejecutar si se llama directamente (no cuando se importa como módulo)
+const isMainModule = process.argv[1] && (
+  process.argv[1].endsWith('run-migrations.js') ||
+  process.argv[1].replace(/\\/g, '/').endsWith('run-migrations.js')
+);
+
+if (isMainModule) {
   runMigrations()
-  .then(() => {
-    console.log('\n✅ Migraciones completadas exitosamente');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('\n💥 Error fatal al ejecutar migraciones:', error);
-    // Si es un error de conexión a la BD, no es crítico en el primer inicio
-    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      console.error('⚠️  Error de conexión a la base de datos. Verifica las variables de entorno.');
-    }
-    // Si es un error de directorio no encontrado, es crítico
-    if (error.message && error.message.includes('directorio de migraciones no existe')) {
-      console.error('❌ Directorio de migraciones no encontrado. Verifica la configuración.');
-    }
-    process.exit(1);
-  });
+    .then(() => {
+      console.log('\n✅ Migraciones completadas exitosamente');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('\n💥 Error fatal al ejecutar migraciones:', error);
+      // Si es un error de conexión a la BD, no es crítico en el primer inicio
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        console.error('⚠️  Error de conexión a la base de datos. Verifica las variables de entorno.');
+      }
+      // Si es un error de directorio no encontrado, es crítico
+      if (error.message && error.message.includes('directorio de migraciones no existe')) {
+        console.error('❌ Directorio de migraciones no encontrado. Verifica la configuración.');
+      }
+      process.exit(1);
+    });
+}
