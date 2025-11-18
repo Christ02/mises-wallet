@@ -2,16 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiCreditCard,
-  HiDownload,
   HiExternalLink,
   HiRefresh,
-  HiShieldCheck,
   HiClipboard,
   HiCheckCircle,
   HiArrowRight
 } from 'react-icons/hi';
-import api, { API_BASE_URL } from '../../../services/api';
-import { usePermissions } from '../../../hooks/usePermissions';
+import api from '../../../services/api';
+// import { usePermissions } from '../../../hooks/usePermissions'; // Para uso futuro
 
 interface WalletStatusResponse {
   network: string;
@@ -84,13 +82,13 @@ const useWalletStatus = () => {
   return { status, loading, error, refresh: fetchStatus };
 };
 
-const formatAmount = (amount: number, currency: string) => {
-  const normalized = amount.toLocaleString('es-GT', {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 6
-  });
-  return `${normalized} ${currency}`;
-};
+// const formatAmount = (amount: number, currency: string) => {
+//   const normalized = amount.toLocaleString('es-GT', {
+//     minimumFractionDigits: 3,
+//     maximumFractionDigits: 6
+//   });
+//   return `${normalized} ${currency}`;
+// }; // No usado actualmente
 
 const formatDateTime = (value: string) => {
   const date = new Date(value);
@@ -127,18 +125,18 @@ const getEtherscanUrl = (hash: string): string | null => {
 
 export default function CentralWallet() {
   // Permisos
-  const { hasPermission } = usePermissions();
-  const canApprove = hasPermission('centralWallet.approve');
+  // const { hasPermission } = usePermissions();
+  // const canApprove = hasPermission('centralWallet.approve'); // Para uso futuro
 
   const { status, loading, error, refresh } = useWalletStatus();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [settlementsError, setSettlementsError] = useState<string | null>(null);
-  const [processingSettlement, setProcessingSettlement] = useState<number | null>(null);
+  const [_processingSettlement, setProcessingSettlement] = useState<number | null>(null); // setProcessingSettlement se usa en handleApproveSettlement
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
   const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
-  const [processingWithdrawal, setProcessingWithdrawal] = useState<number | null>(null);
+  const [_processingWithdrawal, setProcessingWithdrawal] = useState<number | null>(null); // setProcessingWithdrawal se usa en handleApproveWithdrawal y handleRejectWithdrawal
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedContract, setCopiedContract] = useState(false);
   
@@ -181,6 +179,9 @@ export default function CentralWallet() {
     fetchWithdrawals();
   }, []);
 
+  // Funciones para aprobar/rechazar liquidaciones y retiros (para uso futuro)
+  // Estas funciones están implementadas pero no se usan actualmente en la UI
+  /*
   const handleApproveSettlement = async (settlementId: number) => {
     try {
       setProcessingSettlement(settlementId);
@@ -221,6 +222,7 @@ export default function CentralWallet() {
       setProcessingWithdrawal(null);
     }
   };
+  */
 
   const balanceFormatted = useMemo(() => {
     const balance = status?.token?.balance;

@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     };
 
     // Solo escuchar cambios significativos de tamaño
-    let resizeTimer: NodeJS.Timeout;
+    let resizeTimer: ReturnType<typeof setTimeout>;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(handleResize, 150);

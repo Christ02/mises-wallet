@@ -103,9 +103,11 @@ export function usePermissions() {
    */
   const hasPermission = (permission: Permission): boolean => {
     if (!userRole) return false;
+    // Los usuarios normales no tienen permisos de admin
+    if (userRole === 'usuario') return false;
     const permissionConfig = PERMISSIONS_MATRIX[permission];
     if (!permissionConfig) return false;
-    return permissionConfig[userRole] || false;
+    return permissionConfig[userRole as 'super_admin' | 'admin'] || false;
   };
 
   /**

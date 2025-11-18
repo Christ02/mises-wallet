@@ -11,7 +11,7 @@ interface PaginationProps {
 export default function Pagination({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }: PaginationProps) {
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisible = 4; // Número máximo de páginas visibles además de la actual
+    // const maxVisible = 4; // Número máximo de páginas visibles además de la actual (no usado actualmente)
 
     if (totalPages <= 7) {
       // Si hay 7 o menos páginas, mostrar todas

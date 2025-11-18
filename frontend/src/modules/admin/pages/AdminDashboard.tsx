@@ -5,7 +5,6 @@ import {
   HiCalendar,
   HiCurrencyDollar,
   HiArrowRight,
-  HiCreditCard,
   HiUserCircle,
   HiViewGrid
 } from 'react-icons/hi';
@@ -194,7 +193,7 @@ export default function AdminDashboard() {
       });
   }, [events]);
 
-  const nextEvent = upcomingEvents[0];
+  // const nextEvent = upcomingEvents[0]; // No usado actualmente
   const next5Events = upcomingEvents.slice(0, 5);
 
   const recentTransactions = useMemo(() => {
@@ -226,7 +225,7 @@ export default function AdminDashboard() {
     const currentYear = new Date().getFullYear();
     const monthlyData: { [key: string]: number } = {};
     
-    monthNames.forEach((month, index) => {
+    monthNames.forEach((_month, index) => {
       monthlyData[`${currentYear}-${String(index + 1).padStart(2, '0')}`] = 0;
     });
 
@@ -566,7 +565,7 @@ export default function AdminDashboard() {
                   borderWidth: 1,
                   callbacks: {
                     label: function(context) {
-                      const value = context.parsed.y;
+                      const value = context.parsed.y ?? 0;
                       return `${value.toLocaleString('es-GT', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2

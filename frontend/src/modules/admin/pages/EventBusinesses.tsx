@@ -22,7 +22,6 @@ import {
   HiPlus,
   HiPencil,
   HiTrash,
-  HiEye,
   HiUserAdd,
   HiX,
   HiShoppingBag,
@@ -184,7 +183,15 @@ export default function EventBusinesses() {
     });
     setEditingBusiness(business);
     if (business.lead_user) {
-      setLeadSelectedUser(business.lead_user);
+      // Convertir AdminBusinessLeadUser a AdminUserSummary
+      setLeadSelectedUser({
+        id: business.lead_user.id,
+        nombres: business.lead_user.nombres,
+        apellidos: business.lead_user.apellidos,
+        carnet: business.lead_user.carnet,
+        email: business.lead_user.email,
+        status: 'activo' // Valor por defecto
+      });
     } else {
       setLeadSelectedUser(null);
     }
@@ -405,7 +412,11 @@ export default function EventBusinesses() {
     if (!memberToRemove || !numericEventId) return;
     setRemovingMember(true);
     try {
-      await removeBusinessMember(numericEventId, memberToRemove.business.id, memberToRemove.member.id);
+      // Convertir member.id a number si es string
+      const memberId = typeof memberToRemove.member.id === 'string' 
+        ? parseInt(memberToRemove.member.id.replace('lead-', ''), 10)
+        : memberToRemove.member.id;
+      await removeBusinessMember(numericEventId, memberToRemove.business.id, memberId);
       await refreshBusinesses();
       setMemberToRemove(null);
       // Si el negocio del que se eliminó el miembro es el que está abierto en el modal, actualizar la lista

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiArrowDown, HiCreditCard, HiQuestionMarkCircle, HiX, HiChevronDown, HiExclamationCircle, HiCheckCircle } from 'react-icons/hi';
 import api from '../../../services/api';

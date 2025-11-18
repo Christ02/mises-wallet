@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiAnnotation,
@@ -39,7 +39,7 @@ export default function AuditLogs() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [total, setTotal] = useState(0);
+  const [_total, setTotal] = useState(0); // setTotal se usa en línea 91
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);

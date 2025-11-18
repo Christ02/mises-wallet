@@ -581,11 +581,14 @@ export default function TransactionManagement() {
                           ) : (
                             <span className="text-gray-500">—</span>
                           )}
-                          {tx.metadata?.to && !tx.metadata?.error && (
-                            <span className="font-mono truncate text-gray-500" title={`Destino: ${tx.metadata.to as string}`}>
-                              Destino: {tx.metadata.to as string}
-                            </span>
-                          )}
+                          {(() => {
+                            const toAddress = tx.metadata?.to;
+                            return toAddress && !tx.metadata?.error && typeof toAddress === 'string' ? (
+                              <span className="font-mono truncate text-gray-500" title={`Destino: ${toAddress}`}>
+                                Destino: {toAddress}
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </td>
                     </tr>

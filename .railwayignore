@@ -1,0 +1,14 @@
+node_modules
+.git
+.env
+.env.local
+*.log
+.DS_Store
+frontend/
+docker/
+docs/
+contracts/
+scripts/
+database/migrations
+uploads/
+

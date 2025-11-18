@@ -13,16 +13,16 @@ import {
   HiPhotograph,
   HiSearch,
   HiFilter,
-  HiChevronDown,
-  HiEye
+  HiChevronDown
 } from 'react-icons/hi';
 import {
   AdminEvent,
+  CreateEventPayload,
+  UpdateEventPayload,
   createEvent,
   deleteEvent,
   fetchEvents,
-  updateEvent,
-  CreateEventPayload
+  updateEvent
 } from '../services/events';
 import { API_BASE_URL } from '../../../services/api';
 import Pagination from '../components/Pagination';
@@ -74,7 +74,7 @@ export default function EventManagement() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<Array<{ url: string; isExisting: boolean; originalPath?: string }>>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [existingImagePaths, setExistingImagePaths] = useState<string[]>([]); // Rutas relativas originales
+  const [_existingImagePaths, setExistingImagePaths] = useState<string[]>([]); // setExistingImagePaths se usa en líneas 116, 162, 278
   const [removeExistingCover, setRemoveExistingCover] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -404,18 +404,18 @@ export default function EventManagement() {
     });
   };
 
-  const formatDateTime = (value: string) => {
-    if (!value) return '—';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // const formatDateTime = (value: string) => {
+  //   if (!value) return '—'; // No usado actualmente
+  //   const date = new Date(value);
+  //   if (Number.isNaN(date.getTime())) return value;
+  //   return date.toLocaleString('es-ES', {
+  //     year: 'numeric',
+  //     month: 'short',
+  //     day: 'numeric',
+  //     hour: '2-digit',
+  //     minute: '2-digit'
+  //   });
+  // };
 
   const analytics = useMemo(() => {
     const total = events.length;

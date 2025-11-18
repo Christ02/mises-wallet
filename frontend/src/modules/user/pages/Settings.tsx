@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   HiCog, 
   HiBell, 
-  HiLockClosed, 
-  HiShieldCheck,
   HiMoon,
   HiGlobe,
   HiLogout,

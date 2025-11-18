@@ -501,7 +501,7 @@ export default function Dashboard() {
                       <>
                         <img
                           src={buildCoverImageUrl(modalEventImages[currentEventImageIndex])!}
-                          alt={selectedEvent.title}
+                          alt={selectedEvent.name}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-black/40" />
@@ -552,7 +552,7 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">{selectedEvent.title}</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">{selectedEvent.name}</h2>
                   <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-gray-300">
                     <div className="flex items-center space-x-3">
                       <HiCalendar className="w-5 h-5 text-primary-red" />

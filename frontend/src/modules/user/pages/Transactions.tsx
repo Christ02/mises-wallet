@@ -4,7 +4,6 @@ import {
   HiArrowUp, 
   HiArrowDown, 
   HiCreditCard,
-  HiArrowRight,
   HiShoppingCart,
   HiFilter,
   HiSearch,
