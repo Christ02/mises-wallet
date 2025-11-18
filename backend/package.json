@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node src/scripts/start-production.js",
+    "start:dev": "node src/index.js",
     "start:production": "node src/scripts/start-production.js",
     "start:with-migrations": "npm run migrate && node src/index.js",
     "dev": "nodemon src/index.js",
