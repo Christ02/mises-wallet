@@ -52,8 +52,10 @@ export class CentralWalletSettingsService {
       throw new Error('La dirección de la wallet, token y la clave privada son obligatorias');
     }
 
+    // Limpiar la private key antes de encriptarla (eliminar espacios y saltos de línea)
+    const cleanedPrivateKey = payload.walletPrivateKey.trim();
     const encryptedPrivateKey = EncryptionService.encrypt(
-      payload.walletPrivateKey.startsWith('0x') ? payload.walletPrivateKey : `0x${payload.walletPrivateKey}`
+      cleanedPrivateKey.startsWith('0x') ? cleanedPrivateKey : `0x${cleanedPrivateKey}`
     );
 
     const encryptedSecretApiKey = payload.secretApiKey
