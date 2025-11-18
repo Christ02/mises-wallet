@@ -8,6 +8,27 @@ import { config } from './config/config.js';
 // Cargar variables de entorno
 dotenv.config();
 
+// Ejecutar migraciones en segundo plano al iniciar (no bloquea el servidor)
+if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
+  (async () => {
+    try {
+      const { runMigrations } = await import('./scripts/run-migrations.js');
+      console.log('🔄 Ejecutando migraciones en segundo plano...');
+      runMigrations()
+        .then(() => {
+          console.log('✅ Migraciones completadas exitosamente');
+        })
+        .catch((error) => {
+          console.error('⚠️  Error al ejecutar migraciones (no crítico):', error.message);
+          // No detener el servidor si las migraciones fallan
+        });
+    } catch (error) {
+      console.error('⚠️  No se pudo cargar el script de migraciones:', error.message);
+      // Continuar iniciando el servidor
+    }
+  })();
+}
+
 const app = express();
 // En Docker, el puerto interno es 3000 (mapeado a 3001 externo)
 // Usar el puerto de la variable de entorno si existe, sino 3000

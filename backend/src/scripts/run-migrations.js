@@ -218,9 +218,18 @@ async function runMigrations() {
 // Ejecutar migraciones
 runMigrations()
   .then(() => {
+    console.log('\n✅ Migraciones completadas exitosamente');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('\n💥 Error fatal:', error);
+    console.error('\n💥 Error fatal al ejecutar migraciones:', error);
+    // Si es un error de conexión a la BD, no es crítico en el primer inicio
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      console.error('⚠️  Error de conexión a la base de datos. Verifica las variables de entorno.');
+    }
+    // Si es un error de directorio no encontrado, es crítico
+    if (error.message && error.message.includes('directorio de migraciones no existe')) {
+      console.error('❌ Directorio de migraciones no encontrado. Verifica la configuración.');
+    }
     process.exit(1);
   });

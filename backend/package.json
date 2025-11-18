@@ -5,9 +5,11 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "npm run migrate && node src/index.js",
+    "start": "node src/index.js",
+    "start:with-migrations": "npm run migrate && node src/index.js",
     "dev": "nodemon src/index.js",
     "migrate": "node src/scripts/run-migrations.js",
+    "migrate:force": "node src/scripts/run-migrations.js || true",
     "seed": "node src/scripts/run-seeder.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
