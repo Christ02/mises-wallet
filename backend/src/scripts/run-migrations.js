@@ -33,14 +33,14 @@ const __dirname = path.dirname(__filename);
  */
 async function ensureMigrationsTable() {
   const dockerMigrationsDir = '/app/database/migrations';
-  const localMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
   const backendMigrationsDir = path.resolve(__dirname, '../../database/migrations');
+  const rootMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
   
   let migrationsDir = dockerMigrationsDir;
   if (!fs.existsSync(migrationsDir)) {
     migrationsDir = backendMigrationsDir;
-    if (!fs.existsSync(migrationsDir)) {
-      migrationsDir = localMigrationsDir;
+    if (!fs.existsSync(migrationsDir) || (fs.existsSync(migrationsDir) && fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).length === 0)) {
+      migrationsDir = rootMigrationsDir;
     }
   }
 
@@ -102,15 +102,19 @@ async function runMigrations() {
     console.log('🚀 Iniciando proceso de migraciones...\n');
 
     // Determinar directorio de migraciones
+    // En Railway/Docker: /app/database/migrations (desde backend/database/migrations)
+    // En desarrollo local: backend/database/migrations o database/migrations (raíz)
     const dockerMigrationsDir = '/app/database/migrations';
     const backendMigrationsDir = path.resolve(__dirname, '../../database/migrations');
-    const localMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
+    const rootMigrationsDir = path.resolve(__dirname, '../../../database/migrations');
 
     let migrationsDir = dockerMigrationsDir;
     if (!fs.existsSync(migrationsDir)) {
+      // Intentar backend/database/migrations primero (preferido)
       migrationsDir = backendMigrationsDir;
-      if (!fs.existsSync(migrationsDir)) {
-        migrationsDir = localMigrationsDir;
+      if (!fs.existsSync(migrationsDir) || fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).length === 0) {
+        // Si no existe o está vacío, intentar database/migrations (raíz)
+        migrationsDir = rootMigrationsDir;
       }
     }
 
