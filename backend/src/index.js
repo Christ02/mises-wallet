@@ -65,7 +65,9 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://localhost:5175',
   /^https:\/\/mises-wallet.*\.vercel\.app$/, // Dominios temporales de Vercel
-  'https://mises-wallet.vercel.app' // Dominio de producción de Vercel
+  'https://mises-wallet.vercel.app', // Dominio de producción de Vercel
+  'https://www.mises-wallet.com', // Dominio de producción con www
+  'https://mises-wallet.com' // Dominio de producción sin www
 ].filter(Boolean); // Eliminar valores undefined/null
 
 const corsOptions = {
