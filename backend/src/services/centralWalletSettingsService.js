@@ -21,7 +21,7 @@ export class CentralWalletSettingsService {
 
     const decryptedPrivateKey = EncryptionService.decrypt(
       this.cachedSettings.private_key_encrypted
-    );
+    )?.trim(); // Eliminar espacios en blanco y saltos de línea
     const decryptedSecretApiKey = this.cachedSettings.secret_api_key_encrypted
       ? EncryptionService.decrypt(this.cachedSettings.secret_api_key_encrypted)
       : null;

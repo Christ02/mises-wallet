@@ -76,13 +76,17 @@ export class CentralWalletService {
   static getCentralWalletPrivateKey() {
     const fromSettings = this.getSetting('walletPrivateKey');
     if (fromSettings) {
-      return fromSettings.startsWith('0x') ? fromSettings : `0x${fromSettings}`;
+      // Eliminar espacios en blanco y saltos de línea
+      const cleaned = fromSettings.trim();
+      return cleaned.startsWith('0x') ? cleaned : `0x${cleaned}`;
     }
     const key = getEnv('CENTRAL_WALLET_PRIVATE_KEY');
     if (!key) {
       throw new Error('CENTRAL_WALLET_PRIVATE_KEY no está configurado');
     }
-    return key.startsWith('0x') ? key : `0x${key}`;
+    // Eliminar espacios en blanco y saltos de línea
+    const cleaned = key.trim();
+    return cleaned.startsWith('0x') ? cleaned : `0x${cleaned}`;
   }
 
   static getTokenDecimals() {

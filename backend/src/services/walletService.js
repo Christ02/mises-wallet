@@ -122,7 +122,8 @@ export class WalletService {
     const fullWallet = await WalletRepository.findById(wallet.id);
     
     const decryptedKey = EncryptionService.decrypt(fullWallet.private_key_encrypted);
-    return decryptedKey;
+    // Eliminar espacios en blanco y saltos de línea
+    return decryptedKey?.trim();
   }
 
   /**
