@@ -8,8 +8,9 @@ import { config } from './config/config.js';
 // Cargar variables de entorno
 dotenv.config();
 
-// Ejecutar migraciones y seeder en segundo plano al iniciar (no bloquea el servidor)
-if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
+// Ejecutar migraciones y seeder en segundo plano al iniciar (solo en desarrollo)
+// En producción, se ejecutan antes de iniciar el servidor mediante start-production.js
+if (process.env.RUN_MIGRATIONS_ON_START !== 'false' && process.env.NODE_ENV !== 'production') {
   (async () => {
     try {
       // Importar dinámicamente el módulo de migraciones
@@ -17,7 +18,7 @@ if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
       const { runMigrations } = migrationsModule;
       
       if (typeof runMigrations === 'function') {
-        console.log('🔄 Ejecutando migraciones en segundo plano...');
+        console.log('🔄 Ejecutando migraciones en segundo plano (modo desarrollo)...');
         runMigrations()
           .then(() => {
             console.log('✅ Migraciones completadas exitosamente');
