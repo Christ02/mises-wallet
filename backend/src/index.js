@@ -21,6 +21,10 @@ if (process.env.RUN_MIGRATIONS_ON_START !== 'false') {
           // Después de las migraciones, ejecutar el seeder para crear el super admin
           if (process.env.RUN_SEEDER_ON_START !== 'false') {
             import('./scripts/run-seeder.js')
+              .then(({ createSuperAdmin }) => {
+                console.log('🌱 Ejecutando seeder para crear super admin...');
+                return createSuperAdmin();
+              })
               .then(() => {
                 console.log('✅ Seeder ejecutado (super admin creado o ya existe)');
               })
