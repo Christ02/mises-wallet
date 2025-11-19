@@ -65,12 +65,27 @@ export class SettingsController {
       });
 
       console.log('✅ Configuración de email actualizada (solo para esta sesión)');
-      console.log('⚠️  Para persistir en Railway, las variables deben actualizarse en el dashboard');
+      
+      // Intentar actualizar en Railway usando MCP
+      let railwayUpdated = false;
+      try {
+        // Railway MCP solo está disponible en el contexto del servidor MCP, no en el backend
+        // Por ahora, las variables se actualizan solo en process.env para esta sesión
+        // El usuario debe actualizar manualmente en Railway dashboard para persistencia
+        railwayUpdated = false;
+      } catch (railwayError) {
+        console.warn('No se pudo actualizar en Railway automáticamente');
+      }
 
       res.json({
-        message: 'Configuración de email guardada correctamente',
-        note: 'Las variables se actualizaron para esta sesión. Para persistir en Railway después de reiniciar, actualiza las variables en el dashboard de Railway.',
-        variables: variables.map(v => v.split('=')[0]) // Solo los nombres de las variables
+        message: railwayUpdated 
+          ? 'Configuración de email guardada correctamente en Railway'
+          : 'Configuración de email guardada correctamente (solo para esta sesión)',
+        note: railwayUpdated 
+          ? 'Las variables se actualizaron en Railway y están persistentes.'
+          : 'Las variables se actualizaron para esta sesión. Para persistir en Railway después de reiniciar, actualiza las variables en el dashboard de Railway.',
+        variables: variables.map(v => v.split('=')[0]), // Solo los nombres de las variables
+        railwayUpdated
       });
     } catch (error) {
       console.error('Error guardando configuración de email:', error);
