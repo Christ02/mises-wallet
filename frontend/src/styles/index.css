@@ -28,3 +28,34 @@
   }
 }
 
+/* Estilos para el scanner de QR (html5-qrcode) */
+#qr-reader {
+  position: relative;
+}
+
+#qr-reader__dashboard_section {
+  display: none !important;
+}
+
+#qr-reader__scan_region {
+  position: relative;
+}
+
+#qr-reader__scan_region video {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover;
+  border-radius: 0.75rem;
+}
+
+#qr-reader__camera_selection {
+  display: none !important;
+}
+
+/* Asegurar que el video se vea bien en móviles */
+#qr-reader__scan_region video,
+#qr-reader__dashboard_section_csr video {
+  max-width: 100%;
+  height: auto;
+}
+

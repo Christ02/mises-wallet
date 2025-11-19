@@ -11,6 +11,7 @@ import {
   HiCheckCircle,
   HiSearch
 } from 'react-icons/hi';
+import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../../services/api';
 
 interface WalletBalance {
@@ -43,9 +44,8 @@ export default function Pay() {
   const [showHelp, setShowHelp] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState('');
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const qrCodeScannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerContainerRef = useRef<HTMLDivElement | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [usdToTokenRate, setUsdToTokenRate] = useState(1);
@@ -83,11 +83,13 @@ export default function Pay() {
       if (searchTimeout.current) {
         clearTimeout(searchTimeout.current);
       }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+      // Limpiar el scanner de QR cuando el componente se desmonte
+      if (qrCodeScannerRef.current) {
+        qrCodeScannerRef.current.stop().catch(() => {
+          // Ignorar errores al detener
+        });
+        qrCodeScannerRef.current.clear();
+        qrCodeScannerRef.current = null;
       }
     };
   }, []);
@@ -141,16 +143,18 @@ export default function Pay() {
     }, 300);
   }, [merchantQuery, selectedMerchant]);
 
-  const stopScan = () => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+  const stopScan = async () => {
+    if (qrCodeScannerRef.current) {
+      try {
+        await qrCodeScannerRef.current.stop();
+        qrCodeScannerRef.current.clear();
+      } catch (err) {
+        console.error('Error stopping QR scanner:', err);
+      }
+      qrCodeScannerRef.current = null;
     }
     setIsScanning(false);
+    setScanError('');
   };
 
   const parseQrPayload = (raw: string): { groupId?: string; amount?: number } => {
@@ -214,6 +218,15 @@ export default function Pay() {
   };
 
   const handleQrDetected = async (rawValue: string) => {
+    // Detener el scanner inmediatamente para evitar múltiples detecciones
+    if (qrCodeScannerRef.current) {
+      try {
+        await qrCodeScannerRef.current.stop();
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      }
+    }
+
     setScanError('');
     const { groupId, amount: qrAmount } = parseQrPayload(rawValue);
 
@@ -221,6 +234,7 @@ export default function Pay() {
       setScanError(
         'No pudimos encontrar un group-id válido en el código QR. Verifica que sea un QR emitido por HayekCoin.'
       );
+      setIsScanning(false);
       return;
     }
 
@@ -242,6 +256,7 @@ export default function Pay() {
         setScanError(
           'No encontramos un comercio asociado a este QR. Verifica que el código sea correcto o intenta de nuevo.'
         );
+        setIsScanning(false);
         return;
       }
 
@@ -254,10 +269,28 @@ export default function Pay() {
       }
       setErrorMessage('');
       setSuccessMessage(`Comercio cargado desde QR: ${merchant.name}.`);
-      stopScan();
+      setIsScanning(false);
+      
+      // Limpiar el scanner
+      if (qrCodeScannerRef.current) {
+        qrCodeScannerRef.current.clear();
+        qrCodeScannerRef.current = null;
+      }
     } catch (err) {
       console.error('Error resolving merchant from QR:', err);
       setScanError('Ocurrió un error al procesar el QR. Intenta nuevamente.');
+      setIsScanning(false);
+      
+      // Limpiar el scanner en caso de error
+      if (qrCodeScannerRef.current) {
+        try {
+          await qrCodeScannerRef.current.stop();
+          qrCodeScannerRef.current.clear();
+        } catch (stopErr) {
+          console.error('Error stopping scanner after error:', stopErr);
+        }
+        qrCodeScannerRef.current = null;
+      }
     } finally {
       setIsSearching(false);
     }
@@ -265,54 +298,133 @@ export default function Pay() {
 
   const startScan = async () => {
     setScanError('');
-
-    if (typeof (window as any).BarcodeDetector === 'undefined') {
-      setScanError(
-        'Tu navegador no soporta escaneo nativo de códigos QR. Intenta con la última versión de Chrome o ingresa los datos manualmente.'
-      );
-      setIsScanning(true);
-      return;
-    }
+    setIsScanning(true);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      streamRef.current = stream;
-      setIsScanning(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      // Crear el scanner si no existe
+      if (!qrCodeScannerRef.current) {
+        qrCodeScannerRef.current = new Html5Qrcode('qr-reader');
       }
 
-      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      const scanner = qrCodeScannerRef.current;
 
-      const scanLoop = async () => {
-        if (!videoRef.current || !streamRef.current) {
-          return;
+      // Detectar si es móvil para ajustar el tamaño del área de escaneo
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const qrboxSize = isMobile ? 250 : 300;
+
+      // Configuración optimizada para móviles
+      const config = {
+        fps: 10,
+        qrbox: { width: qrboxSize, height: qrboxSize },
+        aspectRatio: 1.0,
+        disableFlip: false, // Permitir rotación
+        // Configuración de video optimizada para móviles
+        videoConstraints: {
+          facingMode: 'environment', // Cámara trasera en móviles
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
-
-        try {
-          const barcodes = await detector.detect(videoRef.current);
-          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
-            await handleQrDetected(barcodes[0].rawValue as string);
-            return;
-          }
-        } catch (err) {
-          console.error('Error on QR detect:', err);
-        }
-
-        animationFrameRef.current = requestAnimationFrame(scanLoop);
       };
 
-      animationFrameRef.current = requestAnimationFrame(scanLoop);
-    } catch (err) {
-      console.error('Error starting camera for QR scan:', err);
-      setScanError(
-        'No pudimos acceder a tu cámara. Revisa los permisos del navegador o intenta nuevamente.'
+      // Intentar primero con la cámara trasera (environment)
+      let cameraIdOrConfig: string | { facingMode: string } = { facingMode: 'environment' };
+      
+      // En algunos dispositivos, necesitamos obtener el ID de la cámara
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          // Buscar la cámara trasera
+          const backCamera = devices.find(device => 
+            device.label.toLowerCase().includes('back') || 
+            device.label.toLowerCase().includes('rear') ||
+            device.label.toLowerCase().includes('environment')
+          );
+          if (backCamera) {
+            cameraIdOrConfig = backCamera.id;
+          } else {
+            // Si no encontramos cámara trasera, usar la primera disponible
+            cameraIdOrConfig = devices[0].id;
+          }
+        }
+      } catch (deviceErr) {
+        // Si falla obtener dispositivos, usar facingMode
+        console.log('No se pudieron obtener dispositivos, usando facingMode');
+      }
+
+      // Iniciar el escaneo
+      await scanner.start(
+        cameraIdOrConfig,
+        config,
+        async (decodedText, decodedResult) => {
+          // Cuando se detecta un QR, procesarlo
+          await handleQrDetected(decodedText);
+        },
+        (errorMessage) => {
+          // Ignorar errores de escaneo continuo (solo mostrar si es crítico)
+          // Estos errores son normales cuando no hay QR visible
+        }
       );
-      setIsScanning(true);
+    } catch (err: any) {
+      console.error('Error starting QR scanner:', err);
+      
+      // Mensajes de error más específicos
+      if (err.name === 'NotAllowedError' || err.message?.includes('permission') || err.message?.includes('Permission denied')) {
+        setScanError(
+          'No se pudo acceder a la cámara. Por favor, permite el acceso a la cámara en la configuración de tu navegador o aplicación.'
+        );
+      } else if (err.name === 'NotFoundError' || err.message?.includes('camera') || err.message?.includes('No camera')) {
+        setScanError(
+          'No se encontró una cámara en tu dispositivo. Verifica que tu dispositivo tenga una cámara disponible.'
+        );
+      } else if (err.message?.includes('NotSupportedError') || err.message?.includes('not supported')) {
+        setScanError(
+          'Tu navegador no soporta el escaneo de códigos QR. Intenta con Chrome, Safari o Firefox en su última versión.'
+        );
+      } else if (err.message?.includes('environment') || err.message?.includes('facingMode')) {
+        // Si falla con environment, intentar con user (cámara frontal)
+        try {
+          if (qrCodeScannerRef.current) {
+            const scanner = qrCodeScannerRef.current;
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const qrboxSize = isMobile ? 250 : 300;
+            
+            await scanner.start(
+              { facingMode: 'user' },
+              {
+                fps: 10,
+                qrbox: { width: qrboxSize, height: qrboxSize },
+                aspectRatio: 1.0
+              },
+              async (decodedText) => {
+                await handleQrDetected(decodedText);
+              },
+              () => {}
+            );
+            return; // Éxito con cámara frontal
+          }
+        } catch (fallbackErr) {
+          console.error('Error with fallback camera:', fallbackErr);
+          setScanError(
+            'No pudimos acceder a ninguna cámara. Verifica los permisos y que tu dispositivo tenga una cámara disponible.'
+          );
+        }
+      } else {
+        setScanError(
+          'No pudimos iniciar el escáner. Verifica los permisos de la cámara o intenta nuevamente.'
+        );
+      }
+      setIsScanning(false);
+      
+      // Limpiar el scanner en caso de error
+      if (qrCodeScannerRef.current) {
+        try {
+          await qrCodeScannerRef.current.stop();
+          qrCodeScannerRef.current.clear();
+        } catch (stopErr) {
+          // Ignorar errores al detener
+        }
+        qrCodeScannerRef.current = null;
+      }
     }
   };
 
@@ -678,13 +790,12 @@ export default function Pay() {
                   si está incluido, el monto a pagar.
                 </p>
                 <div className="relative w-full rounded-xl overflow-hidden border border-dark-border bg-black">
-                  <video
-                    ref={videoRef}
-                    className="w-full h-64 object-cover"
-                    muted
-                    playsInline
+                  <div
+                    id="qr-reader"
+                    ref={scannerContainerRef}
+                    className="w-full min-h-[300px] sm:min-h-[400px]"
                   />
-                  <div className="absolute inset-6 border-2 border-primary-red/70 rounded-xl pointer-events-none" />
+                  <div className="absolute inset-6 border-2 border-primary-red/70 rounded-xl pointer-events-none z-10" />
                 </div>
                 {scanError && (
                   <div className="bg-negative/10 border border-negative/40 text-negative px-4 py-3 rounded-lg text-xs sm:text-sm flex items-center space-x-2">
