@@ -135,11 +135,23 @@ export default function Settings() {
     }));
   };
 
-  const handleSaveEmail = async () => {
+  const handleSaveEmail = async (e?: React.MouseEvent) => {
+    e?.preventDefault(); // Prevenir cualquier comportamiento por defecto
+    e?.stopPropagation(); // Detener propagación del evento
+    
     setEmailSaving(true);
     setEmailSuccess('');
+    
+    console.log('🔄 Guardando configuración de email...', emailSettings);
+    
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+
+      console.log('📤 Enviando request a /api/admin/settings/email');
+      
       const response = await fetch('/api/admin/settings/email', {
         method: 'PUT',
         headers: {
@@ -149,7 +161,10 @@ export default function Settings() {
         body: JSON.stringify(emailSettings)
       });
 
+      console.log('📥 Response status:', response.status);
+
       const data = await response.json();
+      console.log('📥 Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Error al guardar configuración');
@@ -159,11 +174,14 @@ export default function Settings() {
       localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(emailSettings));
       
       setEmailSuccess(data.message || 'Configuración de correo actualizada correctamente.');
-      if (data.warning) {
-        console.warn(data.warning);
+      if (data.note) {
+        console.log('ℹ️', data.note);
       }
-    } catch (error) {
-      console.error('Error guardando configuración de correo:', error);
+      if (data.railwayUpdated === false) {
+        console.warn('⚠️ Las variables se guardaron solo para esta sesión. Para persistir, actualiza las variables en Railway dashboard.');
+      }
+    } catch (error: any) {
+      console.error('❌ Error guardando configuración de correo:', error);
       setEmailSuccess(error.message || 'Ocurrió un problema al guardar la configuración.');
     } finally {
       setEmailSaving(false);
@@ -415,7 +433,8 @@ export default function Settings() {
 
         <div className="flex items-center justify-end">
           <button
-            onClick={handleSaveEmail}
+            type="button"
+            onClick={(e) => handleSaveEmail(e)}
             disabled={emailSaving}
             className="inline-flex items-center gap-2 px-5 py-3 bg-primary-red hover:bg-primary-red/90 text-white rounded-lg font-semibold transition-all disabled:opacity-60"
           >
