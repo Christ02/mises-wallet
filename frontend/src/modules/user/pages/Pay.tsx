@@ -94,6 +94,116 @@ export default function Pay() {
     };
   }, []);
 
+  // Inicializar el scanner cuando el modal se abre
+  useEffect(() => {
+    if (!isScanning) return;
+
+    // Esperar a que el DOM se actualice y el elemento qr-reader esté disponible
+    const timer = setTimeout(async () => {
+      try {
+        // Verificar que el elemento existe
+        const qrReaderElement = document.getElementById('qr-reader');
+        if (!qrReaderElement) {
+          setScanError('El elemento del scanner no está disponible. Por favor, intenta nuevamente.');
+          setIsScanning(false);
+          return;
+        }
+
+        // Limpiar cualquier scanner anterior
+        if (qrCodeScannerRef.current) {
+          try {
+            await qrCodeScannerRef.current.stop();
+            qrCodeScannerRef.current.clear();
+          } catch (e) {
+            // Ignorar errores al limpiar
+          }
+          qrCodeScannerRef.current = null;
+        }
+
+        // Crear el scanner
+        qrCodeScannerRef.current = new Html5Qrcode('qr-reader');
+        const scanner = qrCodeScannerRef.current;
+
+        // Detectar si es móvil para ajustar el tamaño del área de escaneo
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const qrboxSize = isMobile ? 250 : 300;
+
+        // Configuración optimizada para móviles
+        const config = {
+          fps: 10,
+          qrbox: { width: qrboxSize, height: qrboxSize },
+          aspectRatio: 1.0,
+          disableFlip: false,
+          videoConstraints: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+
+        // Intentar primero con la cámara trasera
+        let cameraIdOrConfig: string | { facingMode: string } = { facingMode: 'environment' };
+        
+        try {
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
+            const backCamera = devices.find(device => 
+              device.label.toLowerCase().includes('back') || 
+              device.label.toLowerCase().includes('rear') ||
+              device.label.toLowerCase().includes('environment')
+            );
+            if (backCamera) {
+              cameraIdOrConfig = backCamera.id;
+            } else {
+              cameraIdOrConfig = devices[0].id;
+            }
+          }
+        } catch (deviceErr) {
+          console.log('No se pudieron obtener dispositivos, usando facingMode');
+        }
+
+        // Iniciar el escaneo
+        await scanner.start(
+          cameraIdOrConfig,
+          config,
+          async (decodedText) => {
+            await handleQrDetected(decodedText);
+          },
+          () => {
+            // Ignorar errores de escaneo continuo
+          }
+        );
+      } catch (err: any) {
+        console.error('Error starting QR scanner:', err);
+        
+        if (err.name === 'NotAllowedError' || err.message?.includes('permission') || err.message?.includes('Permission denied')) {
+          setScanError('No se pudo acceder a la cámara. Por favor, permite el acceso a la cámara en la configuración de tu navegador.');
+        } else if (err.name === 'NotFoundError' || err.message?.includes('camera') || err.message?.includes('No camera')) {
+          setScanError('No se encontró una cámara en tu dispositivo. Verifica que tu dispositivo tenga una cámara disponible.');
+        } else if (err.message?.includes('NotSupportedError') || err.message?.includes('not supported')) {
+          setScanError('Tu navegador no soporta el escaneo de códigos QR. Intenta con Chrome, Safari o Firefox en su última versión.');
+        } else {
+          setScanError('No pudimos iniciar el escáner. Verifica los permisos de la cámara o intenta nuevamente.');
+        }
+        setIsScanning(false);
+        
+        if (qrCodeScannerRef.current) {
+          try {
+            await qrCodeScannerRef.current.stop();
+            qrCodeScannerRef.current.clear();
+          } catch (stopErr) {
+            // Ignorar errores al detener
+          }
+          qrCodeScannerRef.current = null;
+        }
+      }
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isScanning]);
+
   useEffect(() => {
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
@@ -296,138 +406,6 @@ export default function Pay() {
     }
   };
 
-  const startScan = async () => {
-    setScanError('');
-    setIsScanning(true);
-
-    try {
-      // Crear el scanner si no existe
-      if (!qrCodeScannerRef.current) {
-        qrCodeScannerRef.current = new Html5Qrcode('qr-reader');
-      }
-
-      const scanner = qrCodeScannerRef.current;
-
-      // Detectar si es móvil para ajustar el tamaño del área de escaneo
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const qrboxSize = isMobile ? 250 : 300;
-
-      // Configuración optimizada para móviles
-      const config = {
-        fps: 10,
-        qrbox: { width: qrboxSize, height: qrboxSize },
-        aspectRatio: 1.0,
-        disableFlip: false, // Permitir rotación
-        // Configuración de video optimizada para móviles
-        videoConstraints: {
-          facingMode: 'environment', // Cámara trasera en móviles
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-
-      // Intentar primero con la cámara trasera (environment)
-      let cameraIdOrConfig: string | { facingMode: string } = { facingMode: 'environment' };
-      
-      // En algunos dispositivos, necesitamos obtener el ID de la cámara
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          // Buscar la cámara trasera
-          const backCamera = devices.find(device => 
-            device.label.toLowerCase().includes('back') || 
-            device.label.toLowerCase().includes('rear') ||
-            device.label.toLowerCase().includes('environment')
-          );
-          if (backCamera) {
-            cameraIdOrConfig = backCamera.id;
-          } else {
-            // Si no encontramos cámara trasera, usar la primera disponible
-            cameraIdOrConfig = devices[0].id;
-          }
-        }
-      } catch (deviceErr) {
-        // Si falla obtener dispositivos, usar facingMode
-        console.log('No se pudieron obtener dispositivos, usando facingMode');
-      }
-
-      // Iniciar el escaneo
-      await scanner.start(
-        cameraIdOrConfig,
-        config,
-        async (decodedText, decodedResult) => {
-          // Cuando se detecta un QR, procesarlo
-          await handleQrDetected(decodedText);
-        },
-        (errorMessage) => {
-          // Ignorar errores de escaneo continuo (solo mostrar si es crítico)
-          // Estos errores son normales cuando no hay QR visible
-        }
-      );
-    } catch (err: any) {
-      console.error('Error starting QR scanner:', err);
-      
-      // Mensajes de error más específicos
-      if (err.name === 'NotAllowedError' || err.message?.includes('permission') || err.message?.includes('Permission denied')) {
-        setScanError(
-          'No se pudo acceder a la cámara. Por favor, permite el acceso a la cámara en la configuración de tu navegador o aplicación.'
-        );
-      } else if (err.name === 'NotFoundError' || err.message?.includes('camera') || err.message?.includes('No camera')) {
-        setScanError(
-          'No se encontró una cámara en tu dispositivo. Verifica que tu dispositivo tenga una cámara disponible.'
-        );
-      } else if (err.message?.includes('NotSupportedError') || err.message?.includes('not supported')) {
-        setScanError(
-          'Tu navegador no soporta el escaneo de códigos QR. Intenta con Chrome, Safari o Firefox en su última versión.'
-        );
-      } else if (err.message?.includes('environment') || err.message?.includes('facingMode')) {
-        // Si falla con environment, intentar con user (cámara frontal)
-        try {
-          if (qrCodeScannerRef.current) {
-            const scanner = qrCodeScannerRef.current;
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            const qrboxSize = isMobile ? 250 : 300;
-            
-            await scanner.start(
-              { facingMode: 'user' },
-              {
-                fps: 10,
-                qrbox: { width: qrboxSize, height: qrboxSize },
-                aspectRatio: 1.0
-              },
-              async (decodedText) => {
-                await handleQrDetected(decodedText);
-              },
-              () => {}
-            );
-            return; // Éxito con cámara frontal
-          }
-        } catch (fallbackErr) {
-          console.error('Error with fallback camera:', fallbackErr);
-          setScanError(
-            'No pudimos acceder a ninguna cámara. Verifica los permisos y que tu dispositivo tenga una cámara disponible.'
-          );
-        }
-      } else {
-        setScanError(
-          'No pudimos iniciar el escáner. Verifica los permisos de la cámara o intenta nuevamente.'
-        );
-      }
-      setIsScanning(false);
-      
-      // Limpiar el scanner en caso de error
-      if (qrCodeScannerRef.current) {
-        try {
-          await qrCodeScannerRef.current.stop();
-          qrCodeScannerRef.current.clear();
-        } catch (stopErr) {
-          // Ignorar errores al detener
-        }
-        qrCodeScannerRef.current = null;
-      }
-    }
-  };
-
   const handleSelectMerchant = (merchant: MerchantOption) => {
     setSelectedMerchant(merchant);
     setMerchantQuery(formatMerchantLabel(merchant));
@@ -554,7 +532,7 @@ export default function Pay() {
                 </div>
               </div>
               <button
-              onClick={startScan}
+                onClick={() => setIsScanning(true)}
                 className="w-full max-w-md px-6 py-4 sm:py-5 bg-primary-red hover:bg-primary-red/90 text-white rounded-xl sm:rounded-2xl font-semibold text-base sm:text-lg transition-all flex items-center justify-center space-x-2 shadow-lg"
               >
                 <HiQrcode className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -789,11 +767,11 @@ export default function Pay() {
                   Apunta la cámara al código QR del comercio para cargar automáticamente el comercio y,
                   si está incluido, el monto a pagar.
                 </p>
-                <div className="relative w-full rounded-xl overflow-hidden border border-dark-border bg-black">
+                <div className="relative w-full rounded-xl overflow-hidden border border-dark-border bg-black min-h-[300px] sm:min-h-[400px]">
                   <div
                     id="qr-reader"
                     ref={scannerContainerRef}
-                    className="w-full min-h-[300px] sm:min-h-[400px]"
+                    className="w-full h-full"
                   />
                   <div className="absolute inset-6 border-2 border-primary-red/70 rounded-xl pointer-events-none z-10" />
                 </div>
