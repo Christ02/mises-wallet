@@ -167,11 +167,16 @@ export default function Pay() {
         await scanner.start(
           cameraIdOrConfig,
           config,
-          async (decodedText) => {
+          async (decodedText, decodedResult) => {
+            console.log('🔍 QR detectado:', decodedText);
+            console.log('📊 Resultado completo:', decodedResult);
             await handleQrDetected(decodedText);
           },
-          () => {
-            // Ignorar errores de escaneo continuo
+          (errorMessage) => {
+            // Solo loguear errores críticos, ignorar errores normales de escaneo continuo
+            if (errorMessage && !errorMessage.includes('NotFoundException')) {
+              console.log('⚠️ Error de escaneo:', errorMessage);
+            }
           }
         );
       } catch (err: any) {
@@ -269,66 +274,94 @@ export default function Pay() {
   };
 
   const parseQrPayload = (raw: string): { groupId?: string; amount?: number } => {
-    const trimmed = raw.trim();
+    if (!raw) {
+      console.log('❌ QR vacío');
+      return {};
+    }
 
-    if (!trimmed) return {};
+    const trimmed = raw.trim();
+    console.log('📝 QR raw:', raw);
+    console.log('📝 QR trimmed:', trimmed);
+
+    if (!trimmed) {
+      console.log('❌ QR trimmed vacío');
+      return {};
+    }
 
     // JSON
     if (trimmed.startsWith('{')) {
       try {
         const obj = JSON.parse(trimmed);
+        console.log('✅ QR es JSON:', obj);
         return {
           groupId: obj.groupId || obj.group_id || obj.group || undefined,
           amount: obj.amount ? Number(obj.amount) : undefined
         };
-      } catch {
-        // ignore
+      } catch (e) {
+        console.log('⚠️ Error parseando JSON:', e);
       }
     }
 
     // URL style
     try {
-      if (trimmed.includes('://')) {
+      if (trimmed.includes('://') || trimmed.startsWith('http') || trimmed.startsWith('https')) {
         const url = new URL(trimmed);
         const groupId =
           url.searchParams.get('groupId') ||
           url.searchParams.get('group_id') ||
           url.searchParams.get('group');
         const amountParam = url.searchParams.get('amount');
+        console.log('✅ QR es URL:', { groupId, amount: amountParam });
         return {
           groupId: groupId || undefined,
           amount: amountParam ? Number(amountParam) : undefined
         };
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      console.log('⚠️ Error parseando URL:', e);
     }
 
-    // key=value;key2=value2
+    // key=value;key2=value2 o key=value&key2=value2
     try {
       const normalized = trimmed.replace(/;/g, '&').replace(/,/g, '&');
-      const params = new URLSearchParams(normalized);
-      const groupId =
-        params.get('groupId') ||
-        params.get('group_id') ||
-        params.get('group') ||
-        params.get('grupo') ||
-        undefined;
-      const amountParam =
-        params.get('amount') || params.get('monto') || params.get('value') || undefined;
-      return {
-        groupId,
-        amount: amountParam ? Number(amountParam) : undefined
-      };
-    } catch {
-      // ignore
+      if (normalized.includes('=')) {
+        const params = new URLSearchParams(normalized);
+        const groupId =
+          params.get('groupId') ||
+          params.get('group_id') ||
+          params.get('group') ||
+          params.get('grupo') ||
+          undefined;
+        const amountParam =
+          params.get('amount') || params.get('monto') || params.get('value') || undefined;
+        console.log('✅ QR es key=value:', { groupId, amount: amountParam });
+        return {
+          groupId,
+          amount: amountParam ? Number(amountParam) : undefined
+        };
+      }
+    } catch (e) {
+      console.log('⚠️ Error parseando key=value:', e);
     }
 
-    // plain groupId
+    // plain groupId - este es el caso más común para los QRs generados
+    // El QR se genera con solo el groupId como texto plano
+    // Limpiar solo espacios en blanco y saltos de línea, pero mantener el groupId completo
+    const cleanGroupId = trimmed.replace(/[\s\n\r\t]/g, '').trim();
+    console.log('✅ QR es texto plano (groupId):', cleanGroupId);
+    
+    // Si después de limpiar espacios está vacío, usar el trimmed original
+    if (cleanGroupId.length > 0) {
+      return { groupId: cleanGroupId };
+    }
+    
+    // Fallback: usar el trimmed original
     return { groupId: trimmed };
   };
 
   const handleQrDetected = async (rawValue: string) => {
+    console.log('🎯 Procesando QR detectado:', rawValue);
+    
     // Detener el scanner inmediatamente para evitar múltiples detecciones
     if (qrCodeScannerRef.current) {
       try {
@@ -341,13 +374,18 @@ export default function Pay() {
     setScanError('');
     const { groupId, amount: qrAmount } = parseQrPayload(rawValue);
 
-    if (!groupId) {
+    console.log('📋 Resultado del parseo:', { groupId, amount: qrAmount });
+
+    if (!groupId || groupId.length === 0) {
+      console.error('❌ No se encontró groupId en el QR');
       setScanError(
-        'No pudimos encontrar un group-id válido en el código QR. Verifica que sea un QR emitido por HayekCoin.'
+        `No pudimos encontrar un group-id válido en el código QR. Valor escaneado: "${rawValue.substring(0, 50)}". Verifica que sea un QR emitido por HayekCoin.`
       );
       setIsScanning(false);
       return;
     }
+
+    console.log('✅ GroupId encontrado:', groupId);
 
     try {
       setIsSearching(true);
