@@ -22,6 +22,10 @@ const handleEventImageUpload = (req, res, next) => {
   });
 };
 
+// Configuración de email (debe ir PRIMERO para evitar conflictos con otras rutas)
+router.get('/settings/email', SettingsController.getEmailSettings);
+router.put('/settings/email', SettingsController.saveEmailSettings);
+
 // Usuarios
 router.get('/users', AdminUserController.list);
 router.get('/users/roles', AdminUserController.roles);
@@ -68,10 +72,6 @@ router.post('/central-wallet/withdrawals/:withdrawalId/approve', CentralWalletCo
 router.post('/central-wallet/withdrawals/:withdrawalId/reject', CentralWalletController.rejectWithdrawal);
 router.post('/central-wallet/settlements/:settlementId/approve', CentralWalletController.approveSettlement);
 router.post('/central-wallet/settlements/:settlementId/reject', CentralWalletController.rejectSettlement);
-
-// Configuración de email (debe ir antes de otras rutas dinámicas para evitar conflictos)
-router.get('/settings/email', SettingsController.getEmailSettings);
-router.put('/settings/email', SettingsController.saveEmailSettings);
 
 export default router;
 
