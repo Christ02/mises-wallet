@@ -6,6 +6,7 @@ import { AdminTransactionController } from '../controllers/adminTransactionContr
 import { AdminAuditController } from '../controllers/adminAuditController.js';
 import { AdminReportController } from '../controllers/adminReportController.js';
 import { CentralWalletController } from '../controllers/centralWalletController.js';
+import { SettingsController } from '../controllers/settingsController.js';
 import { eventImageUpload } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
@@ -67,6 +68,10 @@ router.post('/central-wallet/withdrawals/:withdrawalId/approve', CentralWalletCo
 router.post('/central-wallet/withdrawals/:withdrawalId/reject', CentralWalletController.rejectWithdrawal);
 router.post('/central-wallet/settlements/:settlementId/approve', CentralWalletController.approveSettlement);
 router.post('/central-wallet/settlements/:settlementId/reject', CentralWalletController.rejectSettlement);
+
+// Configuración de email
+router.get('/settings/email', SettingsController.getEmailSettings);
+router.put('/settings/email', SettingsController.saveEmailSettings);
 
 export default router;
 

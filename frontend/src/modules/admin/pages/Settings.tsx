@@ -137,12 +137,34 @@ export default function Settings() {
 
   const handleSaveEmail = async () => {
     setEmailSaving(true);
+    setEmailSuccess('');
     try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/settings/email', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(emailSettings)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al guardar configuración');
+      }
+
+      // También guardar en localStorage como backup
       localStorage.setItem(EMAIL_STORAGE_KEY, JSON.stringify(emailSettings));
-      setEmailSuccess('Configuración de correo actualizada correctamente.');
+      
+      setEmailSuccess(data.message || 'Configuración de correo actualizada correctamente.');
+      if (data.warning) {
+        console.warn(data.warning);
+      }
     } catch (error) {
       console.error('Error guardando configuración de correo:', error);
-      setEmailSuccess('Ocurrió un problema al guardar la configuración.');
+      setEmailSuccess(error.message || 'Ocurrió un problema al guardar la configuración.');
     } finally {
       setEmailSaving(false);
     }
