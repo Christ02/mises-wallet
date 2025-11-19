@@ -163,11 +163,30 @@ export default function Settings() {
 
       console.log('📥 Response status:', response.status);
 
-      const data = await response.json();
-      console.log('📥 Response data:', data);
+      // Verificar si la respuesta tiene contenido antes de parsear JSON
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        const text = await response.text();
+        if (text) {
+          try {
+            data = JSON.parse(text);
+            console.log('📥 Response data:', data);
+          } catch (parseError) {
+            console.error('Error parseando JSON:', parseError);
+            throw new Error(`Error del servidor (${response.status}): ${text || 'Sin contenido'}`);
+          }
+        } else {
+          data = {};
+        }
+      } else {
+        const text = await response.text();
+        throw new Error(`Error del servidor (${response.status}): ${text || 'El endpoint no está disponible. Verifica que el código esté desplegado en producción.'}`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al guardar configuración');
+        throw new Error(data.error || `Error al guardar configuración (${response.status})`);
       }
 
       // También guardar en localStorage como backup
