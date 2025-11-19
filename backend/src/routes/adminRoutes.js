@@ -69,7 +69,7 @@ router.post('/central-wallet/withdrawals/:withdrawalId/reject', CentralWalletCon
 router.post('/central-wallet/settlements/:settlementId/approve', CentralWalletController.approveSettlement);
 router.post('/central-wallet/settlements/:settlementId/reject', CentralWalletController.rejectSettlement);
 
-// Configuración de email
+// Configuración de email (debe ir antes de otras rutas dinámicas para evitar conflictos)
 router.get('/settings/email', SettingsController.getEmailSettings);
 router.put('/settings/email', SettingsController.saveEmailSettings);
 
