@@ -971,7 +971,7 @@ export default function EventManagement() {
         </div>,
         document.body
       )}
-      </div>
+        </div>
     </>
   );
 }

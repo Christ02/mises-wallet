@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  HiUsers,
-  HiRefresh,
-  HiCalendar,
+import { 
+  HiUsers, 
+  HiRefresh, 
+  HiCalendar, 
   HiCurrencyDollar,
   HiArrowRight,
   HiUserCircle,
@@ -330,7 +330,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-4 w-full" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
-      {/* Header */}
+        {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -374,13 +374,13 @@ export default function AdminDashboard() {
           <p className="text-xs text-gray-500 mt-1">
             {completedTx} completadas
           </p>
-        </div>
+                </div>
 
         <div className="bg-dark-card border border-dark-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-gray-400 uppercase tracking-wider">Eventos</p>
             <HiCalendar className="w-5 h-5 text-positive" />
-          </div>
+              </div>
           <p className="text-2xl font-bold text-white">{upcomingEvents.length}</p>
           <p className="text-xs text-gray-500 mt-1">Próximos publicados</p>
         </div>
@@ -389,13 +389,13 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-gray-400 uppercase tracking-wider">Wallet Central</p>
             <HiCurrencyDollar className="w-5 h-5 text-primary-red" />
-          </div>
+                  </div>
           <p className="text-xl font-bold text-white truncate">
             {formatAmount(tokenBalance, tokenSymbol)}
           </p>
           <p className="text-xs text-gray-500 mt-1">Balance disponible</p>
-        </div>
-      </div>
+                </div>
+              </div>
 
       {/* Últimas transacciones y Próximos eventos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -417,7 +417,7 @@ export default function AdminDashboard() {
           {recentTransactions.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-500">No hay transacciones</div>
           ) : (
-            <div className="overflow-x-auto">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-dark-bg/40">
                   <tr>
@@ -498,12 +498,12 @@ export default function AdminDashboard() {
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Fecha</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Ubicación</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-dark-border">
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-dark-border">
                   {next5Events.map((event) => (
-                    <tr
-                      key={event.id}
+                      <tr
+                        key={event.id}
                       className="hover:bg-dark-bg/30 transition-colors cursor-pointer"
                       onClick={() => navigate('/admin/events')}
                     >
@@ -519,7 +519,7 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-4 py-2.5 text-sm text-gray-100">
                         {event.location}
-                      </td>
+                        </td>
                       <td className="px-4 py-2.5">
                         <button
                           onClick={(e) => {
@@ -530,7 +530,7 @@ export default function AdminDashboard() {
                         >
                           Gestionar
                           <HiArrowRight className="w-3 h-3" />
-                        </button>
+                            </button>
                       </td>
                     </tr>
                   ))}
@@ -618,8 +618,8 @@ export default function AdminDashboard() {
             >
               Ver todas
               <HiArrowRight className="w-3 h-3" />
-            </button>
-          </div>
+                            </button>
+                          </div>
           {recentSettlements.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-500">No hay solicitudes de liquidación</div>
           ) : (
@@ -661,12 +661,12 @@ export default function AdminDashboard() {
                         >
                           {settlement.status.toUpperCase()}
                         </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
           )}
         </div>
 
@@ -742,8 +742,8 @@ export default function AdminDashboard() {
               </table>
             </div>
           )}
+          </div>
         </div>
       </div>
-    </div>
   );
 }

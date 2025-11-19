@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
+import { 
   HiChevronDown,
   HiFilter,
   HiSearch,
@@ -281,8 +281,8 @@ export default function TransactionManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+      <div className="space-y-6">
+        {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
         <div className="flex items-start gap-4">
           <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-red to-primary-red/80 border border-primary-red/40 text-white flex items-center justify-center shadow-lg flex-shrink-0">
@@ -295,7 +295,7 @@ export default function TransactionManagement() {
             </p>
           </div>
         </div>
-      </div>
+        </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -329,13 +329,13 @@ export default function TransactionManagement() {
           <p className="text-xs text-gray-500">Transacciones revertidas o con error</p>
         </div>
       </div>
-      {/* Filters */}
-      <div className="bg-dark-card rounded-xl border border-dark-border p-6">
+        {/* Filters */}
+        <div className="bg-dark-card rounded-xl border border-dark-border p-6">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
-            <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
+                <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
               placeholder="Buscar por ID, hash, usuario o carnet..."
               value={searchInput}
               onChange={(e) => {
@@ -343,8 +343,8 @@ export default function TransactionManagement() {
                 setCurrentPage(1);
               }}
               className="w-full pl-10 pr-4 py-3.5 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all"
-            />
-          </div>
+                />
+              </div>
           <button
             onClick={() => setShowFilters((prev) => !prev)}
             className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
@@ -368,13 +368,13 @@ export default function TransactionManagement() {
           >
             <HiX className="w-5 h-5" />
           </button>
-        </div>
+            </div>
 
         {showFilters && (
           <div className="mt-4 border-t border-dark-border pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
             <div>
               <label className="block text-gray-400 mb-2">Estado</label>
-              <div className="relative">
+            <div className="relative">
                 <select
                   value={statusFilter}
                   onChange={(e) => {
@@ -394,9 +394,9 @@ export default function TransactionManagement() {
             </div>
             <div>
               <label className="block text-gray-400 mb-2">Tipo</label>
-              <div className="relative">
-                <select
-                  value={typeFilter}
+            <div className="relative">
+              <select
+                value={typeFilter}
                   onChange={(e) => {
                     setTypeFilter(e.target.value);
                     setCurrentPage(1);
@@ -410,14 +410,14 @@ export default function TransactionManagement() {
                       {type.charAt(0).toUpperCase() + type.slice(1)}
                     </option>
                   ))}
-                </select>
+              </select>
                 <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
             </div>
             <div>
               <label className="block text-gray-400 mb-2">Dirección</label>
-              <div className="relative">
-                <select
+            <div className="relative">
+              <select
                   value={directionFilter}
                   onChange={(e) => {
                     setDirectionFilter(e.target.value);
@@ -428,7 +428,7 @@ export default function TransactionManagement() {
                   <option value="Todos">Todas</option>
                   <option value="saliente">Salidas</option>
                   <option value="entrante">Entradas</option>
-                </select>
+              </select>
                 <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
             </div>
@@ -458,7 +458,7 @@ export default function TransactionManagement() {
             </div>
           </div>
         )}
-      </div>
+          </div>
 
       {/* Table */}
       <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden">
@@ -475,40 +475,40 @@ export default function TransactionManagement() {
             <p className="text-sm">
               Ajusta los filtros o verifica que se hayan generado operaciones en el sistema.
             </p>
-          </div>
+        </div>
         ) : (
           <div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="w-full">
                 <thead className="bg-dark-bg/60">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       ID
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Usuario
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Monto
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Usuario
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Monto
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Tipo / Dirección
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Estado
-                    </th>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Estado
+                  </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Fecha
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                       Referencia
                     </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-dark-border">
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dark-border">
                   {paginatedTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-dark-bg/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <span className="font-mono text-sm text-accent-blue">{tx.id}</span>
                       </td>
                       <td className="px-6 py-4">
@@ -523,21 +523,21 @@ export default function TransactionManagement() {
                         ) : (
                           <span className="text-sm text-gray-300">Banco Central</span>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-white font-semibold">
                           {formatAmount(tx.amount, tx.currency)}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           <span className="text-gray-300 text-sm capitalize">{tx.type}</span>
                           <span className="text-xs text-gray-500">
                             {DIRECTION_LABELS[tx.direction] ?? tx.direction}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${
                             STATUS_COLORS[(tx.status as StatusChip) || 'pendiente'] ||
@@ -546,15 +546,15 @@ export default function TransactionManagement() {
                         >
                           {STATUS_LABELS[tx.status] ?? tx.status}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-300">{formatDateTime(tx.created_at)}</div>
                         {tx.completed_at && (
                           <div className="text-xs text-gray-500">
                             Liquidada: {formatDateTime(tx.completed_at)}
                           </div>
                         )}
-                      </td>
+                    </td>
                       <td className="px-6 py-4 max-w-xs">
                         <div className="flex flex-col gap-1.5 text-xs">
                           {tx.reference ? (
@@ -586,18 +586,18 @@ export default function TransactionManagement() {
                             return toAddress && !tx.metadata?.error && typeof toAddress === 'string' ? (
                               <span className="font-mono truncate text-gray-500" title={`Destino: ${toAddress}`}>
                                 Destino: {toAddress}
-                              </span>
+                      </span>
                             ) : null;
                           })()}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            <div className="px-6 py-4 border-t border-dark-border">
+          <div className="px-6 py-4 border-t border-dark-border">
               <span className="text-sm text-gray-400">
                 Mostrando {paginatedTransactions.length} de {transactions.length} transacciones
               </span>

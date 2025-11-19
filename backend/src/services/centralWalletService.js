@@ -111,13 +111,19 @@ export class CentralWalletService {
   }
 
   static async getStatus() {
-    await this.ensureSettingsLoaded();
-    const provider = this.getProvider();
-    const network = await provider.getNetwork();
-    const centralAddress = this.getCentralWalletAddress();
-    const tokenAddress = this.getTokenAddress();
-    const tokenBalance = await this.getTokenBalance(centralAddress);
-    const contract = this.getTokenContract(provider);
+    try {
+      await this.ensureSettingsLoaded();
+      const provider = this.getProvider();
+      const network = await provider.getNetwork();
+      const centralAddress = this.getCentralWalletAddress();
+      const tokenAddress = this.getTokenAddress();
+      
+      console.log('🔍 Obteniendo balance de wallet central...');
+      console.log('   Dirección:', centralAddress);
+      console.log('   Token Address:', tokenAddress);
+      
+      const tokenBalance = await this.getTokenBalance(centralAddress);
+      const contract = this.getTokenContract(provider);
 
     let totalSupply = null;
     let decimals = this.getTokenDecimals();
@@ -138,32 +144,77 @@ export class CentralWalletService {
       console.warn('No se pudo obtener totalSupply/decimals/symbol del contrato:', err);
     }
 
-    return {
-      network: network.name,
-      chainId: network.chainId.toString(),
-      rpcUrl:
-        (provider.connection && provider.connection.url) ||
-        (typeof provider._getConnection === 'function'
-          ? provider._getConnection().url
-          : undefined),
-      address: centralAddress,
-      token: {
-        contract: tokenAddress,
-        symbol,
-        decimals,
-        balance: tokenBalance,
-        totalSupply
+      return {
+        network: network.name,
+        chainId: network.chainId.toString(),
+        rpcUrl:
+          (provider.connection && provider.connection.url) ||
+          (typeof provider._getConnection === 'function'
+            ? provider._getConnection().url
+            : undefined),
+        address: centralAddress,
+        token: {
+          contract: tokenAddress,
+          symbol,
+          decimals,
+          balance: tokenBalance || '0',
+          totalSupply
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error en getStatus:', error.message);
+      console.error('   Stack:', error.stack);
+      
+      // Retornar un status básico incluso si hay error
+      let centralAddress, tokenAddress;
+      try {
+        centralAddress = this.getSetting('walletAddress') || getEnv('CENTRAL_WALLET_ADDRESS') || 'No configurada';
+        tokenAddress = this.getSetting('tokenAddress') || getEnv('CENTRAL_WALLET_TOKEN_ADDRESS') || 'No configurada';
+      } catch (e) {
+        centralAddress = 'No configurada';
+        tokenAddress = 'No configurada';
       }
-    };
+      
+      return {
+        network: 'unknown',
+        chainId: '0',
+        rpcUrl: process.env.SEPOLIA_RPC_URL || 'No configurada',
+        address: centralAddress,
+        token: {
+          contract: tokenAddress,
+          symbol: this.getTokenSymbol(),
+          decimals: this.getTokenDecimals(),
+          balance: '0',
+          totalSupply: null
+        },
+        error: error.message
+      };
+    }
   }
 
   static async getTokenBalance(address) {
-    await this.ensureSettingsLoaded();
-    const provider = this.getProvider();
-    const contract = this.getTokenContract(provider);
-    const decimals = this.getTokenDecimals();
-    const balance = await contract.balanceOf(address);
-    return ethers.formatUnits(balance, decimals);
+    try {
+      await this.ensureSettingsLoaded();
+      const provider = this.getProvider();
+      const contract = this.getTokenContract(provider);
+      const decimals = this.getTokenDecimals();
+      
+      if (!address) {
+        console.warn('⚠️  No se proporcionó dirección para obtener balance');
+        return '0';
+      }
+      
+      const balance = await contract.balanceOf(address);
+      const formatted = ethers.formatUnits(balance, decimals);
+      console.log(`✅ Balance obtenido para ${address}: ${formatted}`);
+      return formatted;
+    } catch (error) {
+      console.error('❌ Error obteniendo balance de token:', error.message);
+      console.error('   Dirección:', address);
+      console.error('   Token Address:', this.getTokenAddress());
+      // Retornar '0' en caso de error para que la UI no se rompa
+      return '0';
+    }
   }
 
   static async transferTokens(toAddress, amountTokens) {
