@@ -126,7 +126,8 @@ export default function Pay() {
 
         // Detectar si es móvil para ajustar el tamaño del área de escaneo
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const qrboxSize = isMobile ? 200 : 250;
+        // Reducir el tamaño del área de escaneo para que sea más compacto
+        const qrboxSize = isMobile ? 180 : 220;
 
         // Configuración optimizada para móviles
         const config = {
@@ -749,46 +750,46 @@ export default function Pay() {
               className="fixed inset-0 bg-black/70 z-50 backdrop-blur-sm"
               onClick={stopScan}
             />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div
-                className="bg-dark-card border border-dark-border rounded-xl sm:rounded-2xl max-w-sm sm:max-w-md w-full p-4 sm:p-5 lg:p-6 shadow-2xl space-y-3 sm:space-y-4"
+                className="bg-dark-card border border-dark-border rounded-xl max-w-[320px] sm:max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3 max-h-[85vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base sm:text-lg font-bold text-white">Escanear código QR</h3>
+                  <h3 className="text-base font-bold text-white">Escanear código QR</h3>
                   <button
                     onClick={stopScan}
-                    className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
+                    className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-bg rounded-lg transition-all"
                   >
-                    <HiX className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <HiX className="w-4 h-4" />
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 leading-relaxed">
                   Apunta la cámara al código QR del comercio para cargar automáticamente el comercio y,
                   si está incluido, el monto a pagar.
                 </p>
-                <div className="relative w-full rounded-lg sm:rounded-xl overflow-hidden border border-dark-border bg-black min-h-[250px] sm:min-h-[300px]">
+                <div className="relative w-full rounded-lg overflow-hidden border border-dark-border bg-black" style={{ aspectRatio: '1' }}>
                   <div
                     id="qr-reader"
                     ref={scannerContainerRef}
                     className="w-full h-full"
                   />
-                  <div className="absolute inset-4 sm:inset-6 border-2 border-primary-red/70 rounded-lg sm:rounded-xl pointer-events-none z-10" />
+                  <div className="absolute inset-8 border-2 border-primary-red/70 rounded-lg pointer-events-none z-10" />
                 </div>
                 {scanError && (
-                  <div className="bg-negative/10 border border-negative/40 text-negative px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-xs flex items-center space-x-2">
+                  <div className="bg-negative/10 border border-negative/40 text-negative px-3 py-2 rounded-lg text-xs flex items-center space-x-2">
                     <HiExclamationCircle className="w-4 h-4 flex-shrink-0" />
                     <span className="break-words">{scanError}</span>
                   </div>
                 )}
-                <div className="flex flex-col gap-2 sm:gap-3 pt-1 sm:pt-2">
+                <div className="flex flex-col gap-2 pt-1">
                   <button
                     onClick={stopScan}
-                    className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-xs sm:text-sm text-gray-300 hover:bg-dark-bg/80 transition-colors font-medium"
+                    className="w-full px-4 py-2.5 bg-dark-bg border border-dark-border rounded-lg text-xs text-gray-300 hover:bg-dark-bg/80 transition-colors font-medium"
                   >
                     Cancelar
                   </button>
-                  <p className="text-[10px] sm:text-xs text-gray-500 text-center leading-relaxed">
+                  <p className="text-[10px] text-gray-500 text-center leading-relaxed">
                     Si tu navegador no soporta la cámara o escaneo de QR, puedes ingresar los datos
                     manualmente en la sección de pago.
                   </p>
