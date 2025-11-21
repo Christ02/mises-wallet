@@ -83,14 +83,36 @@ export class UserEventService {
       for (const membership of memberships) {
         const event = eventMap.get(membership.event_id);
         if (!event) continue;
+
+        // Si el evento ya está finalizado, igual puede aparecer en "Mis eventos"
+        // pero si además ya está liquidado, no deberíamos mostrarlo.
         const business = businessMap.get(membership.business_id) || {};
+
+        try {
+          const settlement = await SettlementService.getSettlementStatus(membership.business_id);
+          const isSettled = settlement && (settlement.status || '').toLowerCase() === 'pagado';
+          if (isSettled) {
+            // Evento/negocio ya liquidado: no lo incluimos en la lista de organizador
+            continue;
+          }
+        } catch (error) {
+          // Si hay error consultando la liquidación, solo lo logueamos y continuamos.
+          console.error('Error obteniendo estado de liquidación para negocio:', {
+            businessId: membership.business_id,
+            error
+          });
+        }
+
         if (!organizerEventsMap.has(event.id)) {
           organizerEventsMap.set(event.id, mapOrganizerEvent(event, { ...business, ...membership }));
         }
       }
     }
 
-    const upcoming = events.map(mapEventForUser);
+    // Filtrar eventos finalizados de la lista de "upcoming" para usuarios
+    const upcoming = events
+      .filter((event) => (event.status || '').toLowerCase() !== 'finalizado')
+      .map(mapEventForUser);
     const organizer = Array.from(organizerEventsMap.values());
 
     return {
