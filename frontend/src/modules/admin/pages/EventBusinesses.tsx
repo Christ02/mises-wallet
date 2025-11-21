@@ -102,9 +102,6 @@ export default function EventBusinesses() {
   const [businessToDelete, setBusinessToDelete] = useState<AdminBusiness | null>(null);
   const [deletingBusinessId, setDeletingBusinessId] = useState<number | null>(null);
 
-  // Prevenir scroll del body cuando hay modales abiertos
-  useModal(isBusinessModalOpen || !!memberToRemove || !!businessToDelete);
-
   // Permisos
   const { hasPermission } = usePermissions();
   const canDeleteBusiness = hasPermission('events.deleteBusiness');
@@ -125,6 +122,9 @@ export default function EventBusinesses() {
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<{ business: AdminBusiness; member: AdminBusinessMember } | null>(null);
   const [removingMember, setRemovingMember] = useState(false);
+
+  // Prevenir scroll del body cuando hay modales abiertos
+  useModal(isBusinessModalOpen || !!memberToRemove || !!businessToDelete);
 
   const numericEventId = useMemo(() => Number(eventId), [eventId]);
 
