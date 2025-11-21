@@ -121,9 +121,11 @@ export default function Dashboard() {
   const fetchEventsData = async () => {
     try {
       const { upcoming } = await fetchUserEvents();
-      const visible = (upcoming || []).filter(
-        (event) => (event.status || '').toLowerCase() !== 'borrador'
-      );
+      const visible = (upcoming || []).filter((event) => {
+        const status = (event.status || '').toLowerCase();
+        // Ocultar borradores y eventos finalizados en el dashboard
+        return status !== 'borrador' && status !== 'finalizado';
+      });
       setUpcomingEvents(visible.slice(0, 3));
     } catch (err) {
       console.error('Error fetching events:', err);

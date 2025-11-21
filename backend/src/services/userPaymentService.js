@@ -8,7 +8,12 @@ export class UserPaymentService {
   static async searchMerchants(query, limit) {
     const rawMerchants = await EventBusinessRepository.searchWithWallets(query, limit);
     return rawMerchants
-      .filter((merchant) => merchant.wallet_address)
+      .filter((merchant) => {
+        // Debe tener wallet y el evento asociado NO debe estar finalizado
+        if (!merchant.wallet_address) return false;
+        const status = (merchant.event_status || '').toLowerCase();
+        return status !== 'finalizado';
+      })
       .map((merchant) => ({
         id: merchant.id,
         name: merchant.name,

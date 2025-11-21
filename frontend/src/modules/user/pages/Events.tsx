@@ -56,9 +56,11 @@ export default function Events() {
 
   const visibleUpcomingEvents = useMemo(
     () =>
-      upcomingEvents.filter(
-        (event) => (event.status || '').toLowerCase() !== 'borrador'
-      ),
+      upcomingEvents.filter((event) => {
+        const status = (event.status || '').toLowerCase();
+        // Ocultar borradores y eventos finalizados para usuarios
+        return status !== 'borrador' && status !== 'finalizado';
+      }),
     [upcomingEvents]
   );
 
