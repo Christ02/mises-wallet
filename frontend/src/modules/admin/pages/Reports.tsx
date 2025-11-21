@@ -127,6 +127,28 @@ const getColumnsForEntity = (entity: string) => {
   }
 };
 
+// Capacidades de filtros por tipo de entidad
+const getFilterCapabilities = (entity: string) => {
+  switch (entity) {
+    case 'users':
+      return { dateRange: true, status: true, role: true, direction: false };
+    case 'transactions':
+      return { dateRange: true, status: true, role: false, direction: true };
+    case 'events':
+      return { dateRange: true, status: true, role: false, direction: false };
+    case 'businesses':
+      return { dateRange: true, status: false, role: false, direction: false };
+    case 'logs':
+      return { dateRange: true, status: false, role: false, direction: false };
+    case 'settlements':
+      return { dateRange: true, status: true, role: false, direction: false };
+    case 'withdrawals':
+      return { dateRange: true, status: true, role: false, direction: false };
+    default:
+      return { dateRange: false, status: false, role: false, direction: false };
+  }
+};
+
 export default function Reports() {
   // Permisos
   const { hasPermission } = usePermissions();
@@ -166,6 +188,10 @@ export default function Reports() {
   >([]);
 
   const availableColumns = useMemo(() => getColumnsForEntity(selectedEntity.value), [selectedEntity]);
+  const filterCapabilities = useMemo(
+    () => getFilterCapabilities(selectedEntity.value),
+    [selectedEntity.value]
+  );
 
   // Estado para modal de confirmación (eliminar reporte)
   const [reportToDelete, setReportToDelete] = useState<{ id: number; name: string } | null>(null);
@@ -479,8 +505,30 @@ export default function Reports() {
     try {
       switch (selectedEntity.value) {
         case 'users':
-          const usersResponse = await api.get('/api/admin/users', { params: filters });
-          return usersResponse.data.data || [];
+          // Obtener muchos usuarios y aplicar filtros manualmente
+          const usersResponse = await api.get('/api/admin/users', {
+            params: { limit: 10000 }
+          });
+          let users = usersResponse.data.data || [];
+
+          if (includeFilters.status && filterValues.status) {
+            users = users.filter((u: any) => (u.status || 'activo') === filterValues.status);
+          }
+          if (includeFilters.role && filterValues.role) {
+            users = users.filter((u: any) => u.role === filterValues.role);
+          }
+          if (includeFilters.dateRange && filterValues.dateFrom) {
+            const from = new Date(filterValues.dateFrom);
+            from.setHours(0, 0, 0, 0);
+            users = users.filter((u: any) => new Date(u.created_at) >= from);
+          }
+          if (includeFilters.dateRange && filterValues.dateTo) {
+            const to = new Date(filterValues.dateTo);
+            to.setHours(23, 59, 59, 999);
+            users = users.filter((u: any) => new Date(u.created_at) <= to);
+          }
+
+          return users;
         
         case 'transactions':
           filters.limit = 10000; // Obtener todas las transacciones
@@ -692,7 +740,23 @@ export default function Reports() {
                   onClick={() => {
                     setSelectedEntity(option);
                     const defaultCols = getColumnsForEntity(option.value);
-                    setSelectedColumns(defaultCols.slice(0, Math.min(3, defaultCols.length)).map((c) => c.value));
+                    setSelectedColumns(
+                      defaultCols.slice(0, Math.min(3, defaultCols.length)).map((c) => c.value)
+                    );
+                    // Reiniciar filtros al cambiar de entidad
+                    setIncludeFilters({
+                      dateRange: false,
+                      status: false,
+                      role: false,
+                      direction: false
+                    });
+                    setFilterValues({
+                      dateFrom: '',
+                      dateTo: '',
+                      status: '',
+                      role: '',
+                      direction: ''
+                    });
                   }}
                   className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
                     selectedEntity.value === option.value
@@ -748,52 +812,63 @@ export default function Reports() {
               </p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <button
-                onClick={() => handleToggleFilter('dateRange')}
-                className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
-                  includeFilters.dateRange
-                    ? 'border-primary-red bg-primary-red/10 text-white'
-                    : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
-                }`}
-              >
-                Rango de fechas
-              </button>
-              <button
-                onClick={() => handleToggleFilter('status')}
-                className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
-                  includeFilters.status
-                    ? 'border-primary-red bg-primary-red/10 text-white'
-                    : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
-                }`}
-              >
-                Estado
-              </button>
-              <button
-                onClick={() => handleToggleFilter('role')}
-                className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
-                  includeFilters.role
-                    ? 'border-primary-red bg-primary-red/10 text-white'
-                    : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
-                }`}
-              >
-                Rol / Perfil
-              </button>
-              <button
-                onClick={() => handleToggleFilter('direction')}
-                className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
-                  includeFilters.direction
-                    ? 'border-primary-red bg-primary-red/10 text-white'
-                    : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
-                }`}
-              >
-                Dirección
-              </button>
+              {filterCapabilities.dateRange && (
+                <button
+                  onClick={() => handleToggleFilter('dateRange')}
+                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                    includeFilters.dateRange
+                      ? 'border-primary-red bg-primary-red/10 text-white'
+                      : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
+                  }`}
+                >
+                  Rango de fechas
+                </button>
+              )}
+              {filterCapabilities.status && (
+                <button
+                  onClick={() => handleToggleFilter('status')}
+                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                    includeFilters.status
+                      ? 'border-primary-red bg-primary-red/10 text-white'
+                      : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
+                  }`}
+                >
+                  Estado
+                </button>
+              )}
+              {filterCapabilities.role && (
+                <button
+                  onClick={() => handleToggleFilter('role')}
+                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                    includeFilters.role
+                      ? 'border-primary-red bg-primary-red/10 text-white'
+                      : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
+                  }`}
+                >
+                  Rol / Perfil
+                </button>
+              )}
+              {filterCapabilities.direction && (
+                <button
+                  onClick={() => handleToggleFilter('direction')}
+                  className={`px-3 py-2.5 rounded-lg border transition-all text-sm ${
+                    includeFilters.direction
+                      ? 'border-primary-red bg-primary-red/10 text-white'
+                      : 'border-dark-border text-gray-300 hover:text-white hover:bg-dark-bg'
+                  }`}
+                >
+                  Dirección
+                </button>
+              )}
             </div>
 
             {/* Inputs condicionales para filtros */}
-            {(includeFilters.dateRange || includeFilters.status || includeFilters.role || includeFilters.direction) && (
+            {(filterCapabilities.dateRange && includeFilters.dateRange) ||
+            (filterCapabilities.status && includeFilters.status) ||
+            (filterCapabilities.role && includeFilters.role) ||
+            (filterCapabilities.direction && includeFilters.direction) ? (
               <div className="bg-dark-bg/50 border border-dark-border rounded-lg p-4 space-y-4 mb-6">
-                {includeFilters.dateRange && (
+                {filterCapabilities.dateRange && includeFilters.dateRange && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-gray-400 mb-2">Desde</label>
@@ -816,7 +891,7 @@ export default function Reports() {
                   </div>
                 )}
 
-                {includeFilters.status && (
+                {filterCapabilities.status && includeFilters.status && (
                   <div>
                     <label className="block text-xs text-gray-400 mb-2">Estado</label>
                     <div className="relative">
@@ -838,7 +913,7 @@ export default function Reports() {
                   </div>
                 )}
 
-                {includeFilters.role && (
+                {filterCapabilities.role && includeFilters.role && (
                   <div>
                     <label className="block text-xs text-gray-400 mb-2">Rol / Perfil</label>
                     <div className="relative">
@@ -857,7 +932,7 @@ export default function Reports() {
                   </div>
                 )}
 
-                {includeFilters.direction && (
+                {filterCapabilities.direction && includeFilters.direction && (
                   <div>
                     <label className="block text-xs text-gray-400 mb-2">Dirección</label>
                     <div className="relative">
@@ -875,7 +950,7 @@ export default function Reports() {
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
 
             <div className="rounded-lg border border-dashed border-dark-border bg-dark-bg/50 p-4 text-xs text-gray-500">
               <p className="text-gray-400 font-semibold mb-2">Nota:</p>
