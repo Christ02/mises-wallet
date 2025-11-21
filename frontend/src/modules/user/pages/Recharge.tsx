@@ -303,7 +303,7 @@ export default function Recharge() {
                     }}
                     className="px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-gray-300 hover:border-primary-red/50 hover:text-white transition-colors"
                   >
-                    ${quickAmount}
+                    Q{quickAmount}
                   </button>
                 ))}
               </div>

@@ -4,6 +4,7 @@ import { HiArrowLeft, HiCreditCard, HiCheckCircle, HiXCircle } from 'react-icons
 import api from '../../../services/api';
 import Pagination from '../components/Pagination';
 import { usePermissions } from '../../../hooks/usePermissions';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 type Settlement = {
   id: number;
@@ -30,6 +31,8 @@ export default function SettlementRequests() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [settlementToApprove, setSettlementToApprove] = useState<Settlement | null>(null);
+  const [settlementToReject, setSettlementToReject] = useState<Settlement | null>(null);
 
   const { hasPermission } = usePermissions();
   // Permiso para aprobar/rechazar (solo super_admin)
@@ -95,17 +98,18 @@ export default function SettlementRequests() {
 
   const totalPages = Math.max(Math.ceil(settlements.length / ITEMS_PER_PAGE), 1);
 
-  const handleApprove = async (settlement: Settlement) => {
+  const handleApprove = (settlement: Settlement) => {
     if (!canApprove) return;
-    const confirmed = window.confirm(
-      `¿Seguro que deseas APROBAR la liquidación del equipo "${settlement.business_name}" por ${settlement.requested_amount} ${settlement.token_symbol}?`
-    );
-    if (!confirmed) return;
+    setSettlementToApprove(settlement);
+  };
 
-    setProcessingId(settlement.id);
+  const confirmApprove = async () => {
+    if (!settlementToApprove) return;
+    setProcessingId(settlementToApprove.id);
     try {
-      await api.post(`/api/admin/central-wallet/settlements/${settlement.id}/approve`);
+      await api.post(`/api/admin/central-wallet/settlements/${settlementToApprove.id}/approve`);
       await fetchSettlements();
+      setSettlementToApprove(null);
     } catch (err: any) {
       console.error('Error approving settlement', err);
       alert(err.response?.data?.error || 'No se pudo aprobar la solicitud de liquidación');
@@ -114,21 +118,20 @@ export default function SettlementRequests() {
     }
   };
 
-  const handleReject = async (settlement: Settlement) => {
+  const handleReject = (settlement: Settlement) => {
     if (!canApprove) return;
-    const notes = window.prompt(
-      `Motivo del rechazo para la liquidación del equipo "${settlement.business_name}" (opcional):`
-    ) || undefined;
+    setSettlementToReject(settlement);
+  };
 
-    const confirmed = window.confirm('¿Seguro que deseas RECHAZAR esta solicitud de liquidación?');
-    if (!confirmed) return;
-
-    setProcessingId(settlement.id);
+  const confirmReject = async () => {
+    if (!settlementToReject) return;
+    setProcessingId(settlementToReject.id);
     try {
-      await api.post(`/api/admin/central-wallet/settlements/${settlement.id}/reject`, {
-        notes: notes || null
+      await api.post(`/api/admin/central-wallet/settlements/${settlementToReject.id}/reject`, {
+        notes: null
       });
       await fetchSettlements();
+      setSettlementToReject(null);
     } catch (err: any) {
       console.error('Error rejecting settlement', err);
       alert(err.response?.data?.error || 'No se pudo rechazar la solicitud de liquidación');
@@ -362,6 +365,47 @@ export default function SettlementRequests() {
           onPageChange={setCurrentPage}
           totalItems={settlements.length}
           itemsPerPage={ITEMS_PER_PAGE}
+        />
+      )}
+      {/* Modal confirmar aprobar */}
+      {canApprove && (
+        <ConfirmModal
+          open={!!settlementToApprove}
+          title="Aprobar solicitud de liquidación"
+          description={
+            settlementToApprove
+              ? `¿Seguro que deseas aprobar la liquidación del equipo "${settlementToApprove.business_name}" por ${settlementToApprove.requested_amount.toLocaleString('es-ES', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })} ${settlementToApprove.token_symbol}?`
+              : ''
+          }
+          confirmText="Aprobar"
+          cancelText="Cancelar"
+          onConfirm={confirmApprove}
+          onClose={() => !processingId && setSettlementToApprove(null)}
+          loading={processingId === settlementToApprove?.id}
+        />
+      )}
+
+      {/* Modal confirmar rechazar */}
+      {canApprove && (
+        <ConfirmModal
+          open={!!settlementToReject}
+          title="Rechazar solicitud de liquidación"
+          description={
+            settlementToReject
+              ? `¿Seguro que deseas rechazar la liquidación del equipo "${settlementToReject.business_name}" por ${settlementToReject.requested_amount.toLocaleString('es-ES', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })} ${settlementToReject.token_symbol}?`
+              : ''
+          }
+          confirmText="Rechazar"
+          cancelText="Cancelar"
+          onConfirm={confirmReject}
+          onClose={() => !processingId && setSettlementToReject(null)}
+          loading={processingId === settlementToReject?.id}
         />
       )}
     </div>
