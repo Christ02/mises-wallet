@@ -48,13 +48,29 @@ export class AuditService {
    */
   static getRequestInfo(req) {
     if (!req) return { ipAddress: null, userAgent: null };
-    
-    const ipAddress = req.ip || 
-                     req.connection?.remoteAddress || 
-                     req.socket?.remoteAddress ||
-                     (req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : null) ||
-                     null;
-    
+
+    // Priorizar IP real detrás de proxies (Vercel, Railway, etc.)
+    let ipAddress = null;
+
+    const xForwardedFor = req.headers['x-forwarded-for'];
+    if (typeof xForwardedFor === 'string' && xForwardedFor.length > 0) {
+      // Puede venir como "ip1, ip2, ip3" → tomamos la primera
+      ipAddress = xForwardedFor.split(',')[0].trim();
+    }
+
+    if (!ipAddress && req.headers['x-real-ip']) {
+      ipAddress = String(req.headers['x-real-ip']).trim();
+    }
+
+    // Fallbacks del servidor (pueden ser 127.0.0.1 en dev)
+    if (!ipAddress) {
+      ipAddress =
+        req.ip ||
+        req.connection?.remoteAddress ||
+        req.socket?.remoteAddress ||
+        null;
+    }
+
     return {
       ipAddress,
       userAgent: req.headers['user-agent'] || null

@@ -18,6 +18,7 @@ export class CurrencyService {
   }
 
   // Alias para mantener compatibilidad con código existente
+  // Por compatibilidad, este método conserva el nombre pero usa GTQ como base.
   static getUsdToTokenRate() {
     return this.getGtqToTokenRate();
   }
@@ -33,8 +34,8 @@ export class CurrencyService {
   }
 
   // Alias para mantener compatibilidad
-  static convertUsdToToken(amountUsd, customRate) {
-    return this.convertGtqToToken(amountUsd, customRate);
+  static convertUsdToToken(amountGtq, customRate) {
+    return this.convertGtqToToken(amountGtq, customRate);
   }
 
   // Convertir Tokens a Quetzales

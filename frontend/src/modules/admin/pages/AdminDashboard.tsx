@@ -329,8 +329,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-4 w-full" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
-        {/* Header */}
+    <div className="space-y-4 w-full">
+      {/* Header */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">

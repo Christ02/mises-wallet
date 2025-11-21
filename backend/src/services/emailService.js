@@ -1099,8 +1099,8 @@ class EmailService {
       </div>
       ${usdAmount ? `
       <div class="info-row">
-        <span class="info-label">Equivalente en USD:</span>
-        <span class="info-value">$${parseFloat(usdAmount).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span class="info-label">Equivalente en GTQ:</span>
+        <span class="info-value">Q${parseFloat(usdAmount).toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       </div>
       ` : ''}
       <div class="info-row">

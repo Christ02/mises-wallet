@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiCreditCard, HiCheckCircle, HiXCircle } from 'react-icons/hi';
+import {
+  HiArrowLeft,
+  HiCreditCard,
+  HiCheckCircle,
+  HiXCircle,
+  HiSearch,
+  HiFilter,
+  HiChevronDown
+} from 'react-icons/hi';
 import api from '../../../services/api';
 import { useModal } from '../../../hooks/useModal';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -35,6 +43,11 @@ export default function WithdrawalRequests() {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterFromDate, setFilterFromDate] = useState<string>('');
+  const [filterToDate, setFilterToDate] = useState<string>('');
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Prevenir scroll del body cuando hay modales abiertos
   useModal(rejectModalOpen || approveModalOpen);
@@ -73,25 +86,71 @@ export default function WithdrawalRequests() {
     });
   };
 
-  // Estadísticas
+  // Estadísticas (sobre el total)
   const stats = useMemo(() => {
     const total = withdrawals.length;
-    const pending = withdrawals.filter(w => w.status === 'pendiente').length;
-    const approved = withdrawals.filter(w => w.status === 'aprobado' || w.status === 'completado').length;
-    const rejected = withdrawals.filter(w => w.status === 'rechazado').length;
+    const pending = withdrawals.filter((w) => w.status === 'pendiente').length;
+    const approved = withdrawals.filter(
+      (w) => w.status === 'aprobado' || w.status === 'completado'
+    ).length;
+    const rejected = withdrawals.filter((w) => w.status === 'rechazado').length;
     const totalAmount = withdrawals.reduce((sum, w) => sum + w.amount, 0);
-    
+
     return { total, pending, approved, rejected, totalAmount };
   }, [withdrawals]);
+
+  // Filtros aplicados al listado
+  const filteredWithdrawals = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return withdrawals.filter((w) => {
+      const fullName = w.user
+        ? `${w.user.nombres || ''} ${w.user.apellidos || ''}`.toLowerCase()
+        : '';
+      const carnet = w.user?.carnet.toLowerCase() || '';
+
+      const matchesSearch =
+        !term ||
+        fullName.includes(term) ||
+        carnet.includes(term) ||
+        term === String(w.id);
+
+      const matchesStatus =
+        !filterStatus || (w.status || '').toLowerCase() === filterStatus.toLowerCase();
+
+      let matchesFromDate = true;
+      let matchesToDate = true;
+
+      if (filterFromDate) {
+        const valueDate = new Date(w.created_at);
+        const from = new Date(filterFromDate);
+        from.setHours(0, 0, 0, 0);
+        matchesFromDate = valueDate >= from;
+      }
+
+      if (filterToDate) {
+        const valueDate = new Date(w.created_at);
+        const to = new Date(filterToDate);
+        to.setHours(23, 59, 59, 999);
+        matchesToDate = valueDate <= to;
+      }
+
+      return matchesSearch && matchesStatus && matchesFromDate && matchesToDate;
+    });
+  }, [withdrawals, searchTerm, filterStatus, filterFromDate, filterToDate]);
+
+  // Reset de página al cambiar filtros o búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterFromDate, filterToDate]);
 
   // Paginación
   const paginatedWithdrawals = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    return withdrawals.slice(startIndex, endIndex);
-  }, [withdrawals, currentPage]);
+    return filteredWithdrawals.slice(startIndex, endIndex);
+  }, [filteredWithdrawals, currentPage]);
 
-  const totalPages = Math.max(Math.ceil(withdrawals.length / ITEMS_PER_PAGE), 1);
+  const totalPages = Math.max(Math.ceil(filteredWithdrawals.length / ITEMS_PER_PAGE), 1);
 
   const handleApprove = async (withdrawal: WithdrawalRequest) => {
     setSelectedWithdrawal(withdrawal);
@@ -218,6 +277,83 @@ export default function WithdrawalRequests() {
         </div>
       </div>
 
+      {/* Barra de búsqueda y filtros */}
+      <div className="bg-dark-card rounded-xl border border-dark-border p-4">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 min-w-0">
+            <HiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Buscar por usuario o carnet..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 focus:border-primary-red/50 transition-all text-sm"
+            />
+          </div>
+          <button
+            onClick={() => setFilterOpen((prev) => !prev)}
+            className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all"
+            title="Mostrar filtros avanzados"
+          >
+            <HiFilter className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setFilterStatus('');
+              setFilterFromDate('');
+              setFilterToDate('');
+              setCurrentPage(1);
+            }}
+            disabled={!searchTerm && !filterStatus && !filterFromDate && !filterToDate}
+            className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Limpiar filtros"
+          >
+            <HiXCircle className="w-5 h-5" />
+          </button>
+        </div>
+
+        {filterOpen && (
+          <div className="mt-4 border-t border-dark-border pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <label className="block text-gray-400 mb-2">Estado</label>
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                >
+                  <option value="">Todos</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="aprobado">Aprobado</option>
+                  <option value="completado">Completado</option>
+                  <option value="rechazado">Rechazado</option>
+                </select>
+                <HiChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-gray-400 mb-2">Desde</label>
+              <input
+                type="date"
+                value={filterFromDate}
+                onChange={(e) => setFilterFromDate(e.target.value)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-400 mb-2">Hasta</label>
+              <input
+                type="date"
+                value={filterToDate}
+                onChange={(e) => setFilterToDate(e.target.value)}
+                className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Tabla */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6">
         {loading ? (
@@ -227,16 +363,26 @@ export default function WithdrawalRequests() {
           </div>
         ) : error ? (
           <div className="py-6 text-center text-sm text-negative">{error}</div>
-        ) : withdrawals.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-bg border border-dark-border flex items-center justify-center">
-              <HiCreditCard className="w-8 h-8 text-gray-600" />
+        ) : filteredWithdrawals.length === 0 ? (
+          withdrawals.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-dark-bg border border-dark-border flex items-center justify-center">
+                <HiCreditCard className="w-8 h-8 text-gray-600" />
+              </div>
+              <p className="text-sm font-semibold text-gray-300 mb-1">No hay solicitudes de retiro</p>
+              <p className="text-xs text-gray-500">
+                Los usuarios podrán solicitar retiros desde su panel de usuario.
+              </p>
             </div>
-            <p className="text-sm font-semibold text-gray-300 mb-1">No hay solicitudes de retiro</p>
-            <p className="text-xs text-gray-500">
-              Los usuarios podrán solicitar retiros desde su panel de usuario.
-            </p>
-          </div>
+          ) : (
+            <div className="py-16 flex flex-col items-center justify-center text-gray-400 space-y-3">
+              <p className="text-base font-semibold">Sin solicitudes</p>
+              <p className="text-sm text-gray-500 text-center max-w-sm">
+                No encontramos resultados con los filtros actuales. Intenta con otro término o ajusta
+                los filtros de búsqueda.
+              </p>
+            </div>
+          )
         ) : (
           <>
             <div className="overflow-x-auto">

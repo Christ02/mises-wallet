@@ -66,6 +66,10 @@ export default function UserManagement() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [filterRole, setFilterRole] = useState<string>(''); // '' = todos
+  const [filterStatus, setFilterStatus] = useState<string>(''); // '' = todos
+  const [filterFromDate, setFilterFromDate] = useState<string>(''); // ISO date string
+  const [filterToDate, setFilterToDate] = useState<string>(''); // ISO date string
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [confirmDeleting, setConfirmDeleting] = useState(false);
   const [userToToggleStatus, setUserToToggleStatus] = useState<AdminUser | null>(null);
@@ -145,18 +149,41 @@ export default function UserManagement() {
     const term = searchTerm.toLowerCase();
     return users.filter((user) => {
       const fullName = `${user.nombres} ${user.apellidos}`.toLowerCase();
-      return (
+      const matchesSearch =
+        !term ||
         fullName.includes(term) ||
         user.email.toLowerCase().includes(term) ||
-        user.carnet_universitario.toLowerCase().includes(term)
-      );
-    });
-  }, [users, searchTerm]);
+        user.carnet_universitario.toLowerCase().includes(term);
 
-  // Reset page when search term changes
+      const matchesRole = !filterRole || (user.role || '').toLowerCase() === filterRole.toLowerCase();
+      const matchesStatus =
+        !filterStatus || (user.status || 'activo').toLowerCase() === filterStatus.toLowerCase();
+
+      let matchesFromDate = true;
+      let matchesToDate = true;
+
+      if (filterFromDate) {
+        const userDate = new Date(user.created_at);
+        const from = new Date(filterFromDate);
+        from.setHours(0, 0, 0, 0);
+        matchesFromDate = userDate >= from;
+      }
+
+      if (filterToDate) {
+        const userDate = new Date(user.created_at);
+        const to = new Date(filterToDate);
+        to.setHours(23, 59, 59, 999);
+        matchesToDate = userDate <= to;
+      }
+
+      return matchesSearch && matchesRole && matchesStatus && matchesFromDate && matchesToDate;
+    });
+  }, [users, searchTerm, filterRole, filterStatus, filterFromDate, filterToDate]);
+
+  // Reset page cuando cambian filtros o búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterRole, filterStatus, filterFromDate, filterToDate]);
 
   // Calculate pagination
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
@@ -491,9 +518,15 @@ export default function UserManagement() {
             <button
               onClick={() => {
                 setSearchTerm('');
+                setFilterRole('');
+                setFilterStatus('');
+                setFilterFromDate('');
+                setFilterToDate('');
                 setCurrentPage(1);
               }}
-              disabled={!searchTerm}
+              disabled={
+                !searchTerm && !filterRole && !filterStatus && !filterFromDate && !filterToDate
+              }
               className="inline-flex items-center justify-center w-10 h-10 bg-dark-bg border border-dark-border rounded-lg text-gray-300 hover:text-white hover:bg-dark-bg/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               title="Limpiar filtros"
             >
@@ -506,8 +539,15 @@ export default function UserManagement() {
               <div>
                 <label className="block text-gray-400 mb-2">Rol</label>
                 <div className="relative">
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50">
-                    <option>Todos</option>
+                  <select
+                    value={filterRole}
+                    onChange={(e) => {
+                      setFilterRole(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                  >
+                    <option value="">Todos</option>
                     {roles.map((role) => (
                       <option key={role.id} value={role.name}>
                         {role.name}
@@ -520,7 +560,14 @@ export default function UserManagement() {
               <div>
                 <label className="block text-gray-400 mb-2">Estado</label>
                 <div className="relative">
-                  <select className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => {
+                      setFilterStatus(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 pr-12 appearance-none text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+                  >
                     <option value="">Todos</option>
                     {statusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -535,6 +582,11 @@ export default function UserManagement() {
                 <label className="block text-gray-400 mb-2">Desde</label>
                 <input
                   type="date"
+                  value={filterFromDate}
+                  onChange={(e) => {
+                    setFilterFromDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
                 />
               </div>
@@ -542,6 +594,11 @@ export default function UserManagement() {
                 <label className="block text-gray-400 mb-2">Hasta</label>
                 <input
                   type="date"
+                  value={filterToDate}
+                  onChange={(e) => {
+                    setFilterToDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-primary-red/50 appearance-none [color-scheme:dark]"
                 />
               </div>
