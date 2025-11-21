@@ -28,6 +28,7 @@ import { API_BASE_URL } from '../../../services/api';
 import Pagination from '../components/Pagination';
 import { useModal } from '../../../hooks/useModal';
 import { usePermissions } from '../../../hooks/usePermissions';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 const STATUS_LABELS: Record<AdminEvent['status'], string> = {
   borrador: 'Borrador',
@@ -83,9 +84,11 @@ export default function EventManagement() {
   const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [eventToDelete, setEventToDelete] = useState<AdminEvent | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // Prevenir scroll del body cuando el modal está abierto
-  useModal(isCreateOpen);
+  // Prevenir scroll del body cuando hay modales abiertos
+  useModal(isCreateOpen || !!eventToDelete);
 
   // Permisos
   const { hasPermission } = usePermissions();
@@ -376,16 +379,23 @@ export default function EventManagement() {
     }
   };
 
-  const handleDelete = async (event: AdminEvent) => {
-    const confirmed = window.confirm(`¿Eliminar el evento "${event.name}"? Esta acción es permanente.`);
-    if (!confirmed) return;
+  const handleDeleteClick = (event: AdminEvent) => {
+    if (!canDeleteEvent) return;
+    setEventToDelete(event);
+  };
 
+  const confirmDeleteEvent = async () => {
+    if (!eventToDelete) return;
     try {
-      await deleteEvent(event.id);
-      setEvents((prev) => prev.filter((evt) => evt.id !== event.id));
+      setDeletingId(eventToDelete.id);
+      await deleteEvent(eventToDelete.id);
+      setEvents((prev) => prev.filter((evt) => evt.id !== eventToDelete.id));
+      setEventToDelete(null);
     } catch (err: any) {
       console.error('Error eliminando evento', err);
       alert(err.response?.data?.error || 'No se pudo eliminar el evento');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -754,14 +764,14 @@ export default function EventManagement() {
                     </button>
                         {canDeleteEvent && (
                           <button
-                            onClick={() => handleDelete(event)}
+                            onClick={() => handleDeleteClick(event)}
                             className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
                             title="Eliminar"
                           >
-                      <HiTrash className="w-5 h-5" />
-                    </button>
-              )}
-            </div>
+                            <HiTrash className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -779,6 +789,23 @@ export default function EventManagement() {
           itemsPerPage={itemsPerPage}
         />
       )}
+
+      {/* Modal de confirmación para eliminar evento */}
+      <ConfirmModal
+        open={!!eventToDelete}
+        title="Eliminar evento"
+        description={
+          eventToDelete
+            ? `¿Seguro que deseas ELIMINAR el evento "${eventToDelete.name}"? Esta acción es permanente y eliminará también los negocios asociados.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteEvent}
+        onClose={() => !deletingId && setEventToDelete(null)}
+        loading={!!eventToDelete && deletingId === eventToDelete.id}
+        confirmButtonClassName="bg-negative hover:bg-negative/90"
+      />
 
       {isCreateOpen && createPortal(
         <div 

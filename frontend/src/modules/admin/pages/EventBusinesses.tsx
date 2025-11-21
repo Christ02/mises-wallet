@@ -99,9 +99,11 @@ export default function EventBusinesses() {
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
   const [businessForm, setBusinessForm] = useState<BusinessFormState>(initialBusinessForm);
   const [editingBusiness, setEditingBusiness] = useState<AdminBusiness | null>(null);
+  const [businessToDelete, setBusinessToDelete] = useState<AdminBusiness | null>(null);
+  const [deletingBusinessId, setDeletingBusinessId] = useState<number | null>(null);
 
-  // Prevenir scroll del body cuando el modal está abierto
-  useModal(isBusinessModalOpen);
+  // Prevenir scroll del body cuando hay modales abiertos
+  useModal(isBusinessModalOpen || !!memberToRemove || !!businessToDelete);
 
   // Permisos
   const { hasPermission } = usePermissions();
@@ -294,16 +296,23 @@ export default function EventBusinesses() {
     }
   };
 
-  const handleDeleteBusiness = async (business: AdminBusiness) => {
-    if (!numericEventId) return;
-    const confirmed = window.confirm(`¿Eliminar el negocio "${business.name}"? Esta acción es permanente.`);
-    if (!confirmed) return;
+  const handleDeleteBusinessClick = (business: AdminBusiness) => {
+    if (!canDeleteBusiness) return;
+    setBusinessToDelete(business);
+  };
+
+  const confirmDeleteBusiness = async () => {
+    if (!numericEventId || !businessToDelete) return;
     try {
-      await deleteBusiness(numericEventId, business.id);
+      setDeletingBusinessId(businessToDelete.id);
+      await deleteBusiness(numericEventId, businessToDelete.id);
       await refreshBusinesses();
+      setBusinessToDelete(null);
     } catch (err: any) {
       console.error('Error eliminando negocio', err);
       alert(err.response?.data?.error || 'No se pudo eliminar el negocio');
+    } finally {
+      setDeletingBusinessId(null);
     }
   };
 
@@ -603,7 +612,7 @@ export default function EventBusinesses() {
                       </button>
                       {canDeleteBusiness && (
                         <button
-                          onClick={() => handleDeleteBusiness(business)}
+                          onClick={() => handleDeleteBusinessClick(business)}
                           className="p-2 text-gray-400 hover:text-negative hover:bg-negative/10 rounded-lg transition-all"
                           title="Eliminar negocio"
                         >
@@ -1021,6 +1030,23 @@ export default function EventBusinesses() {
         onConfirm={confirmRemoveMember}
         onClose={() => !removingMember && setMemberToRemove(null)}
         loading={removingMember}
+      />
+
+      {/* Modal de confirmación para eliminar negocio */}
+      <ConfirmModal
+        open={!!businessToDelete}
+        title="Eliminar negocio"
+        description={
+          businessToDelete
+            ? `¿Seguro que deseas ELIMINAR el negocio "${businessToDelete.name}"? Esta acción es permanente y eliminará también su wallet y miembros asociados.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteBusiness}
+        onClose={() => !deletingBusinessId && setBusinessToDelete(null)}
+        loading={!!businessToDelete && deletingBusinessId === businessToDelete.id}
+        confirmButtonClassName="bg-negative hover:bg-negative/90"
       />
       </div>
     </>

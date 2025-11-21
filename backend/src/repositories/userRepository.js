@@ -116,7 +116,7 @@ export class UserRepository {
       FROM users u
       JOIN roles r ON u.role_id = r.id
       LEFT JOIN wallets w ON w.user_id = u.id
-      WHERE u.email = $1
+      WHERE LOWER(u.email) = LOWER($1)
     `;
     
     const result = await pool.query(query, [email]);
@@ -193,7 +193,7 @@ export class UserRepository {
     const query = `
       UPDATE users 
       SET reset_password_token = $1, reset_password_expires = $2
-      WHERE email = $3
+      WHERE LOWER(email) = LOWER($3)
       RETURNING *
     `;
     
