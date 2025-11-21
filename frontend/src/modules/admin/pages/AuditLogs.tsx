@@ -85,7 +85,9 @@ export default function AuditLogs() {
           action: actionFilter !== 'Todos' ? actionFilter : undefined,
           entity: entityFilter !== 'Todos' ? entityFilter : undefined,
           dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined
+          dateTo: dateTo || undefined,
+          limit: 1000,
+          offset: 0
         });
         setLogs(response.data);
         setTotal(response.total);

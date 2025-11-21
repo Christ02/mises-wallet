@@ -29,7 +29,7 @@ const normalizeFilters = (filters = {}) => {
     delete normalized.dateTo;
   }
 
-  normalized.limit = Number.isNaN(Number(filters.limit)) ? 25 : Math.min(Number(filters.limit), 200);
+  normalized.limit = Number.isNaN(Number(filters.limit)) ? 200 : Math.min(Number(filters.limit), 1000);
   normalized.offset = Number.isNaN(Number(filters.offset)) ? 0 : Number(filters.offset);
 
   return normalized;
