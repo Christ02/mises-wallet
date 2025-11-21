@@ -9,7 +9,8 @@ import {
   HiClipboardList,
   HiOutlineDocumentText,
   HiCurrencyDollar,
-  HiUserCircle
+  HiUserCircle,
+  HiBookOpen
 } from 'react-icons/hi';
 import misesLogo from '../../../../assets/images/mises-wallet.svg';
 import { usePermissions } from '../../../../hooks/usePermissions';
@@ -32,6 +33,7 @@ const menuItems: MenuItem[] = [
   { name: 'Transacciones Globales', path: '/admin/transactions', icon: HiChartBar },
   { name: 'Reportes', path: '/admin/reports', icon: HiOutlineDocumentText },
   { name: 'Wallet Central', path: '/admin/central-wallet', icon: HiCurrencyDollar },
+  { name: 'API Docs', path: '/admin/api-docs', icon: HiBookOpen },
   { name: 'Auditoría', path: '/admin/audit', icon: HiClipboardList },
   { name: 'Mi perfil', path: '/admin/profile', icon: HiUserCircle },
 ];

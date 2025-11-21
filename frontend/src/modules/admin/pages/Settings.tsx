@@ -376,79 +376,59 @@ export default function Settings() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Mailtrap API Token *</label>
-                <div className="relative">
-                  <input
-                    type={showMailtrapApiToken ? 'text' : 'password'}
-                    value={emailSettings.mailtrapApiToken}
-                    onChange={(e) => handleEmailChange('mailtrapApiToken', e.target.value)}
-                    placeholder="2667f58c9d749883c67770c58a18c192"
-                    className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowMailtrapApiToken((prev) => !prev)}
-                    className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
-                  >
-                    {showMailtrapApiToken ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Tu API token de Mailtrap. Obtén tu token en{' '}
-                  <a
-                    href="https://mailtrap.io/api-tokens"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-red hover:text-primary-red/80 underline"
-                  >
-                    mailtrap.io/api-tokens
-                  </a>
-                </p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 mb-1">Mailtrap API Token *</label>
+              <div className="relative">
+                <input
+                  type={showMailtrapApiToken ? 'text' : 'password'}
+                  value={emailSettings.mailtrapApiToken}
+                  onChange={(e) => handleEmailChange('mailtrapApiToken', e.target.value)}
+                  placeholder="2667f58c9d749883c67770c58a18c192"
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMailtrapApiToken((prev) => !prev)}
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
+                >
+                  {showMailtrapApiToken ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                </button>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Tu API token de Mailtrap. Obtén tu token en{' '}
+                <a
+                  href="https://mailtrap.io/api-tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-red hover:text-primary-red/80 underline"
+                >
+                  mailtrap.io/api-tokens
+                </a>
+              </p>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Correo remitente *</label>
-                <input
-                  type="email"
-                  value={emailSettings.mailtrapFromEmail}
-                  onChange={(e) => handleEmailChange('mailtrapFromEmail', e.target.value)}
-                  placeholder="noreply@tudominio.com"
-                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Nombre remitente</label>
-                <input
-                  type="text"
-                  value={emailSettings.mailtrapFromName}
-                  onChange={(e) => handleEmailChange('mailtrapFromName', e.target.value)}
-                  placeholder="Mises Wallet"
-                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 mb-1">Correo remitente *</label>
+              <input
+                type="email"
+                value={emailSettings.mailtrapFromEmail}
+                onChange={(e) => handleEmailChange('mailtrapFromEmail', e.target.value)}
+                placeholder="noreply@tudominio.com"
+                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300 mb-1">Nombre remitente</label>
+              <input
+                type="text"
+                value={emailSettings.mailtrapFromName}
+                onChange={(e) => handleEmailChange('mailtrapFromName', e.target.value)}
+                placeholder="Mises Wallet"
+                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50"
+              />
             </div>
           </div>
         )}
-
-        <div className="bg-dark-bg/60 border border-dark-border rounded-xl p-4 text-sm text-gray-400 flex items-start gap-3">
-          <HiInformationCircle className="w-5 h-5 text-primary-red flex-shrink-0" />
-          <p>
-            {emailSettings.provider === 'resend' ? (
-              <>
-                <strong>Resend</strong> es un servicio moderno de envío de correos para producción. Asegúrate de verificar tu dominio en Resend antes de enviar correos.
-              </>
-            ) : (
-              <>
-                <strong>Mailtrap</strong> es ideal para pruebas y desarrollo. Los correos no se envían realmente, sino que se capturan en tu inbox de Mailtrap para revisión.
-              </>
-            )}
-            {' '}Si no configuras estas opciones, los correos se loguearán en consola en modo desarrollo.
-          </p>
-        </div>
 
         <div className="flex items-center justify-end">
           <button
@@ -535,18 +515,18 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Private Key *</label>
               <div className="relative">
-                <textarea
-                  rows={3}
+                <input
+                  type={showPrivateKey ? 'text' : 'password'}
                   value={walletSettings.walletPrivateKey}
                   onChange={(e) => handleWalletChange('walletPrivateKey', e.target.value)}
                   placeholder="Clave privada en formato hex"
-                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono resize-none pr-12"
+                  className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-red/50 font-mono pr-12"
                   spellCheck={false}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPrivateKey((prev) => !prev)}
-                  className="absolute top-3 right-3 text-gray-400 hover:text-white"
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
                   title={showPrivateKey ? 'Ocultar' : 'Mostrar'}
                 >
                   {showPrivateKey ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
