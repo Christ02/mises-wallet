@@ -1046,7 +1046,6 @@ export default function EventBusinesses() {
         onConfirm={confirmDeleteBusiness}
         onClose={() => !deletingBusinessId && setBusinessToDelete(null)}
         loading={!!businessToDelete && deletingBusinessId === businessToDelete.id}
-        confirmButtonClassName="bg-negative hover:bg-negative/90"
       />
       </div>
     </>

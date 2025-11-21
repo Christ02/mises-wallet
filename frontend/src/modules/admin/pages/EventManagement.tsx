@@ -804,7 +804,6 @@ export default function EventManagement() {
         onConfirm={confirmDeleteEvent}
         onClose={() => !deletingId && setEventToDelete(null)}
         loading={!!eventToDelete && deletingId === eventToDelete.id}
-        confirmButtonClassName="bg-negative hover:bg-negative/90"
       />
 
       {isCreateOpen && createPortal(
