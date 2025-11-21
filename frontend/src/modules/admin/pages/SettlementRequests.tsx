@@ -32,7 +32,8 @@ export default function SettlementRequests() {
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   const { hasPermission } = usePermissions();
-  const canApprove = hasPermission('central_wallet.approve');
+  // Permiso para aprobar/rechazar (solo super_admin)
+  const canApprove = hasPermission('centralWallet.approve');
 
   useEffect(() => {
     fetchSettlements();
