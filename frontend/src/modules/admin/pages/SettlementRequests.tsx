@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiCreditCard } from 'react-icons/hi';
+import { HiArrowLeft, HiCreditCard, HiCheckCircle, HiXCircle } from 'react-icons/hi';
 import api from '../../../services/api';
 import Pagination from '../components/Pagination';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 type Settlement = {
   id: number;
@@ -28,6 +29,10 @@ export default function SettlementRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+
+  const { hasPermission } = usePermissions();
+  const canApprove = hasPermission('central_wallet.approve');
 
   useEffect(() => {
     fetchSettlements();
@@ -88,6 +93,48 @@ export default function SettlementRequests() {
   }, [settlements, currentPage]);
 
   const totalPages = Math.max(Math.ceil(settlements.length / ITEMS_PER_PAGE), 1);
+
+  const handleApprove = async (settlement: Settlement) => {
+    if (!canApprove) return;
+    const confirmed = window.confirm(
+      `¿Seguro que deseas APROBAR la liquidación del equipo "${settlement.business_name}" por ${settlement.requested_amount} ${settlement.token_symbol}?`
+    );
+    if (!confirmed) return;
+
+    setProcessingId(settlement.id);
+    try {
+      await api.post(`/api/admin/central-wallet/settlements/${settlement.id}/approve`);
+      await fetchSettlements();
+    } catch (err: any) {
+      console.error('Error approving settlement', err);
+      alert(err.response?.data?.error || 'No se pudo aprobar la solicitud de liquidación');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = async (settlement: Settlement) => {
+    if (!canApprove) return;
+    const notes = window.prompt(
+      `Motivo del rechazo para la liquidación del equipo "${settlement.business_name}" (opcional):`
+    ) || undefined;
+
+    const confirmed = window.confirm('¿Seguro que deseas RECHAZAR esta solicitud de liquidación?');
+    if (!confirmed) return;
+
+    setProcessingId(settlement.id);
+    try {
+      await api.post(`/api/admin/central-wallet/settlements/${settlement.id}/reject`, {
+        notes: notes || null
+      });
+      await fetchSettlements();
+    } catch (err: any) {
+      console.error('Error rejecting settlement', err);
+      alert(err.response?.data?.error || 'No se pudo rechazar la solicitud de liquidación');
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -209,6 +256,11 @@ export default function SettlementRequests() {
                       <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
                         Fecha solicitud
                       </th>
+                      {canApprove && (
+                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Acciones
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-border">
@@ -266,6 +318,32 @@ export default function SettlementRequests() {
                         <td className="px-6 py-4 text-sm text-gray-300">
                           {formatDateTime(settlement.created_at)}
                         </td>
+                        {canApprove && (
+                          <td className="px-6 py-4">
+                            {settlement.status === 'pendiente' ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleApprove(settlement)}
+                                  disabled={processingId === settlement.id}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-positive/10 hover:bg-positive/20 text-positive border border-positive/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                                >
+                                  <HiCheckCircle className="w-4 h-4" />
+                                  Aprobar
+                                </button>
+                                <button
+                                  onClick={() => handleReject(settlement)}
+                                  disabled={processingId === settlement.id}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-negative/10 hover:bg-negative/20 text-negative border border-negative/30 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                                >
+                                  <HiXCircle className="w-4 h-4" />
+                                  Rechazar
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-500 italic">Sin acciones</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
