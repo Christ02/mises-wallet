@@ -78,7 +78,6 @@ export default function TransactionManagement() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
   const [allTypes, setAllTypes] = useState<string[]>([]);
 
@@ -141,8 +140,7 @@ export default function TransactionManagement() {
     typeFilter,
     directionFilter,
     dateFrom,
-    dateTo,
-    refreshToken
+    dateTo
   ]);
 
   // Reset page when filters change

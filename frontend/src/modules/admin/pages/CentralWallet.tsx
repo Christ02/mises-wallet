@@ -132,11 +132,9 @@ export default function CentralWallet() {
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementsLoading, setSettlementsLoading] = useState(true);
   const [settlementsError, setSettlementsError] = useState<string | null>(null);
-  const [_processingSettlement, setProcessingSettlement] = useState<number | null>(null); // setProcessingSettlement se usa en handleApproveSettlement
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
   const [withdrawalsError, setWithdrawalsError] = useState<string | null>(null);
-  const [_processingWithdrawal, setProcessingWithdrawal] = useState<number | null>(null); // setProcessingWithdrawal se usa en handleApproveWithdrawal y handleRejectWithdrawal
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [copiedContract, setCopiedContract] = useState(false);
   
